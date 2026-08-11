@@ -96,7 +96,7 @@ fun ManageProvidersDialog(
                 OutlinedTextField(
                     value = emailInput,
                     onValueChange = { emailInput = it },
-                    label = { Text("Correo Electrónico (ej. soporte@zitro.com)") },
+                    label = { Text("Correo Electrónico (Opcional)") },
                     singleLine = true,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -110,7 +110,7 @@ fun ManageProvidersDialog(
                 ) {
                     Button(
                         onClick = {
-                            if (providerNameInput.isNotBlank() && emailInput.isNotBlank()) {
+                            if (providerNameInput.isNotBlank()) {
                                 onSaveProvider(
                                     editingProviderId ?: 0,
                                     providerNameInput,
@@ -121,6 +121,7 @@ fun ManageProvidersDialog(
                                 editingProviderId = null
                             }
                         },
+                        enabled = providerNameInput.isNotBlank(),
                         modifier = Modifier
                             .weight(1f)
                             .testTag("save_new_provider_button"),
@@ -194,9 +195,9 @@ fun ManageProvidersDialog(
                                             fontWeight = FontWeight.Bold
                                         )
                                         Text(
-                                            text = provider.email,
+                                            text = provider.email.ifBlank { "Sin correo configurado" },
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = if (provider.email.isNotBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
                                         )
                                     }
 

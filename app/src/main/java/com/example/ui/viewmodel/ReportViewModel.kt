@@ -34,6 +34,12 @@ data class EmailDraftState(
     val assetNumber: String = ""
 )
 
+data class MissingProviderEmailState(
+    val providerName: String,
+    val providerId: Int?,
+    val draftToOpen: EmailDraftState
+)
+
 class ReportViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: ReportRepository
@@ -140,6 +146,13 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _statusMessage = MutableStateFlow<String?>(null)
     val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
+
+    private val _missingProviderEmailState = MutableStateFlow<MissingProviderEmailState?>(null)
+    val missingProviderEmailState: StateFlow<MissingProviderEmailState?> = _missingProviderEmailState.asStateFlow()
+
+    fun closeMissingEmailDialog() {
+        _missingProviderEmailState.value = null
+    }
 
     fun updateLocationQuery(query: String) {
         _locationSearchQuery.value = query
@@ -290,7 +303,21 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 assetNumber = finalAsset
             )
 
-            openDraftDialog(draft)
+            if (matchedProvider != null && matchedProvider.email.isBlank()) {
+                _missingProviderEmailState.value = MissingProviderEmailState(
+                    providerName = matchedProvider.providerName,
+                    providerId = matchedProvider.id,
+                    draftToOpen = draft.copy(recipient = "")
+                )
+            } else if (finalRecipient.isBlank()) {
+                _missingProviderEmailState.value = MissingProviderEmailState(
+                    providerName = finalBrand,
+                    providerId = matchedProvider?.id,
+                    draftToOpen = draft.copy(recipient = "")
+                )
+            } else {
+                openDraftDialog(draft)
+            }
         }
     }
 
@@ -304,8 +331,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 pName.isNotBlank() && (lowerBrand.contains(pName) || pName.contains(lowerBrand))
             }
 
-            val finalRecipient = matchedProvider?.email
-                ?: "soporte@${if (machine.brand.isNotBlank()) machine.brand.lowercase().replace(" ", "") else "zitro"}.com"
+            val finalRecipient = matchedProvider?.email?.ifBlank { null } ?: ""
 
             val greeting = getTimeOfDayGreeting()
             val cleanedIssue = issueDescription.trim().ifBlank { "Falla reportada en terminal" }
@@ -344,7 +370,21 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 assetNumber = machine.assetNumber
             )
 
-            openDraftDialog(draft)
+            if (matchedProvider != null && matchedProvider.email.isBlank()) {
+                _missingProviderEmailState.value = MissingProviderEmailState(
+                    providerName = matchedProvider.providerName,
+                    providerId = matchedProvider.id,
+                    draftToOpen = draft
+                )
+            } else if (finalRecipient.isBlank()) {
+                _missingProviderEmailState.value = MissingProviderEmailState(
+                    providerName = machine.brand.ifBlank { "Proveedor" },
+                    providerId = matchedProvider?.id,
+                    draftToOpen = draft
+                )
+            } else {
+                openDraftDialog(draft)
+            }
         }
     }
 
@@ -552,7 +592,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     // --- Provider Email Management ---
     fun saveProviderEmail(id: Int = 0, providerName: String, email: String) {
         viewModelScope.launch {
-            if (providerName.isNotBlank() && email.isNotBlank()) {
+            if (providerName.isNotBlank()) {
                 repository.insertProviderEmail(
                     com.example.data.db.ProviderEmailEntity(
                         id = id,
@@ -560,10 +600,11 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                         email = email.trim()
                     )
                 )
+                val emailInfo = if (email.isNotBlank()) " (${email.trim()})" else ""
                 _statusMessage.value = if (id == 0) {
-                    "Proveedor ${providerName.trim()} ($email) guardado correctamente."
+                    "Proveedor ${providerName.trim()}$emailInfo guardado correctamente."
                 } else {
-                    "Proveedor ${providerName.trim()} ($email) actualizado correctamente."
+                    "Proveedor ${providerName.trim()}$emailInfo actualizado correctamente."
                 }
             }
         }

@@ -6,9 +6,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AssignmentInd
 import androidx.compose.material.icons.filled.CloudUpload
@@ -30,13 +31,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import com.example.ui.components.EmailDraftPreviewDialog
+import com.example.ui.components.MissingProviderEmailDialog
 import com.example.ui.screens.ExtractFileScreen
 import com.example.ui.screens.HistoryScreen
 import com.example.ui.screens.MachineLocationScreen
@@ -44,6 +44,7 @@ import com.example.ui.screens.QuickReportScreen
 import com.example.ui.screens.VisitsScreen
 import com.example.ui.theme.ReportesExpressTheme
 import com.example.ui.viewmodel.ReportViewModel
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -67,8 +68,10 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainAppScreen(viewModel: ReportViewModel) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    val coroutineScope = rememberCoroutineScope()
+    val pagerState = rememberPagerState(initialPage = 0) { 5 }
 
+    val missingEmailState by viewModel.missingProviderEmailState.collectAsState()
     val showDraftDialog by viewModel.showDraftDialog.collectAsState()
     val currentDraftState by viewModel.currentDraft.collectAsState()
     val isDarkThemePref by viewModel.isDarkTheme.collectAsState()
@@ -83,7 +86,7 @@ fun MainAppScreen(viewModel: ReportViewModel) {
             TopAppBar(
                 title = {
                     Text(
-                        text = when (selectedTab) {
+                        text = when (pagerState.currentPage) {
                             0 -> "Reportes Express"
                             1 -> "Extraer Datos de Archivo"
                             2 -> "¿Dónde está la Máquina?"
@@ -117,36 +120,56 @@ fun MainAppScreen(viewModel: ReportViewModel) {
                 modifier = Modifier.testTag("main_navigation_bar")
             ) {
                 NavigationBarItem(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
+                    selected = pagerState.currentPage == 0,
+                    onClick = {
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(0)
+                        }
+                    },
                     icon = { Icon(imageVector = Icons.Default.FlashOn, contentDescription = "Generar") },
                     label = { Text("Generar") },
                     modifier = Modifier.testTag("tab_quick_report")
                 )
                 NavigationBarItem(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
+                    selected = pagerState.currentPage == 1,
+                    onClick = {
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(1)
+                        }
+                    },
                     icon = { Icon(imageVector = Icons.Default.CloudUpload, contentDescription = "Extraer") },
                     label = { Text("Extraer") },
                     modifier = Modifier.testTag("tab_extract_file")
                 )
                 NavigationBarItem(
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
+                    selected = pagerState.currentPage == 2,
+                    onClick = {
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(2)
+                        }
+                    },
                     icon = { Icon(imageVector = Icons.Default.Place, contentDescription = "Ubicación") },
                     label = { Text("Ubicación") },
                     modifier = Modifier.testTag("tab_machine_location")
                 )
                 NavigationBarItem(
-                    selected = selectedTab == 3,
-                    onClick = { selectedTab = 3 },
+                    selected = pagerState.currentPage == 3,
+                    onClick = {
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(3)
+                        }
+                    },
                     icon = { Icon(imageVector = Icons.Default.AssignmentInd, contentDescription = "Visitas") },
                     label = { Text("Visitas") },
                     modifier = Modifier.testTag("tab_visits")
                 )
                 NavigationBarItem(
-                    selected = selectedTab == 4,
-                    onClick = { selectedTab = 4 },
+                    selected = pagerState.currentPage == 4,
+                    onClick = {
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(4)
+                        }
+                    },
                     icon = { Icon(imageVector = Icons.Default.History, contentDescription = "Historial") },
                     label = { Text("Historial") },
                     modifier = Modifier.testTag("tab_history")
@@ -154,18 +177,44 @@ fun MainAppScreen(viewModel: ReportViewModel) {
             }
         }
     ) { innerPadding ->
-        Box(
+        HorizontalPager(
+            state = pagerState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-        ) {
-            when (selectedTab) {
+        ) { page ->
+            when (page) {
                 0 -> QuickReportScreen(viewModel = viewModel)
                 1 -> ExtractFileScreen(viewModel = viewModel)
                 2 -> MachineLocationScreen(viewModel = viewModel)
                 3 -> VisitsScreen(viewModel = viewModel)
                 4 -> HistoryScreen(viewModel = viewModel)
             }
+        }
+
+        // Missing Provider Email Alert Dialog
+        missingEmailState?.let { state ->
+            MissingProviderEmailDialog(
+                state = state,
+                onDismiss = {
+                    viewModel.closeMissingEmailDialog()
+                },
+                onSaveEmailAndContinue = { newEmail ->
+                    viewModel.saveProviderEmail(
+                        id = state.providerId ?: 0,
+                        providerName = state.providerName,
+                        email = newEmail
+                    )
+                    val updatedDraft = state.draftToOpen.copy(recipient = newEmail)
+                    viewModel.closeMissingEmailDialog()
+                    viewModel.openDraftDialog(updatedDraft)
+                },
+                onContinueWithoutEmail = {
+                    val draftWithBlank = state.draftToOpen.copy(recipient = "")
+                    viewModel.closeMissingEmailDialog()
+                    viewModel.openDraftDialog(draftWithBlank)
+                }
+            )
         }
 
         // Step 2 & 3: Email Review and Direct Dispatch Modal
