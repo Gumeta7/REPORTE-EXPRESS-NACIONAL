@@ -32,6 +32,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -47,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -64,7 +66,6 @@ fun MachineLocationScreen(
     val searchQuery by viewModel.locationSearchQuery.collectAsState()
     val machinesList by viewModel.machineCatalog.collectAsState()
 
-    var showAddDialog by remember { mutableStateOf(false) }
     var showConfirmClearDialog by remember { mutableStateOf(false) }
     var selectedMachineForReport by remember { mutableStateOf<MachineEntity?>(null) }
 
@@ -116,34 +117,17 @@ fun MachineLocationScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Import Dataset & Add Machine Actions
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        // Import Dataset Action (Full Width Excel Import)
+        Button(
+            onClick = { excelPickerLauncher.launch("*/*") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("import_excel_catalog_button"),
+            shape = RoundedCornerShape(12.dp)
         ) {
-            Button(
-                onClick = { excelPickerLauncher.launch("*/*") },
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("import_excel_catalog_button"),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(imageVector = Icons.Default.FileUpload, contentDescription = "Excel")
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Subir Excel / CSV", style = MaterialTheme.typography.bodySmall)
-            }
-
-            Button(
-                onClick = { showAddDialog = true },
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("add_machine_manually_button"),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Agregar")
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Nueva Máquina", style = MaterialTheme.typography.bodySmall)
-            }
+            Icon(imageVector = Icons.Default.FileUpload, contentDescription = "Excel")
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Subir Catálogo Excel / CSV", style = MaterialTheme.typography.bodyMedium)
         }
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -166,7 +150,7 @@ fun MachineLocationScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Columnas reconocidas: ASSET NUMBER, MARCA, MODELO, TITULO JUEGO, AREA, ISLA, SERIE MAQUINA",
+                    text = "Columnas reconocidas: ASSET, MARCA, MODELO REPORTE (PP/PV), TITULO JUEGO, AREA, ISLA, SERIE",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -224,7 +208,7 @@ fun MachineLocationScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = if (searchQuery.isNotBlank()) "No se encontraron máquinas con la búsqueda." else "El catálogo de máquinas está vacío. Sube un Excel/CSV o agrega una máquina manualmente.",
+                        text = if (searchQuery.isNotBlank()) "No se encontraron máquinas con la búsqueda." else "El catálogo de máquinas está vacío. Sube un archivo Excel o CSV.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -254,16 +238,6 @@ fun MachineLocationScreen(
             onConfirm = { failureDescription ->
                 viewModel.generateReportForMachine(selectedMachineForReport!!, failureDescription)
                 selectedMachineForReport = null
-            }
-        )
-    }
-
-    if (showAddDialog) {
-        AddMachineDialog(
-            onDismiss = { showAddDialog = false },
-            onSave = { newMachine ->
-                viewModel.addManualMachine(newMachine)
-                showAddDialog = false
             }
         )
     }
@@ -317,7 +291,7 @@ fun MachineLocationCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Header Row: Machine Number & Brand Badge
+            // Header Row: Machine Number, Brand & Modelo Reporte (PP / PV) Badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -348,14 +322,65 @@ fun MachineLocationCard(
                     )
                 }
 
+                // PP / PV MODELO REPORTE BADGE
+                val upperModel = machine.model.trim().uppercase()
+                val isPropia = upperModel.contains("(PP)") || upperModel.contains(" PP") || upperModel.endsWith("PP") || upperModel.contains("PROPIA")
+                val isProveedor = upperModel.contains("(PV)") || upperModel.contains(" PV") || upperModel.endsWith("PV") || upperModel.contains("PROVEEDOR")
+
+                val badgeText = when {
+                    isPropia -> "(PP) Propia"
+                    isProveedor -> "(PV) Proveedor"
+                    machine.model.isNotBlank() -> machine.model
+                    else -> "(PP/PV) Sin tipo"
+                }
+
+                val badgeBg = when {
+                    isPropia -> Color(0xFFE8F5E9) // Soft Green
+                    isProveedor -> Color(0xFFEDE7F6) // Soft Purple
+                    else -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f)
+                }
+                val badgeFg = when {
+                    isPropia -> Color(0xFF1B5E20) // Dark Green
+                    isProveedor -> Color(0xFF4A148C) // Dark Purple
+                    else -> MaterialTheme.colorScheme.onSecondaryContainer
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = badgeBg
+                ) {
+                    Text(
+                        text = badgeText,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = badgeFg,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Dedicated Modelo Reporte display row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    text = machine.model,
+                    text = "Modelo Reporte:",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Text(
+                    text = machine.model.ifBlank { "N/A" },
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Step 6 Highlights: Area, Game, Island
             Row(
@@ -389,18 +414,18 @@ fun MachineLocationCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Secondary Details (Serial, Asset)
+            // Secondary Details (Asset & Serial)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Serie: ${machine.serialNumber}",
+                    text = "Asset: ${machine.assetNumber}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Asset: ${machine.assetNumber}",
+                    text = "Serie: ${machine.serialNumber}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -463,105 +488,6 @@ fun InfoHighlightChip(
             )
         }
     }
-}
-
-@Composable
-fun AddMachineDialog(
-    onDismiss: () -> Unit,
-    onSave: (MachineEntity) -> Unit
-) {
-    var machineNum by remember { mutableStateOf("") }
-    var assetNum by remember { mutableStateOf("") }
-    var serialNum by remember { mutableStateOf("") }
-    var brand by remember { mutableStateOf("Zitro") }
-    var model by remember { mutableStateOf("") }
-    var area by remember { mutableStateOf("Sala Principal") }
-    var game by remember { mutableStateOf("") }
-    var island by remember { mutableStateOf("Isla 01") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Registrar Nueva Máquina") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = machineNum,
-                    onValueChange = { machineNum = it },
-                    label = { Text("No. de Máquina") },
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = assetNum,
-                    onValueChange = { assetNum = it },
-                    label = { Text("No. de Asset") },
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = serialNum,
-                    onValueChange = { serialNum = it },
-                    label = { Text("Número de Serie") },
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = brand,
-                    onValueChange = { brand = it },
-                    label = { Text("Marca (ej. Zitro, IGT)") },
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = model,
-                    onValueChange = { model = it },
-                    label = { Text("Modelo") },
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = area,
-                    onValueChange = { area = it },
-                    label = { Text("Área de Ubicación") },
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = island,
-                    onValueChange = { island = it },
-                    label = { Text("Identificador de Isla") },
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = game,
-                    onValueChange = { game = it },
-                    label = { Text("Juego Instalado") },
-                    singleLine = true
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (machineNum.isNotBlank()) {
-                        onSave(
-                            MachineEntity(
-                                machineNumber = machineNum,
-                                assetNumber = assetNum.ifBlank { "AST-$machineNum" },
-                                serialNumber = serialNum.ifBlank { "SN-$machineNum" },
-                                brand = brand.ifBlank { "General" },
-                                model = model.ifBlank { "Estandar" },
-                                area = area,
-                                game = game.ifBlank { "Multijuego" },
-                                island = island
-                            )
-                        )
-                    }
-                }
-            ) {
-                Text("Guardar Máquina")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
-        }
-    )
 }
 
 @Composable

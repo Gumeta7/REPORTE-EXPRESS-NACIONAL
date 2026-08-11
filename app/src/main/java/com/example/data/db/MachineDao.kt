@@ -17,6 +17,7 @@ interface MachineDao {
            OR assetNumber LIKE '%' || :query || '%' 
            OR serialNumber LIKE '%' || :query || '%'
            OR brand LIKE '%' || :query || '%'
+           OR model LIKE '%' || :query || '%'
            OR area LIKE '%' || :query || '%'
            OR game LIKE '%' || :query || '%'
            OR island LIKE '%' || :query || '%'

@@ -160,26 +160,35 @@ object FileParserUtil {
     private fun findHeaderIndices(rowCells: List<String>): Map<String, Int> {
         val map = mutableMapOf<String, Int>()
 
-        // 1. First pass for exact or explicit 'MODELO' / 'MODEL' matches
+        // 1. Highest Priority for 'modelo': Explicit 'MODELO REPORTE', 'MODELO_REPORTE', 'MODELO DE REPORTE', 'PP/PV'
         rowCells.forEachIndexed { idx, cellStr ->
             val col = sanitizeHeader(cellStr)
-            if (col == "MODELO" || col == "MODEL") {
+            if (col.contains("MODELO REPORTE") || col.contains("MODELO_REPORTE") || col.contains("MODELO DE REPORTE") || col.contains("PP/PV") || col.contains("TIPO DE MAQUINA")) {
                 map["modelo"] = idx
             }
         }
 
-        // 2. Second pass for general headers
+        // 2. Second pass: Fallback for 'modelo' if MODELO REPORTE was not found
+        if (!map.containsKey("modelo")) {
+            rowCells.forEachIndexed { idx, cellStr ->
+                val col = sanitizeHeader(cellStr)
+                if (col == "MODELO" || col == "MODEL" || col == "TIPO") {
+                    map["modelo"] = idx
+                }
+            }
+        }
+
+        // 3. Third pass for general headers
         rowCells.forEachIndexed { idx, cellStr ->
             val col = sanitizeHeader(cellStr)
             when {
                 col.contains("ASSET") -> map.putIfAbsent("asset", idx)
                 col.contains("MARCA") || col.contains("BRAND") || col.contains("FABRICANTE") || col.contains("PROVEEDOR") -> map.putIfAbsent("marca", idx)
-                (col.contains("MODELO") || col.contains("MODEL")) && !col.contains("REPORTE") && !col.contains("REPORT") -> map.putIfAbsent("modelo", idx)
                 col.contains("TITULO") || col.contains("JUEGO") || col.contains("GAME") -> map.putIfAbsent("juego", idx)
                 col.contains("AREA") || col.contains("UBICACION") || col.contains("SALA") || col.contains("ZONE") -> map.putIfAbsent("area", idx)
                 col.contains("ISLA") || col.contains("ISLAND") || col.contains("BLOQUE") -> map.putIfAbsent("isla", idx)
                 col.contains("SERIE") || col.contains("SERIAL") -> map.putIfAbsent("serie", idx)
-                (col.contains("MAQUINA") || col.contains("TERMINAL") || col.contains("EQUIPO")) && !col.contains("SERIE") -> map.putIfAbsent("maquina", idx)
+                (col.contains("MAQUINA") || col.contains("TERMINAL") || col.contains("EQUIPO")) && !col.contains("SERIE") && !col.contains("TIPO") -> map.putIfAbsent("maquina", idx)
             }
         }
         return map
