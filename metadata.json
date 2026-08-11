@@ -1,0 +1,6 @@
+{
+  "name": "Reportes Express",
+  "description": "Generador rápido de reportes de máquinas con extracción de datos, consulta de ubicación, historial y envío directo por Gmail y Outlook.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

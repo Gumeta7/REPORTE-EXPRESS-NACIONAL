@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:translateX="27"
+        android:translateY="27">
+        <!-- Clipboard card background -->
+        <path
+            android:fillColor="#38BDF8"
+            android:pathData="M10,6 C10,3.79 11.79,2 14,2 L40,2 C42.21,2 44,3.79 44,6 L44,48 C44,50.21 42.21,52 40,52 L14,52 C11.79,52 10,50.21 10,48 Z" />
+        <!-- Inner document canvas -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M14,10 L40,10 L40,46 L14,46 Z" />
+        <!-- Lines on report document -->
+        <path
+            android:fillColor="#0284C7"
+            android:pathData="M18,16 L36,16 L36,19 L18,19 Z M18,22 L32,22 L32,25 L18,25 Z M18,28 L28,28 L28,31 L18,31 Z" />
+        <!-- Email badge accent -->
+        <path
+            android:fillColor="#0284C7"
+            android:pathData="M24,32 L42,32 C43.1,32 44,32.9 44,34 L44,46 C44,47.1 43.1,48 42,48 L24,48 C22.9,48 22,47.1 22,46 L22,34 C22,32.9 22.9,32 24,32 Z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M24,34 L33,40 L42,34 Z" />
+    </group>
+</vector>
