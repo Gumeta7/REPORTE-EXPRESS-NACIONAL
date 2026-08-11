@@ -274,6 +274,60 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun generateReportForMachine(machine: MachineEntity, issueDescription: String) {
+        viewModelScope.launch {
+            val registeredProviders = providerEmails.value
+            val lowerBrand = machine.brand.lowercase().trim()
+
+            val matchedProvider = registeredProviders.find { p ->
+                val pName = p.providerName.lowercase().trim()
+                pName.isNotBlank() && (lowerBrand.contains(pName) || pName.contains(lowerBrand))
+            }
+
+            val finalRecipient = matchedProvider?.email
+                ?: "soporte@${if (machine.brand.isNotBlank()) machine.brand.lowercase().replace(" ", "") else "zitro"}.com"
+
+            val greeting = getTimeOfDayGreeting()
+            val cleanedIssue = issueDescription.trim().ifBlank { "Falla reportada en terminal" }
+
+            val formattedBody = """
+                $greeting estimados,
+                
+                Nos podrían apoyar con la revisión y atención de la siguiente terminal, la cual presenta el siguiente inconveniente:
+                
+                Detalle de la falla: $cleanedIssue.
+                
+                --- DATOS DEL EQUIPO ---
+                • Asset Number: ${machine.assetNumber}
+                • Número de Serie: ${machine.serialNumber}
+                • Marca / Proveedor: ${machine.brand}
+                • Modelo: ${machine.model}
+                • Área / Ubicación: ${machine.area} (Isla: ${machine.island})
+                • Juego Instalado: ${machine.game}
+                
+                Quedamos a la espera de sus comentarios y apoyo.
+                
+                Saludos cordiales.
+            """.trimIndent()
+
+            val subjectLine = "REPORTE DE TERMINAL - MAQ ${machine.machineNumber}"
+
+            val draft = EmailDraftState(
+                recipient = finalRecipient,
+                subject = subjectLine,
+                body = formattedBody,
+                machineNumber = machine.machineNumber,
+                issueDescription = cleanedIssue,
+                brand = machine.brand,
+                model = machine.model,
+                serialNumber = machine.serialNumber,
+                assetNumber = machine.assetNumber
+            )
+
+            openDraftDialog(draft)
+        }
+    }
+
     private fun cleanIssueDescription(promptText: String, numberMatch: String, matchedProviderName: String?): String {
         var text = promptText.trim()
 

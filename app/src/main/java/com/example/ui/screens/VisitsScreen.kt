@@ -125,9 +125,9 @@ fun VisitsScreen(
         sb.append("*Motivo de visita:* $motivoVisita")
         if (assetInput.isNotBlank()) {
             sb.append("\n*Asset:* ${assetInput.trim()}")
-            if (islaInput.isNotBlank()) {
-                sb.append("\n*Isla:* ${islaInput.trim()}")
-            }
+        }
+        if (islaInput.isNotBlank()) {
+            sb.append("\n*Isla:* ${islaInput.trim()}")
         }
         sb.toString()
     }

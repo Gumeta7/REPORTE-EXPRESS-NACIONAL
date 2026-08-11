@@ -66,6 +66,7 @@ fun MachineLocationScreen(
 
     var showAddDialog by remember { mutableStateOf(false) }
     var showConfirmClearDialog by remember { mutableStateOf(false) }
+    var selectedMachineForReport by remember { mutableStateOf<MachineEntity?>(null) }
 
     // File picker to upload custom Excel/CSV dataset
     val excelPickerLauncher = rememberLauncherForActivityResult(
@@ -238,12 +239,23 @@ fun MachineLocationScreen(
                     MachineLocationCard(
                         machine = machine,
                         onReportClick = {
-                            viewModel.generateQuickReport("reporta la maquina ${machine.machineNumber} a ${machine.brand} por falla")
+                            selectedMachineForReport = machine
                         }
                     )
                 }
             }
         }
+    }
+
+    if (selectedMachineForReport != null) {
+        ReportMachineFailureDialog(
+            machine = selectedMachineForReport!!,
+            onDismiss = { selectedMachineForReport = null },
+            onConfirm = { failureDescription ->
+                viewModel.generateReportForMachine(selectedMachineForReport!!, failureDescription)
+                selectedMachineForReport = null
+            }
+        )
     }
 
     if (showAddDialog) {
@@ -551,3 +563,99 @@ fun AddMachineDialog(
         }
     )
 }
+
+@Composable
+fun ReportMachineFailureDialog(
+    machine: MachineEntity,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var issueInput by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                imageVector = Icons.Default.ReportProblem,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+        },
+        title = {
+            Text(
+                text = "Reportar Falla de Máquina",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Machine Details Card
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "Máquina #${machine.machineNumber} - ${machine.brand}",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Modelo: ${machine.model} | Serie: ${machine.serialNumber}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Asset: ${machine.assetNumber} | Isla: ${machine.island} | Área: ${machine.area}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Text(
+                    text = "Describa el inconveniente o falla:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+
+                OutlinedTextField(
+                    value = issueInput,
+                    onValueChange = { issueInput = it },
+                    placeholder = { Text("Ej: Billetero no acepta billetes, pantalla táctil descalibrada, error de comunicación, etc.") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("location_report_failure_input"),
+                    minLines = 3,
+                    maxLines = 5,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(issueInput) },
+                enabled = issueInput.isNotBlank(),
+                modifier = Modifier.testTag("confirm_location_report_failure_button")
+            ) {
+                Text("Generar Vista Previa")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.testTag("cancel_location_report_failure_button")
+            ) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
