@@ -58,6 +58,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     val visitProveedor = MutableStateFlow("ZITRO")
     val visitTecnico = MutableStateFlow("")
     val visitHoraEntrada = MutableStateFlow(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()))
+    val visitHoraSalida = MutableStateFlow("")
     val visitMotivoVisita = MutableStateFlow("Atención de incidencia")
     val visitAssetInput = MutableStateFlow("")
     val visitIslaInput = MutableStateFlow("")
@@ -66,6 +67,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     fun updateVisitProveedor(value: String) { visitProveedor.value = value }
     fun updateVisitTecnico(value: String) { visitTecnico.value = value }
     fun updateVisitHoraEntrada(value: String) { visitHoraEntrada.value = value }
+    fun updateVisitHoraSalida(value: String) { visitHoraSalida.value = value }
     fun updateVisitMotivoVisita(value: String) { visitMotivoVisita.value = value }
     fun updateVisitAssetInput(value: String) { visitAssetInput.value = value }
     fun updateVisitIslaInput(value: String) { visitIslaInput.value = value }
@@ -114,6 +116,13 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     val historySearchQuery: StateFlow<String> = _historySearchQuery.asStateFlow()
 
     // --- Dynamic Machine Catalog Stream ---
+    val allMachines: StateFlow<List<MachineEntity>> = repository.allMachines
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
     val machineCatalog: StateFlow<List<MachineEntity>> = _locationSearchQuery
         .flatMapLatest { query -> repository.searchMachines(query) }
         .stateIn(
