@@ -39,11 +39,13 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     private val _venueName = MutableStateFlow(prefs.getString("venue_name", "") ?: "")
     val venueName: StateFlow<String> = _venueName.asStateFlow()
 
-    private val _isDarkTheme = MutableStateFlow(prefs.getBoolean("is_dark_theme", false))
-    val isDarkTheme: StateFlow<Boolean> = _isDarkTheme.asStateFlow()
+    private val _isDarkTheme = MutableStateFlow<Boolean?>(
+        if (prefs.contains("is_dark_theme")) prefs.getBoolean("is_dark_theme", false) else null
+    )
+    val isDarkTheme: StateFlow<Boolean?> = _isDarkTheme.asStateFlow()
 
-    fun toggleDarkTheme() {
-        val newValue = !_isDarkTheme.value
+    fun toggleDarkTheme(currentActiveIsDark: Boolean) {
+        val newValue = !currentActiveIsDark
         prefs.edit().putBoolean("is_dark_theme", newValue).apply()
         _isDarkTheme.value = newValue
     }

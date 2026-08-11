@@ -57,18 +57,7 @@ fun ExtractFileScreen(
     viewModel: ReportViewModel
 ) {
     val context = LocalContext.current
-    var rawTextContent by remember {
-        mutableStateOf(
-            """
-            REGISTRO TÉCNICO DE MÁQUINA
-            Marca: Zitro
-            Modelo: Altius Glare
-            Número de Serie: SN-ZTR-998231
-            Número de Asset: AST-0444
-            Falla: Falla intermitente en botonera principal y sensor de billetero
-            """.trimIndent()
-        )
-    }
+    var rawTextContent by remember { mutableStateOf("") }
 
     val isExtracting by viewModel.isExtractingFile.collectAsState()
     val extractionResult by viewModel.extractionResult.collectAsState()
@@ -193,6 +182,7 @@ fun ExtractFileScreen(
         OutlinedTextField(
             value = rawTextContent,
             onValueChange = { rawTextContent = it },
+            placeholder = { Text("Pega o escribe aquí el contenido del documento...") },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(140.dp)

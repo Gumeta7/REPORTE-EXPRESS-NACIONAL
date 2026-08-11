@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -52,8 +53,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val isDarkTheme by viewModel.isDarkTheme.collectAsState()
-            ReportesExpressTheme(darkTheme = isDarkTheme) {
+            val isDarkThemePref by viewModel.isDarkTheme.collectAsState()
+            val systemInDark = isSystemInDarkTheme()
+            val activeDarkTheme = isDarkThemePref ?: systemInDark
+
+            ReportesExpressTheme(darkTheme = activeDarkTheme) {
                 MainAppScreen(viewModel = viewModel)
             }
         }
@@ -67,7 +71,9 @@ fun MainAppScreen(viewModel: ReportViewModel) {
 
     val showDraftDialog by viewModel.showDraftDialog.collectAsState()
     val currentDraftState by viewModel.currentDraft.collectAsState()
-    val isDarkTheme by viewModel.isDarkTheme.collectAsState()
+    val isDarkThemePref by viewModel.isDarkTheme.collectAsState()
+    val systemInDark = isSystemInDarkTheme()
+    val activeDarkTheme = isDarkThemePref ?: systemInDark
 
     Scaffold(
         modifier = Modifier
@@ -89,12 +95,12 @@ fun MainAppScreen(viewModel: ReportViewModel) {
                 },
                 actions = {
                     IconButton(
-                        onClick = { viewModel.toggleDarkTheme() },
+                        onClick = { viewModel.toggleDarkTheme(activeDarkTheme) },
                         modifier = Modifier.testTag("toggle_dark_theme_button")
                     ) {
                         Icon(
-                            imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                            contentDescription = if (isDarkTheme) "Cambiar a modo claro" else "Cambiar a modo oscuro",
+                            imageVector = if (activeDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
+                            contentDescription = if (activeDarkTheme) "Cambiar a modo claro" else "Cambiar a modo oscuro",
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
