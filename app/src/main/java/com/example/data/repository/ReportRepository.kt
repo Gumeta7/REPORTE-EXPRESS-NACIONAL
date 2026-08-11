@@ -20,15 +20,8 @@ class ReportRepository(
 
     suspend fun checkAndInitializeDemoData() {
         val emailCount = providerEmailDao.getProviderEmailCount()
-        if (emailCount == 0 || emailCount == 6) {
-            providerEmailDao.clearAllProviderEmails()
+        if (emailCount == 0) {
             providerEmailDao.insertAllProviderEmails(DemoData.sampleProviderEmails)
-        }
-
-        // Location catalog starts completely empty as requested
-        val existing = machineDao.getMachineByNumber("444")
-        if (existing != null) {
-            machineDao.clearAllMachines()
         }
     }
 
