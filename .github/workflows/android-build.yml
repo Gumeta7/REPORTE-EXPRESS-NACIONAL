@@ -41,9 +41,14 @@ jobs:
           else
             gradle assembleDebug
           fi
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+# Publica la APK automáticamente en la sección Release de GitHub
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          name: app-debug
-          path: '**/build/outputs/apk/debug/*.apk'
+          files: '**/build/outputs/apk/debug/*.apk'
+          name: "Release ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
