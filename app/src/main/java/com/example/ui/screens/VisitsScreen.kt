@@ -81,17 +81,14 @@ fun VisitsScreen(
     var venueInput by remember { mutableStateOf(storedVenueName) }
     var showManageProvidersDialog by remember { mutableStateOf(false) }
 
-    // Form fields
-    val currentDateStr = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()) }
-    val currentTimeStr = remember { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) }
-
-    var fecha by remember { mutableStateOf(currentDateStr) }
-    var proveedor by remember { mutableStateOf("ZITRO") }
-    var tecnico by remember { mutableStateOf("") }
-    var horaEntrada by remember { mutableStateOf(currentTimeStr) }
-    var motivoVisita by remember { mutableStateOf("Atención de incidencia") }
-    var assetInput by remember { mutableStateOf("") }
-    var islaInput by remember { mutableStateOf("") }
+    // Form fields from ViewModel (persisted across tab changes)
+    val fecha by viewModel.visitFecha.collectAsState()
+    val proveedor by viewModel.visitProveedor.collectAsState()
+    val tecnico by viewModel.visitTecnico.collectAsState()
+    val horaEntrada by viewModel.visitHoraEntrada.collectAsState()
+    val motivoVisita by viewModel.visitMotivoVisita.collectAsState()
+    val assetInput by viewModel.visitAssetInput.collectAsState()
+    val islaInput by viewModel.visitIslaInput.collectAsState()
 
     // Synchronize venueInput when storedVenueName changes
     LaunchedEffect(storedVenueName) {
@@ -109,7 +106,7 @@ fun VisitsScreen(
         if (trimmedAsset.isNotBlank()) {
             val machine = viewModel.getMachineForAsset(trimmedAsset)
             if (machine != null && machine.island.isNotBlank()) {
-                islaInput = machine.island
+                viewModel.updateVisitIslaInput(machine.island)
             }
         }
     }
@@ -216,7 +213,7 @@ fun VisitsScreen(
         ) {
             OutlinedTextField(
                 value = fecha,
-                onValueChange = { fecha = it },
+                onValueChange = { viewModel.updateVisitFecha(it) },
                 label = { Text("Fecha") },
                 leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
                 modifier = Modifier
@@ -228,7 +225,7 @@ fun VisitsScreen(
 
             OutlinedTextField(
                 value = horaEntrada,
-                onValueChange = { horaEntrada = it },
+                onValueChange = { viewModel.updateVisitHoraEntrada(it) },
                 label = { Text("Hora de entrada") },
                 leadingIcon = { Icon(Icons.Default.AccessTime, contentDescription = null) },
                 modifier = Modifier
@@ -272,7 +269,7 @@ fun VisitsScreen(
         // Provider Choice Input
         OutlinedTextField(
             value = proveedor,
-            onValueChange = { proveedor = it },
+            onValueChange = { viewModel.updateVisitProveedor(it) },
             label = { Text("Nombre del Proveedor") },
             leadingIcon = { Icon(Icons.Default.Business, contentDescription = null) },
             modifier = Modifier
@@ -292,7 +289,7 @@ fun VisitsScreen(
             providerEmailsList.forEach { provider ->
                 val nameUpper = provider.providerName.uppercase()
                 AssistChip(
-                    onClick = { proveedor = nameUpper },
+                    onClick = { viewModel.updateVisitProveedor(nameUpper) },
                     label = { Text(nameUpper, style = MaterialTheme.typography.labelSmall) }
                 )
             }
@@ -303,7 +300,7 @@ fun VisitsScreen(
         // Technician Input
         OutlinedTextField(
             value = tecnico,
-            onValueChange = { tecnico = it },
+            onValueChange = { viewModel.updateVisitTecnico(it) },
             label = { Text("Técnico(s)") },
             leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
             modifier = Modifier
@@ -318,7 +315,7 @@ fun VisitsScreen(
         // Reason for Visit Input
         OutlinedTextField(
             value = motivoVisita,
-            onValueChange = { motivoVisita = it },
+            onValueChange = { viewModel.updateVisitMotivoVisita(it) },
             label = { Text("Motivo de visita") },
             leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) },
             modifier = Modifier
@@ -337,7 +334,7 @@ fun VisitsScreen(
         ) {
             OutlinedTextField(
                 value = assetInput,
-                onValueChange = { assetInput = it },
+                onValueChange = { viewModel.updateVisitAssetInput(it) },
                 label = { Text("Asset (Opcional)") },
                 placeholder = { Text("Ej: 585") },
                 modifier = Modifier
@@ -349,7 +346,7 @@ fun VisitsScreen(
 
             OutlinedTextField(
                 value = islaInput,
-                onValueChange = { islaInput = it },
+                onValueChange = { viewModel.updateVisitIslaInput(it) },
                 label = { Text("Isla") },
                 placeholder = { Text("Ej: AP") },
                 leadingIcon = { Icon(Icons.Default.Place, contentDescription = null) },
@@ -454,10 +451,10 @@ fun VisitsScreen(
 
         OutlinedButton(
             onClick = {
-                fecha = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
-                horaEntrada = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-                assetInput = ""
-                islaInput = ""
+                viewModel.updateVisitFecha(SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()))
+                viewModel.updateVisitHoraEntrada(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()))
+                viewModel.updateVisitAssetInput("")
+                viewModel.updateVisitIslaInput("")
             },
             modifier = Modifier
                 .fillMaxWidth()

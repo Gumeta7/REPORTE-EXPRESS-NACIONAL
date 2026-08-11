@@ -17,7 +17,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 data class EmailDraftState(
     val recipient: String = "",
@@ -43,6 +46,23 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         if (prefs.contains("is_dark_theme")) prefs.getBoolean("is_dark_theme", false) else null
     )
     val isDarkTheme: StateFlow<Boolean?> = _isDarkTheme.asStateFlow()
+
+    // --- Visit Form State (Persisted across tab navigation) ---
+    val visitFecha = MutableStateFlow(SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()))
+    val visitProveedor = MutableStateFlow("ZITRO")
+    val visitTecnico = MutableStateFlow("")
+    val visitHoraEntrada = MutableStateFlow(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()))
+    val visitMotivoVisita = MutableStateFlow("Atención de incidencia")
+    val visitAssetInput = MutableStateFlow("")
+    val visitIslaInput = MutableStateFlow("")
+
+    fun updateVisitFecha(value: String) { visitFecha.value = value }
+    fun updateVisitProveedor(value: String) { visitProveedor.value = value }
+    fun updateVisitTecnico(value: String) { visitTecnico.value = value }
+    fun updateVisitHoraEntrada(value: String) { visitHoraEntrada.value = value }
+    fun updateVisitMotivoVisita(value: String) { visitMotivoVisita.value = value }
+    fun updateVisitAssetInput(value: String) { visitAssetInput.value = value }
+    fun updateVisitIslaInput(value: String) { visitIslaInput.value = value }
 
     fun toggleDarkTheme(currentActiveIsDark: Boolean) {
         val newValue = !currentActiveIsDark
