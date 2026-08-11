@@ -223,7 +223,7 @@ fun MachineLocationScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "No se encontraron máquinas con la búsqueda.",
+                        text = if (searchQuery.isNotBlank()) "No se encontraron máquinas con la búsqueda." else "El catálogo de máquinas está vacío. Sube un Excel/CSV o agrega una máquina manualmente.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -262,7 +262,7 @@ fun MachineLocationScreen(
             title = { Text("¿Eliminar Base de Datos del Catálogo?") },
             text = {
                 Text(
-                    "Esta acción borrará todas las ${machinesList.size} máquinas del catálogo actual de la base de datos local. Luego podrás volver a subir un archivo Excel/CSV nuevo o cargar los datos de ejemplo."
+                    "Esta acción borrará permanentemente las ${machinesList.size} máquinas del catálogo actual en la base de datos local."
                 )
             },
             confirmButton = {
@@ -275,17 +275,14 @@ fun MachineLocationScreen(
                         containerColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("Eliminar Base Completa")
+                    Text("Eliminar Base")
                 }
             },
             dismissButton = {
                 TextButton(
-                    onClick = {
-                        viewModel.restoreDemoMachines()
-                        showConfirmClearDialog = false
-                    }
+                    onClick = { showConfirmClearDialog = false }
                 ) {
-                    Text("Restablecer Ejemplo")
+                    Text("Cancelar")
                 }
             }
         )

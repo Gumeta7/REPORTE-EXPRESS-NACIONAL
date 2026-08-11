@@ -52,6 +52,9 @@ fun ManageProvidersDialog(
     var providerNameInput by remember { mutableStateOf("") }
     var emailInput by remember { mutableStateOf("") }
 
+    var providerToDelete by remember { mutableStateOf<ProviderEmailEntity?>(null) }
+    var showRestoreConfirmDialog by remember { mutableStateOf(false) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -215,12 +218,7 @@ fun ManageProvidersDialog(
 
                                         IconButton(
                                             onClick = {
-                                                if (editingProviderId == provider.id) {
-                                                    editingProviderId = null
-                                                    providerNameInput = ""
-                                                    emailInput = ""
-                                                }
-                                                onDeleteProvider(provider.id)
+                                                providerToDelete = provider
                                             },
                                             modifier = Modifier.testTag("delete_provider_${provider.id}")
                                         ) {
@@ -239,10 +237,7 @@ fun ManageProvidersDialog(
 
                 TextButton(
                     onClick = {
-                        editingProviderId = null
-                        providerNameInput = ""
-                        emailInput = ""
-                        onRestoreDefaults()
+                        showRestoreConfirmDialog = true
                     },
                     modifier = Modifier.align(Alignment.End)
                 ) {
@@ -256,4 +251,61 @@ fun ManageProvidersDialog(
             }
         }
     )
+
+    providerToDelete?.let { provider ->
+        AlertDialog(
+            onDismissRequest = { providerToDelete = null },
+            title = { Text("¿Eliminar Proveedor?") },
+            text = { Text("¿Estás seguro de eliminar a ${provider.providerName} (${provider.email})?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (editingProviderId == provider.id) {
+                            editingProviderId = null
+                            providerNameInput = ""
+                            emailInput = ""
+                        }
+                        onDeleteProvider(provider.id)
+                        providerToDelete = null
+                    },
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { providerToDelete = null }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showRestoreConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showRestoreConfirmDialog = false },
+            title = { Text("¿Restablecer Proveedores?") },
+            text = { Text("Se reemplazarán los proveedores actuales con la lista por defecto (ZITRO, AGS, EGT, IGT).") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        editingProviderId = null
+                        providerNameInput = ""
+                        emailInput = ""
+                        onRestoreDefaults()
+                        showRestoreConfirmDialog = false
+                    }
+                ) {
+                    Text("Restablecer")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestoreConfirmDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 }

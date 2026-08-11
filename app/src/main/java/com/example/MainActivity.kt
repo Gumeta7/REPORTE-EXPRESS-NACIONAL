@@ -11,11 +11,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AssignmentInd
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -49,7 +52,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            ReportesExpressTheme {
+            val isDarkTheme by viewModel.isDarkTheme.collectAsState()
+            ReportesExpressTheme(darkTheme = isDarkTheme) {
                 MainAppScreen(viewModel = viewModel)
             }
         }
@@ -63,6 +67,7 @@ fun MainAppScreen(viewModel: ReportViewModel) {
 
     val showDraftDialog by viewModel.showDraftDialog.collectAsState()
     val currentDraftState by viewModel.currentDraft.collectAsState()
+    val isDarkTheme by viewModel.isDarkTheme.collectAsState()
 
     Scaffold(
         modifier = Modifier
@@ -81,6 +86,18 @@ fun MainAppScreen(viewModel: ReportViewModel) {
                         },
                         fontWeight = FontWeight.Bold
                     )
+                },
+                actions = {
+                    IconButton(
+                        onClick = { viewModel.toggleDarkTheme() },
+                        modifier = Modifier.testTag("toggle_dark_theme_button")
+                    ) {
+                        Icon(
+                            imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
+                            contentDescription = if (isDarkTheme) "Cambiar a modo claro" else "Cambiar a modo oscuro",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,

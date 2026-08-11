@@ -19,13 +19,16 @@ class ReportRepository(
     val allProviderEmails: Flow<List<ProviderEmailEntity>> = providerEmailDao.getAllProviderEmails()
 
     suspend fun checkAndInitializeDemoData() {
-        val machineCount = machineDao.getMachineCount()
-        if (machineCount == 0) {
-            machineDao.insertAllMachines(DemoData.sampleMachines)
-        }
         val emailCount = providerEmailDao.getProviderEmailCount()
-        if (emailCount == 0) {
+        if (emailCount == 0 || emailCount == 6) {
+            providerEmailDao.clearAllProviderEmails()
             providerEmailDao.insertAllProviderEmails(DemoData.sampleProviderEmails)
+        }
+
+        // Location catalog starts completely empty as requested
+        val existing = machineDao.getMachineByNumber("444")
+        if (existing != null) {
+            machineDao.clearAllMachines()
         }
     }
 

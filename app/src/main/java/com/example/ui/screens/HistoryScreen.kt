@@ -22,6 +22,9 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -30,10 +33,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -58,6 +64,9 @@ fun HistoryScreen(
     val context = LocalContext.current
     val searchQuery by viewModel.historySearchQuery.collectAsState()
     val reportsList by viewModel.reportHistory.collectAsState()
+
+    var showConfirmClearAllDialog by remember { mutableStateOf(false) }
+    var reportToDelete by remember { mutableStateOf<EmailReportEntity?>(null) }
 
     Column(
         modifier = Modifier
@@ -94,7 +103,7 @@ fun HistoryScreen(
             if (reportsList.isNotEmpty()) {
                 Spacer(modifier = Modifier.width(8.dp))
                 IconButton(
-                    onClick = { viewModel.clearHistory() },
+                    onClick = { showConfirmClearAllDialog = true },
                     modifier = Modifier.testTag("clear_history_button")
                 ) {
                     Icon(
@@ -169,7 +178,7 @@ fun HistoryScreen(
                                 "Asunto: ${report.subject}\n\n${report.body}"
                             )
                         },
-                        onDelete = { viewModel.deleteHistoryReport(report.id) },
+                        onDelete = { reportToDelete = report },
                         onSendGmail = {
                             EmailIntentUtil.sendViaGmail(
                                 context,
@@ -190,6 +199,54 @@ fun HistoryScreen(
                 }
             }
         }
+    }
+
+    if (showConfirmClearAllDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfirmClearAllDialog = false },
+            title = { Text("¿Eliminar Todo el Historial?") },
+            text = { Text("Esta acción eliminará permanentemente todos los ${reportsList.size} reportes guardados en el historial.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.clearHistory()
+                        showConfirmClearAllDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Eliminar Historial")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirmClearAllDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    reportToDelete?.let { report ->
+        AlertDialog(
+            onDismissRequest = { reportToDelete = null },
+            title = { Text("¿Eliminar Reporte?") },
+            text = { Text("¿Deseas eliminar el reporte enviado a ${report.recipient}?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteHistoryReport(report.id)
+                        reportToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { reportToDelete = null }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
 
