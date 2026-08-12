@@ -37,6 +37,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +49,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -55,6 +60,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -82,10 +90,57 @@ import com.example.data.db.MachineEntity
 import com.example.ui.components.ManageProvidersDialog
 import com.example.ui.viewmodel.ReportViewModel
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
-@OptIn(ExperimentalLayoutApi::class)
+fun format24HourTime(input: String): String {
+    val digits = input.filter { it.isDigit() }.take(4)
+    if (digits.isEmpty()) return ""
+
+    val sb = StringBuilder()
+
+    // Digit 1: Hour tens (0, 1, or 2)
+    val d1 = digits[0]
+    if (d1 !in '0'..'2') return ""
+    sb.append(d1)
+
+    if (digits.length >= 2) {
+        // Digit 2: Hour units (0..9, but if d1=='2', max is '3')
+        val d2 = digits[1]
+        val maxHourUnit = if (d1 == '2') '3' else '9'
+        if (d2 in '0'..maxHourUnit) {
+            sb.append(d2)
+        } else {
+            return sb.toString()
+        }
+    }
+
+    if (digits.length >= 3) {
+        sb.append(":")
+
+        // Digit 3: Minute tens (0..5)
+        val d3 = digits[2]
+        if (d3 in '0'..'5') {
+            sb.append(d3)
+        } else {
+            return sb.toString()
+        }
+    }
+
+    if (digits.length >= 4) {
+        // Digit 4: Minute units (0..9)
+        val d4 = digits[3]
+        if (d4 in '0'..'9') {
+            sb.append(d4)
+        }
+    }
+
+    return sb.toString()
+}
+
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun VisitsScreen(
     viewModel: ReportViewModel
@@ -100,8 +155,9 @@ fun VisitsScreen(
     var showManageProvidersDialog by remember { mutableStateOf(false) }
     var showAssetGridDialog by remember { mutableStateOf(false) }
     var showIslaGridDialog by remember { mutableStateOf(false) }
+    var showDatePickerDialog by remember { mutableStateOf(false) }
 
-    // Form fields from ViewModel (persisted across tab changes)
+    // Form fields from ViewModel (persisted across tab navigation)
     val fecha by viewModel.visitFecha.collectAsState()
     val proveedor by viewModel.visitProveedor.collectAsState()
     val tecnico by viewModel.visitTecnico.collectAsState()
@@ -230,49 +286,109 @@ fun VisitsScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Date and Entry Time Row
+        // Date Input Row (Symmetrical with Time Rows)
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Bottom
         ) {
             OutlinedTextField(
                 value = fecha,
                 onValueChange = { viewModel.updateVisitFecha(it) },
-                label = { Text("Fecha") },
+                label = { Text("Fecha", maxLines = 1, softWrap = false) },
+                placeholder = { Text("dd/mm/aaaa", maxLines = 1, softWrap = false) },
                 leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
+                trailingIcon = {
+                    if (fecha.isNotBlank()) {
+                        IconButton(onClick = { viewModel.updateVisitFecha("") }) {
+                            Icon(Icons.Default.Close, contentDescription = "Limpiar fecha")
+                        }
+                    }
+                },
                 modifier = Modifier
                     .weight(1f)
                     .testTag("visit_date_input"),
                 singleLine = true,
+                maxLines = 1,
                 shape = RoundedCornerShape(12.dp)
             )
 
-            OutlinedTextField(
-                value = horaEntrada,
-                onValueChange = { viewModel.updateVisitHoraEntrada(it) },
-                label = { Text("Hora de entrada") },
-                leadingIcon = { Icon(Icons.Default.AccessTime, contentDescription = null) },
+            OutlinedButton(
+                onClick = { showDatePickerDialog = true },
+                shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
-                    .weight(1f)
-                    .testTag("visit_time_input"),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
+                    .height(56.dp)
+                    .width(56.dp)
+                    .testTag("open_calendar_button"),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CalendarToday,
+                    contentDescription = "Abrir Calendario",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Departure Time (Optional)
+        // Entry Time Row (Symmetrical & Centered)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Bottom
+        ) {
+            OutlinedTextField(
+                value = horaEntrada,
+                onValueChange = { viewModel.updateVisitHoraEntrada(format24HourTime(it)) },
+                label = { Text("Hora de entrada", maxLines = 1, softWrap = false) },
+                placeholder = { Text("Ej: 09:30", maxLines = 1, softWrap = false) },
+                leadingIcon = { Icon(Icons.Default.AccessTime, contentDescription = null) },
+                trailingIcon = {
+                    if (horaEntrada.isNotBlank()) {
+                        IconButton(onClick = { viewModel.updateVisitHoraEntrada("") }) {
+                            Icon(Icons.Default.Close, contentDescription = "Limpiar hora de entrada")
+                        }
+                    }
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("visit_time_input"),
+                singleLine = true,
+                maxLines = 1,
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            OutlinedButton(
+                onClick = {
+                    val currentTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+                    viewModel.updateVisitHoraEntrada(currentTime)
+                },
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .height(56.dp)
+                    .testTag("now_entry_time_button"),
+                contentPadding = PaddingValues(horizontal = 14.dp)
+            ) {
+                Text("Ahora", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Departure Time Row (Symmetrical & Centered)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Bottom
         ) {
             OutlinedTextField(
                 value = horaSalida,
-                onValueChange = { viewModel.updateVisitHoraSalida(it) },
-                label = { Text("Hora de salida (Opcional)") },
-                placeholder = { Text("Ej: 18:30") },
+                onValueChange = { viewModel.updateVisitHoraSalida(format24HourTime(it)) },
+                label = { Text("Hora de salida (opcional)", maxLines = 1, softWrap = false) },
+                placeholder = { Text("Ej: 18:30", maxLines = 1, softWrap = false) },
                 leadingIcon = { Icon(Icons.Default.AccessTime, contentDescription = null) },
                 trailingIcon = {
                     if (horaSalida.isNotBlank()) {
@@ -281,10 +397,12 @@ fun VisitsScreen(
                         }
                     }
                 },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier
                     .weight(1f)
                     .testTag("visit_departure_time_input"),
                 singleLine = true,
+                maxLines = 1,
                 shape = RoundedCornerShape(12.dp)
             )
 
@@ -294,9 +412,12 @@ fun VisitsScreen(
                     viewModel.updateVisitHoraSalida(currentTime)
                 },
                 shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.testTag("now_departure_time_button")
+                modifier = Modifier
+                    .height(56.dp)
+                    .testTag("now_departure_time_button"),
+                contentPadding = PaddingValues(horizontal = 14.dp)
             ) {
-                Text("Ahora", style = MaterialTheme.typography.labelMedium)
+                Text("Ahora", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -439,35 +560,38 @@ fun VisitsScreen(
             OutlinedTextField(
                 value = assetInput,
                 onValueChange = { viewModel.updateVisitAssetInput(it) },
-                label = { Text("Asset(s)") },
-                placeholder = { Text("Ej: 515, 516") },
+                label = { Text("Asset(s)", maxLines = 1, softWrap = false) },
+                placeholder = { Text("Ej: 515, 516", maxLines = 1, softWrap = false) },
+                leadingIcon = { Icon(Icons.Default.GridView, contentDescription = null) },
                 trailingIcon = {
                     IconButton(onClick = { showAssetGridDialog = true }) {
-                        Icon(Icons.Default.GridView, contentDescription = "Buscar Assets")
+                        Icon(Icons.Default.Search, contentDescription = "Buscar Assets")
                     }
                 },
                 modifier = Modifier
                     .weight(1f)
                     .testTag("visit_asset_input"),
                 singleLine = true,
+                maxLines = 1,
                 shape = RoundedCornerShape(12.dp)
             )
 
             OutlinedTextField(
                 value = islaInput,
                 onValueChange = { viewModel.updateVisitIslaInput(it) },
-                label = { Text("Isla(s)") },
-                placeholder = { Text("Ej: P, AM") },
+                label = { Text("Isla(s)", maxLines = 1, softWrap = false) },
+                placeholder = { Text("Ej: P, AM", maxLines = 1, softWrap = false) },
                 leadingIcon = { Icon(Icons.Default.Place, contentDescription = null) },
                 trailingIcon = {
                     IconButton(onClick = { showIslaGridDialog = true }) {
-                        Icon(Icons.Default.GridView, contentDescription = "Buscar Islas")
+                        Icon(Icons.Default.Search, contentDescription = "Buscar Islas")
                     }
                 },
                 modifier = Modifier
                     .weight(1f)
                     .testTag("visit_island_input"),
                 singleLine = true,
+                maxLines = 1,
                 shape = RoundedCornerShape(12.dp)
             )
         }
@@ -478,26 +602,64 @@ fun VisitsScreen(
         Text(
             text = "Vista Previa Formato WhatsApp",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.ExtraBold,
             color = MaterialTheme.colorScheme.primary
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Preview Card
+        // WhatsApp Preview Card with Chat Bubble styling (Theme Adaptive)
+        val isAppDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+        val chatBgColor = if (isAppDarkTheme) Color(0xFF0F261C) else Color(0xFFE7FCE9)
+        val chatBorderColor = if (isAppDarkTheme) Color(0xFF1B4D36) else Color(0xFF25D366)
+        val chatTextColor = if (isAppDarkTheme) Color(0xFFE2F1E7) else Color(0xFF0F3822)
+        val chatBadgeBg = if (isAppDarkTheme) Color(0xFF25D366) else Color(0xFF128C7E)
+        val chatBadgeText = if (isAppDarkTheme) Color(0xFF25D366) else Color(0xFF128C7E)
+
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("whatsapp_preview_card"),
-            shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
+            shape = RoundedCornerShape(16.dp),
+            color = chatBgColor,
+            border = BorderStroke(1.dp, chatBorderColor.copy(alpha = 0.5f)),
             tonalElevation = 2.dp
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .background(chatBadgeBg, RoundedCornerShape(8.dp))
+                                .padding(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Formato de Mensaje Directo",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = chatBadgeText
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
                 Text(
                     text = whatsappText,
                     style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = chatTextColor
                 )
             }
         }
@@ -687,6 +849,73 @@ fun VisitsScreen(
                 showIslaGridDialog = false
             }
         )
+    }
+
+    if (showDatePickerDialog) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = System.currentTimeMillis()
+        )
+
+        DatePickerDialog(
+            onDismissRequest = { showDatePickerDialog = false },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+                                timeInMillis = millis
+                            }
+                            val localCal = Calendar.getInstance().apply {
+                                set(
+                                    utcCal.get(Calendar.YEAR),
+                                    utcCal.get(Calendar.MONTH),
+                                    utcCal.get(Calendar.DAY_OF_MONTH)
+                                )
+                            }
+                            val formattedDate = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(localCal.time)
+                            viewModel.updateVisitFecha(formattedDate)
+                        }
+                        showDatePickerDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Seleccionar", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePickerDialog = false }) {
+                    Text("Cancelar")
+                }
+            },
+            colors = DatePickerDefaults.colors(
+                containerColor = MaterialTheme.colorScheme.surface,
+                titleContentColor = MaterialTheme.colorScheme.primary,
+                headlineContentColor = MaterialTheme.colorScheme.onSurface,
+                weekdayContentColor = MaterialTheme.colorScheme.primary,
+                subheadContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                yearContentColor = MaterialTheme.colorScheme.onSurface,
+                currentYearContentColor = MaterialTheme.colorScheme.primary,
+                selectedYearContentColor = MaterialTheme.colorScheme.onPrimary,
+                selectedYearContainerColor = MaterialTheme.colorScheme.primary,
+                dayContentColor = MaterialTheme.colorScheme.onSurface,
+                selectedDayContentColor = MaterialTheme.colorScheme.onPrimary,
+                selectedDayContainerColor = MaterialTheme.colorScheme.primary,
+                todayContentColor = MaterialTheme.colorScheme.primary,
+                todayDateBorderColor = MaterialTheme.colorScheme.primary
+            )
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    dayContentColor = MaterialTheme.colorScheme.onSurface,
+                    selectedDayContentColor = MaterialTheme.colorScheme.onPrimary,
+                    selectedDayContainerColor = MaterialTheme.colorScheme.primary,
+                    todayContentColor = MaterialTheme.colorScheme.primary,
+                    todayDateBorderColor = MaterialTheme.colorScheme.primary
+                )
+            )
+        }
     }
 }
 

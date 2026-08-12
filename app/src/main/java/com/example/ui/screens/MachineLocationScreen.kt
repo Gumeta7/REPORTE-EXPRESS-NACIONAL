@@ -1,8 +1,6 @@
 package com.example.ui.screens
 
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,15 +14,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.ReportProblem
 import androidx.compose.material.icons.filled.Search
@@ -32,7 +29,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,41 +44,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.data.db.MachineEntity
 import com.example.ui.viewmodel.ReportViewModel
-import java.io.BufferedReader
-import java.io.InputStreamReader
 
 @Composable
 fun MachineLocationScreen(
-    viewModel: ReportViewModel
+    viewModel: ReportViewModel,
 ) {
-    val context = LocalContext.current
     val searchQuery by viewModel.locationSearchQuery.collectAsState()
     val machinesList by viewModel.machineCatalog.collectAsState()
 
-    var showConfirmClearDialog by remember { mutableStateOf(false) }
     var selectedMachineForReport by remember { mutableStateOf<MachineEntity?>(null) }
-
-    // File picker to upload custom Excel/CSV dataset
-    val excelPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            try {
-                context.contentResolver.openInputStream(uri)?.use { stream ->
-                    viewModel.importMachinesFromStream(stream)
-                }
-            } catch (e: Exception) {
-                // handle error
-            }
-        }
-    }
 
     Column(
         modifier = Modifier
@@ -90,11 +65,24 @@ fun MachineLocationScreen(
             .padding(16.dp)
             .testTag("machine_location_screen")
     ) {
-        // Search Header Bar
+        // Search Header Input with Animated Floating Label
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { viewModel.updateLocationQuery(it) },
-            placeholder = { Text("¿Dónde está la máquina? (Ej. 444, Zitro, Isla 03)") },
+            label = {
+                Text(
+                    text = "Buscar máquina",
+                    maxLines = 1,
+                    softWrap = false
+                )
+            },
+            placeholder = {
+                Text(
+                    text = "Ej. 444, Zitro, Isla 03",
+                    maxLines = 1,
+                    softWrap = false
+                )
+            },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.Search,
@@ -112,83 +100,19 @@ fun MachineLocationScreen(
                 .fillMaxWidth()
                 .testTag("machine_location_search_input"),
             singleLine = true,
-            shape = RoundedCornerShape(16.dp)
+            maxLines = 1,
+            shape = RoundedCornerShape(14.dp)
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Import Dataset Action (Full Width Excel Import)
-        Button(
-            onClick = { excelPickerLauncher.launch("*/*") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("import_excel_catalog_button"),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Icon(imageVector = Icons.Default.FileUpload, contentDescription = "Excel")
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Subir Catálogo Excel / CSV", style = MaterialTheme.typography.bodyMedium)
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Column Format Help Card
-        Surface(
-            shape = RoundedCornerShape(10.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = "Columnas Excel",
-                    modifier = Modifier.height(16.dp).width(16.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Columnas reconocidas: ASSET, MARCA, MODELO REPORTE (PP/PV), TITULO JUEGO, AREA, ISLA, SERIE",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Catálogo de Máquinas (${machinesList.size}):",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            TextButton(
-                onClick = { showConfirmClearDialog = true },
-                modifier = Modifier.testTag("clear_machine_catalog_button")
-            ) {
-                Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Default.Clear,
-                    contentDescription = "Eliminar Base",
-                    modifier = Modifier.height(16.dp).width(16.dp),
-                    tint = MaterialTheme.colorScheme.error
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    "Eliminar Base",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        }
+        // Catalog Count Header
+        Text(
+            text = "Catálogo de Máquinas (${machinesList.size}):",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -201,14 +125,14 @@ fun MachineLocationScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
-                        imageVector = Icons.Default.LocationOn,
+                        imageVector = Icons.Default.Casino,
                         contentDescription = "Sin resultados",
                         modifier = Modifier.height(48.dp).width(48.dp),
                         tint = MaterialTheme.colorScheme.outline
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = if (searchQuery.isNotBlank()) "No se encontraron máquinas con la búsqueda." else "El catálogo de máquinas está vacío. Sube un archivo Excel o CSV.",
+                        text = if (searchQuery.isNotBlank()) "No se encontraron máquinas con la búsqueda." else "El catálogo de máquinas está vacío. Adjunta un archivo Excel en la pestaña Extraer.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -219,7 +143,11 @@ fun MachineLocationScreen(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(machinesList, key = { it.id }) { machine ->
+                items(
+                    items = machinesList,
+                    key = { it.id },
+                    contentType = { "machine_card" }
+                ) { machine ->
                     MachineLocationCard(
                         machine = machine,
                         onReportClick = {
@@ -241,38 +169,6 @@ fun MachineLocationScreen(
             }
         )
     }
-
-    if (showConfirmClearDialog) {
-        AlertDialog(
-            onDismissRequest = { showConfirmClearDialog = false },
-            title = { Text("¿Eliminar Base de Datos del Catálogo?") },
-            text = {
-                Text(
-                    "Esta acción borrará permanentemente las ${machinesList.size} máquinas del catálogo actual en la base de datos local."
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.clearMachineCatalog()
-                        showConfirmClearDialog = false
-                    },
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Eliminar Base")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showConfirmClearDialog = false }
-                ) {
-                    Text("Cancelar")
-                }
-            }
-        )
-    }
 }
 
 @Composable
@@ -280,15 +176,18 @@ fun MachineLocationCard(
     machine: MachineEntity,
     onReportClick: () -> Unit
 ) {
+    val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val cardBgColor = if (isDarkTheme) Color(0xFF1B2430) else MaterialTheme.colorScheme.surface
+    val cardBorder = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF2E3D52)) else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("machine_location_card_${machine.machineNumber}"),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = cardBgColor),
+        border = cardBorder,
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Header Row: Machine Number, Brand & Modelo Reporte (PP / PV) Badge
@@ -297,11 +196,14 @@ fun MachineLocationCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f, fill = false)
+                ) {
                     Box(
                         modifier = Modifier
                             .background(
-                                MaterialTheme.colorScheme.primaryContainer,
+                                if (isDarkTheme) Color(0xFF243242) else MaterialTheme.colorScheme.primaryContainer,
                                 RoundedCornerShape(12.dp)
                             )
                             .padding(horizontal = 10.dp, vertical = 6.dp)
@@ -310,51 +212,61 @@ fun MachineLocationCard(
                             text = "Máquina #${machine.machineNumber}",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            color = if (isDarkTheme) Color(0xFF00E5FF) else MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = machine.brand,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    if (machine.brand.isNotBlank()) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = machine.brand,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDarkTheme) Color(0xFF00E5FF) else MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
 
-                // PP / PV MODELO REPORTE BADGE
-                val upperModel = machine.model.trim().uppercase()
-                val isPropia = upperModel.contains("(PP)") || upperModel.contains(" PP") || upperModel.endsWith("PP") || upperModel.contains("PROPIA")
-                val isProveedor = upperModel.contains("(PV)") || upperModel.contains(" PV") || upperModel.endsWith("PV") || upperModel.contains("PROVEEDOR")
+                Spacer(modifier = Modifier.width(8.dp))
 
-                val badgeText = when {
-                    isPropia -> "(PP) Propia"
-                    isProveedor -> "(PV) Proveedor"
-                    machine.model.isNotBlank() -> machine.model
-                    else -> "(PP/PV) Sin tipo"
+                // PP / PV MODELO REPORTE BADGE
+                val upperModel = remember(machine.model) { machine.model.trim().uppercase() }
+                val isPropia = remember(upperModel) { upperModel.contains("(PP)") || upperModel.contains(" PP") || upperModel.endsWith("PP") || upperModel.contains("PROPIA") }
+                val isProveedor = remember(upperModel) { upperModel.contains("(PV)") || upperModel.contains(" PV") || upperModel.endsWith("PV") || upperModel.contains("PROVEEDOR") }
+
+                val badgeText = remember(isPropia, isProveedor, machine.model) {
+                    when {
+                        isPropia -> "(PP) Propia"
+                        isProveedor -> "(PV) Proveedor"
+                        machine.model.isNotBlank() -> machine.model
+                        else -> "(PP/PV) Sin tipo"
+                    }
                 }
 
                 val badgeBg = when {
-                    isPropia -> Color(0xFFE8F5E9) // Soft Green
-                    isProveedor -> Color(0xFFEDE7F6) // Soft Purple
+                    isPropia -> if (isDarkTheme) com.example.ui.theme.PropiaGreenBgDark else com.example.ui.theme.PropiaGreenBgLight
+                    isProveedor -> if (isDarkTheme) com.example.ui.theme.ProveedorPurpleBgDark else com.example.ui.theme.ProveedorPurpleBgLight
                     else -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f)
                 }
                 val badgeFg = when {
-                    isPropia -> Color(0xFF1B5E20) // Dark Green
-                    isProveedor -> Color(0xFF4A148C) // Dark Purple
+                    isPropia -> if (isDarkTheme) com.example.ui.theme.PropiaGreenFgDark else com.example.ui.theme.PropiaGreenFgLight
+                    isProveedor -> if (isDarkTheme) com.example.ui.theme.ProveedorPurpleFgDark else com.example.ui.theme.ProveedorPurpleFgLight
                     else -> MaterialTheme.colorScheme.onSecondaryContainer
                 }
 
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(10.dp),
                     color = badgeBg
                 ) {
                     Text(
                         text = badgeText,
                         style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.ExtraBold,
                         color = badgeFg,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
@@ -370,19 +282,19 @@ fun MachineLocationCard(
                 Text(
                     text = "Modelo Reporte:",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isDarkTheme) Color(0xFF90A4AE) else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = machine.model.ifBlank { "N/A" },
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = if (isDarkTheme) Color(0xFF00E5FF) else MaterialTheme.colorScheme.primary
                 )
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Step 6 Highlights: Area, Game, Island
+            // Highlights: Area, Island, Game
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -422,12 +334,12 @@ fun MachineLocationCard(
                 Text(
                     text = "Asset: ${machine.assetNumber}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isDarkTheme) Color(0xFFB0BEC5) else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = "Serie: ${machine.serialNumber}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isDarkTheme) Color(0xFFB0BEC5) else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -456,35 +368,42 @@ fun InfoHighlightChip(
     value: String,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier
-            .background(
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                RoundedCornerShape(12.dp)
-            )
-            .padding(10.dp)
+    val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val chipBgColor = if (isDarkTheme) Color(0xFF263344) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+    val chipBorder = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF38495E)) else null
+    val titleColor = if (isDarkTheme) Color(0xFF00E5FF) else MaterialTheme.colorScheme.primary
+    val valueColor = if (isDarkTheme) Color(0xFFF0F6FC) else MaterialTheme.colorScheme.onSurface
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = chipBgColor,
+        border = chipBorder
     ) {
-        Column {
+        Column(modifier = Modifier.padding(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
                     modifier = Modifier.height(14.dp).width(14.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = titleColor
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = title,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = titleColor,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(3.dp))
             Text(
-                text = value,
+                text = value.ifBlank { "N/A" },
                 style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                fontWeight = FontWeight.ExtraBold,
+                color = valueColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -584,4 +503,3 @@ fun ReportMachineFailureDialog(
         }
     )
 }
-

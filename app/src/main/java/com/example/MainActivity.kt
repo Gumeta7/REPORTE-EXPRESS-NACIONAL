@@ -5,19 +5,26 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AssignmentInd
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -25,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -32,9 +40,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import com.example.ui.components.EmailDraftPreviewDialog
 import com.example.ui.components.MissingProviderEmailDialog
 import com.example.ui.screens.ExtractFileScreen
@@ -85,16 +95,39 @@ fun MainAppScreen(viewModel: ReportViewModel) {
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = when (pagerState.currentPage) {
-                            0 -> "Reportes Express"
-                            1 -> "Extraer Datos de Archivo"
-                            2 -> "¿Dónde está la Máquina?"
-                            3 -> "Registro de Visitas"
-                            else -> "Historial de Reportes"
-                        },
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Stylized "G" Badge Logo
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    MaterialTheme.colorScheme.primaryContainer,
+                                    RoundedCornerShape(10.dp)
+                                )
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "G",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = when (pagerState.currentPage) {
+                                0 -> "Reportes Express"
+                                1 -> "Extraer Datos de Archivo"
+                                2 -> "Máquinas"
+                                3 -> "Registro de Visitas"
+                                else -> "Historial de Reportes"
+                            },
+                            fontWeight = FontWeight.ExtraBold,
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                    }
                 },
                 actions = {
                     IconButton(
@@ -110,70 +143,121 @@ fun MainAppScreen(viewModel: ReportViewModel) {
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.primary
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
         bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.testTag("main_navigation_bar")
+            Surface(
+                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+                tonalElevation = 8.dp,
+                shadowElevation = 8.dp,
+                color = MaterialTheme.colorScheme.surface
             ) {
-                NavigationBarItem(
-                    selected = pagerState.currentPage == 0,
-                    onClick = {
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(0)
-                        }
-                    },
-                    icon = { Icon(imageVector = Icons.Default.FlashOn, contentDescription = "Generar") },
-                    label = { Text("Generar") },
-                    modifier = Modifier.testTag("tab_quick_report")
-                )
-                NavigationBarItem(
-                    selected = pagerState.currentPage == 1,
-                    onClick = {
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(1)
-                        }
-                    },
-                    icon = { Icon(imageVector = Icons.Default.CloudUpload, contentDescription = "Extraer") },
-                    label = { Text("Extraer") },
-                    modifier = Modifier.testTag("tab_extract_file")
-                )
-                NavigationBarItem(
-                    selected = pagerState.currentPage == 2,
-                    onClick = {
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(2)
-                        }
-                    },
-                    icon = { Icon(imageVector = Icons.Default.Place, contentDescription = "Ubicación") },
-                    label = { Text("Ubicación") },
-                    modifier = Modifier.testTag("tab_machine_location")
-                )
-                NavigationBarItem(
-                    selected = pagerState.currentPage == 3,
-                    onClick = {
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(3)
-                        }
-                    },
-                    icon = { Icon(imageVector = Icons.Default.AssignmentInd, contentDescription = "Visitas") },
-                    label = { Text("Visitas") },
-                    modifier = Modifier.testTag("tab_visits")
-                )
-                NavigationBarItem(
-                    selected = pagerState.currentPage == 4,
-                    onClick = {
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(4)
-                        }
-                    },
-                    icon = { Icon(imageVector = Icons.Default.History, contentDescription = "Historial") },
-                    label = { Text("Historial") },
-                    modifier = Modifier.testTag("tab_history")
-                )
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.testTag("main_navigation_bar")
+                ) {
+                    val pageAnimSpec = androidx.compose.animation.core.tween<Float>(
+                        durationMillis = 380,
+                        easing = androidx.compose.animation.core.FastOutSlowInEasing
+                    )
+                    NavigationBarItem(
+                        selected = pagerState.currentPage == 0,
+                        onClick = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(0, animationSpec = pageAnimSpec)
+                            }
+                        },
+                        icon = { Icon(imageVector = Icons.Default.FlashOn, contentDescription = "Generar") },
+                        label = {
+                            Text(
+                                text = "Generar",
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                                softWrap = false,
+                                fontWeight = if (pagerState.currentPage == 0) FontWeight.Bold else FontWeight.Normal
+                            )
+                        },
+                        modifier = Modifier.testTag("tab_quick_report")
+                    )
+                    NavigationBarItem(
+                        selected = pagerState.currentPage == 1,
+                        onClick = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(1, animationSpec = pageAnimSpec)
+                            }
+                        },
+                        icon = { Icon(imageVector = Icons.Default.CloudUpload, contentDescription = "Extraer") },
+                        label = {
+                            Text(
+                                text = "Extraer",
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                                softWrap = false,
+                                fontWeight = if (pagerState.currentPage == 1) FontWeight.Bold else FontWeight.Normal
+                            )
+                        },
+                        modifier = Modifier.testTag("tab_extract_file")
+                    )
+                    NavigationBarItem(
+                        selected = pagerState.currentPage == 2,
+                        onClick = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(2, animationSpec = pageAnimSpec)
+                            }
+                        },
+                        icon = { Icon(imageVector = Icons.Default.Casino, contentDescription = "Máquinas") },
+                        label = {
+                            Text(
+                                text = "Máquinas",
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                                softWrap = false,
+                                fontWeight = if (pagerState.currentPage == 2) FontWeight.Bold else FontWeight.Normal
+                            )
+                        },
+                        modifier = Modifier.testTag("tab_machine_location")
+                    )
+                    NavigationBarItem(
+                        selected = pagerState.currentPage == 3,
+                        onClick = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(3, animationSpec = pageAnimSpec)
+                            }
+                        },
+                        icon = { Icon(imageVector = Icons.Default.AssignmentInd, contentDescription = "Visitas") },
+                        label = {
+                            Text(
+                                text = "Visitas",
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                                softWrap = false,
+                                fontWeight = if (pagerState.currentPage == 3) FontWeight.Bold else FontWeight.Normal
+                            )
+                        },
+                        modifier = Modifier.testTag("tab_visits")
+                    )
+                    NavigationBarItem(
+                        selected = pagerState.currentPage == 4,
+                        onClick = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(4, animationSpec = pageAnimSpec)
+                            }
+                        },
+                        icon = { Icon(imageVector = Icons.Default.History, contentDescription = "Historial") },
+                        label = {
+                            Text(
+                                text = "Historial",
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                                softWrap = false,
+                                fontWeight = if (pagerState.currentPage == 4) FontWeight.Bold else FontWeight.Normal
+                            )
+                        },
+                        modifier = Modifier.testTag("tab_history")
+                    )
+                }
             }
         }
     ) { innerPadding ->

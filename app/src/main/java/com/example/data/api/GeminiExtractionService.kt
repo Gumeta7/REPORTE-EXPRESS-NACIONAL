@@ -141,26 +141,51 @@ object GeminiExtractionService {
         var machine = ""
         var issue = ""
 
-        val lines = text.lines()
+        val knownBrands = listOf("EGT", "ZITRO", "ARISTOCRAT", "NOVOMATIC", "IGT", "KONAMI", "BALLY", "AINSWORTH", "AGS", "WINPOT")
+
+        val lines = text.lines().filter { it.isNotBlank() }
         for (line in lines) {
+            val upper = line.uppercase()
             val lower = line.lowercase()
-            when {
-                lower.contains("serie") || lower.contains("s/n") || lower.contains("serial") -> {
-                    serial = line.substringAfter(":").ifEmpty { line.substringAfter(" ").trim() }.trim()
+
+            // 1. Check for Key-Value labelled lines (e.g. "Serie: 143847", "Marca: EGT")
+            if (lower.contains("serie:") || lower.contains("s/n:") || lower.contains("serial:")) {
+                serial = line.substringAfter(":").trim()
+            } else if (lower.contains("marca:") || lower.contains("brand:")) {
+                brand = line.substringAfter(":").trim()
+            } else if (lower.contains("modelo:") || lower.contains("model:")) {
+                model = line.substringAfter(":").trim()
+            } else if (lower.contains("asset:") || lower.contains("activo:")) {
+                asset = line.substringAfter(":").trim()
+            } else if (lower.contains("maquina:") || lower.contains("terminal:")) {
+                machine = line.substringAfter(":").trim()
+            } else if (lower.contains("falla:") || lower.contains("problema:")) {
+                issue = line.substringAfter(":").trim()
+            } else {
+                // 2. Unlabeled line parsing
+                if (brand.isBlank()) {
+                    knownBrands.find { upper.contains(it) }?.let { brand = it }
                 }
-                lower.contains("marca") || lower.contains("brand") -> {
-                    brand = line.substringAfter(":").ifEmpty { line.substringAfter(" ").trim() }.trim()
+
+                if (model.isBlank()) {
+                    val modelMatch = Regex("""\b\w+\s*(?:\(PP\)|\(PV\)|SLANTOP|VIP|UPRIGHT|PREMIER)\b""", RegexOption.IGNORE_CASE).find(line)?.value
+                    if (modelMatch != null) {
+                        model = modelMatch
+                    } else if (upper.contains("(PV)")) {
+                        model = "(PV) Proveedor"
+                    } else if (upper.contains("(PP)")) {
+                        model = "(PP) Propia"
+                    }
                 }
-                lower.contains("modelo") || lower.contains("model") -> {
-                    model = line.substringAfter(":").ifEmpty { line.substringAfter(" ").trim() }.trim()
+
+                // Extract standalone 4 to 8 digit numbers for Asset / Serial
+                val numberMatches = Regex("""\b\d{4,8}\b""").findAll(line).map { it.value }.toList()
+                if (numberMatches.isNotEmpty()) {
+                    if (asset.isBlank()) asset = numberMatches.first()
+                    if (serial.isBlank()) serial = numberMatches.last()
                 }
-                lower.contains("asset") || lower.contains("etiq") || lower.contains("economico") -> {
-                    asset = line.substringAfter(":").ifEmpty { line.substringAfter(" ").trim() }.trim()
-                }
-                lower.contains("maquina") || lower.contains("máquina") || lower.contains("terminal") -> {
-                    machine = line.substringAfter(":").ifEmpty { line.substringAfter(" ").trim() }.trim()
-                }
-                lower.contains("falla") || lower.contains("problema") || lower.contains("reporta") -> {
+
+                if (issue.isBlank() && (lower.contains("falla") || lower.contains("error") || lower.contains("botonera") || lower.contains("pantalla"))) {
                     issue = line.trim()
                 }
             }
@@ -171,7 +196,7 @@ object GeminiExtractionService {
             brand = brand,
             model = model,
             assetNumber = asset,
-            machineNumber = machine,
+            machineNumber = machine.ifBlank { asset.ifBlank { serial } },
             issueDescription = issue,
             rawSummary = text
         )

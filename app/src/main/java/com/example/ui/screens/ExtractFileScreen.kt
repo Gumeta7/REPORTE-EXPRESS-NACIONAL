@@ -18,13 +18,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -33,8 +31,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -47,37 +46,39 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.data.db.MachineEntity
 import com.example.ui.viewmodel.ReportViewModel
-import java.io.BufferedReader
-import java.io.InputStreamReader
 
 @Composable
 fun ExtractFileScreen(
-    viewModel: ReportViewModel
+    viewModel: ReportViewModel,
 ) {
     val context = LocalContext.current
-    var rawTextContent by remember { mutableStateOf("") }
 
     val isExtracting by viewModel.isExtractingFile.collectAsState()
     val extractionResult by viewModel.extractionResult.collectAsState()
     val statusMessage by viewModel.statusMessage.collectAsState()
+    val catalogMachines by viewModel.allMachines.collectAsState()
 
-    // File Picker Contract
+    var pendingUri by remember { mutableStateOf<Uri?>(null) }
+    var showReplaceConfirmDialog by remember { mutableStateOf(false) }
+
+    // File Picker Contract for Excel / CSV files
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let {
-            try {
-                context.contentResolver.openInputStream(uri)?.use { stream ->
-                    val extractedText = com.example.util.FileParserUtil.extractTextFromStream(stream)
-                    if (extractedText.isNotBlank()) {
-                        rawTextContent = extractedText
-                        viewModel.extractDataFromTextOrFile(extractedText)
+        uri?.let { selectedUri ->
+            if (catalogMachines.isNotEmpty()) {
+                pendingUri = selectedUri
+                showReplaceConfirmDialog = true
+            } else {
+                try {
+                    context.contentResolver.openInputStream(selectedUri)?.use { stream ->
+                        val bytes = stream.readBytes()
+                        viewModel.importMachinesFromBytes(bytes, clearExistingFirst = false)
                     }
+                } catch (_: Throwable) {
+                    // handle error gracefully
                 }
-            } catch (e: Exception) {
-                // handle error
             }
         }
     }
@@ -86,16 +87,18 @@ fun ExtractFileScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
-            .testTag("extract_file_screen")
+            .padding(20.dp)
+            .testTag("extract_file_screen"),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Top Banner Card
+        // Hero Header Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.secondaryContainer
             ),
-            shape = RoundedCornerShape(20.dp)
+            shape = RoundedCornerShape(24.dp)
         ) {
             Row(
                 modifier = Modifier
@@ -109,7 +112,7 @@ fun ExtractFileScreen(
                             MaterialTheme.colorScheme.secondary,
                             RoundedCornerShape(16.dp)
                         )
-                        .padding(12.dp)
+                        .padding(14.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.CloudUpload,
@@ -120,134 +123,90 @@ fun ExtractFileScreen(
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
                     Text(
-                        text = "Extracción de Datos de Archivos",
+                        text = "Cargar Catálogo Excel",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Sube un archivo (CSV, TXT, Excel o documento) para extraer Serie, Marca, Modelo y Asset automáticamente.",
+                        text = "Adjunta tu archivo (.xlsx, .xls o .csv) para actualizar e importar automáticamente las máquinas al catálogo.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f)
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // File Selector Action Buttons
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Button(
-                onClick = { filePickerLauncher.launch("*/*") },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp)
-                    .testTag("select_file_button"),
-                shape = RoundedCornerShape(14.dp)
-            ) {
-                Icon(imageVector = Icons.Default.FolderOpen, contentDescription = "Archivo")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Seleccionar Archivo")
-            }
-
-            OutlinedButton(
-                onClick = { viewModel.extractDataFromTextOrFile(rawTextContent, isCsvCatalog = true) },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp)
-                    .testTag("import_csv_button"),
-                shape = RoundedCornerShape(14.dp)
-            ) {
-                Icon(imageVector = Icons.Default.List, contentDescription = "Catálogo")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Importar Catálogo")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Raw Text Box
-        Text(
-            text = "O pega/edita el contenido del documento manualmente:",
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = rawTextContent,
-            onValueChange = { rawTextContent = it },
-            placeholder = { Text("Pega o escribe aquí el contenido del documento...") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(140.dp)
-                .testTag("raw_file_content_input"),
-            maxLines = 8,
-            shape = RoundedCornerShape(16.dp)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Process Button
+        // Single Full-Width Action Button: Seleccionar Archivo Excel
         Button(
-            onClick = {
-                viewModel.extractDataFromTextOrFile(rawTextContent)
-            },
-            enabled = !isExtracting && rawTextContent.isNotBlank(),
+            onClick = { filePickerLauncher.launch("*/*") },
+            enabled = !isExtracting,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp)
-                .testTag("extract_data_button"),
+                .height(56.dp)
+                .testTag("select_file_button"),
             shape = RoundedCornerShape(16.dp)
         ) {
             if (isExtracting) {
                 CircularProgressIndicator(
-                    modifier = Modifier.height(24.dp).width(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary
+                    modifier = Modifier
+                        .height(24.dp)
+                        .width(24.dp),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.5.dp
                 )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text("Procesando Datos con IA...")
+                Spacer(modifier = Modifier.width(12.dp))
+                Text("Procesando Archivo Excel...", fontWeight = FontWeight.Bold)
             } else {
-                Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = "Extraer")
+                Icon(imageVector = Icons.Default.FolderOpen, contentDescription = "Archivo")
                 Spacer(modifier = Modifier.width(10.dp))
-                Text("Extraer Serie, Marca, Modelo y Asset", fontWeight = FontWeight.Bold)
+                Text(
+                    text = "Seleccionar Archivo Excel / CSV",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Status Toast Message Display
+        // Status Message Notification Card
         statusMessage?.let { msg ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.CheckCircle, contentDescription = "OK", tint = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = msg, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "Éxito",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = msg,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Extracted Result Card
+        // Extracted Result Preview Card
         extractionResult?.let { res ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("extracted_result_card"),
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Row(
@@ -270,81 +229,118 @@ fun ExtractFileScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    ExtractedDetailRow(label = "1. Número de Serie:", value = res.serialNumber.ifBlank { "N/A" })
-                    ExtractedDetailRow(label = "2. Marca:", value = res.brand.ifBlank { "N/A" })
-                    ExtractedDetailRow(label = "3. Modelo:", value = res.model.ifBlank { "N/A" })
-                    ExtractedDetailRow(label = "4. Número de Asset:", value = res.assetNumber.ifBlank { "N/A" })
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                viewModel.openDraftDialog(viewModel.currentDraft.value)
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("generate_email_from_extracted_button"),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(imageVector = Icons.Default.Email, contentDescription = "Correo")
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Generar Correo")
-                        }
-
-                        OutlinedButton(
-                            onClick = {
-                                viewModel.addManualMachine(
-                                    MachineEntity(
-                                        machineNumber = res.machineNumber.ifBlank { res.assetNumber },
-                                        assetNumber = res.assetNumber.ifBlank { "AST-NEW" },
-                                        serialNumber = res.serialNumber.ifBlank { "SN-NEW" },
-                                        brand = res.brand.ifBlank { "Generica" },
-                                        model = res.model.ifBlank { "Estandar" },
-                                        area = "Sala Principal",
-                                        game = "Multijuego",
-                                        island = "Isla Central"
-                                    )
-                                )
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("add_to_catalog_button"),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(imageVector = Icons.Default.Add, contentDescription = "Guardar")
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Guardar Catálogo")
-                        }
-                    }
+                    ExtractedDetailRow(label = "1. Número de Serie", value = res.serialNumber.ifBlank { "N/A" })
+                    ExtractedDetailRow(label = "2. Marca", value = res.brand.ifBlank { "N/A" })
+                    ExtractedDetailRow(label = "3. Modelo", value = res.model.ifBlank { "N/A" })
+                    ExtractedDetailRow(label = "4. Número de Asset", value = res.assetNumber.ifBlank { "N/A" })
                 }
             }
         }
+    }
+
+    // Confirmation Dialog for Replacing vs Appending Catalog Data
+    if (showReplaceConfirmDialog && pendingUri != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showReplaceConfirmDialog = false
+                pendingUri = null
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = "Confirmación",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            title = {
+                Text(
+                    text = "¿Sustituir catálogo actual?",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = "Actualmente existen ${catalogMachines.size} máquinas en la base de datos. ¿Deseas reemplazar completamente el catálogo para evitar duplicados o prefieres añadir las nuevas máquinas manteniendo las existentes?"
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val uriToProcess = pendingUri
+                        showReplaceConfirmDialog = false
+                        pendingUri = null
+                        uriToProcess?.let { uri ->
+                            try {
+                                context.contentResolver.openInputStream(uri)?.use { stream ->
+                                    val bytes = stream.readBytes()
+                                    viewModel.importMachinesFromBytes(bytes, clearExistingFirst = true)
+                                }
+                            } catch (_: Throwable) {}
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Sustituir Base", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = {
+                            showReplaceConfirmDialog = false
+                            pendingUri = null
+                        }
+                    ) {
+                        Text("Cancelar")
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            val uriToProcess = pendingUri
+                            showReplaceConfirmDialog = false
+                            pendingUri = null
+                            uriToProcess?.let { uri ->
+                                try {
+                                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                                        val bytes = stream.readBytes()
+                                        viewModel.importMachinesFromBytes(bytes, clearExistingFirst = false)
+                                    }
+                                } catch (_: Throwable) {}
+                            }
+                        }
+                    ) {
+                        Text("Añadir a Existente")
+                    }
+                }
+            }
+        )
     }
 }
 
 @Composable
 fun ExtractedDetailRow(label: String, value: String) {
-    Row(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = value.ifBlank { "N/A" },
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }

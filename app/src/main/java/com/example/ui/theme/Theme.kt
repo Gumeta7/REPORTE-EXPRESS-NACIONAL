@@ -14,15 +14,17 @@ import androidx.compose.ui.platform.LocalContext
 private val DarkColorScheme = darkColorScheme(
     primary = AccentCyan,
     onPrimary = Color.Black,
-    primaryContainer = PrimaryBlueVariant,
+    primaryContainer = Color(0xFF1F2937),
     onPrimaryContainer = Color.White,
-    secondary = AccentCyan,
+    secondary = AccentElectricBlue,
     onSecondary = Color.Black,
+    secondaryContainer = DarkSurfaceVariant,
+    onSecondaryContainer = TextPrimaryDark,
     background = DarkBackground,
     onBackground = TextPrimaryDark,
     surface = DarkSurface,
     onSurface = TextPrimaryDark,
-    surfaceVariant = Color(0xFF334155),
+    surfaceVariant = DarkSurfaceVariant,
     onSurfaceVariant = TextSecondaryDark,
     error = Color(0xFFEF4444)
 )
@@ -30,15 +32,17 @@ private val DarkColorScheme = darkColorScheme(
 private val LightColorScheme = lightColorScheme(
     primary = PrimaryBlue,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFE0F2FE),
+    primaryContainer = LightContainer,
     onPrimaryContainer = PrimaryBlueVariant,
     secondary = PrimaryBlueVariant,
     onSecondary = Color.White,
+    secondaryContainer = LightSurfaceVariant,
+    onSecondaryContainer = TextPrimaryLight,
     background = LightBackground,
     onBackground = TextPrimaryLight,
     surface = LightSurface,
     onSurface = TextPrimaryLight,
-    surfaceVariant = Color(0xFFF1F5F9),
+    surfaceVariant = LightSurfaceVariant,
     onSurfaceVariant = TextSecondaryLight,
     error = Color(0xFFDC2626)
 )
@@ -64,3 +68,4 @@ fun ReportesExpressTheme(
         content = content
     )
 }
+

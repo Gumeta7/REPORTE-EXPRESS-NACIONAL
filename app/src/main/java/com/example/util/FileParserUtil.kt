@@ -20,7 +20,7 @@ object FileParserUtil {
 
                 for (sheetIndex in 0 until workbook.numberOfSheets) {
                     val sheet = workbook.getSheetAt(sheetIndex)
-                    if (sheet == null || sheet.physicalNumberOfRows == 0) continue
+                    if ((sheet == null) || (sheet.physicalNumberOfRows == 0)) continue
 
                     // Find header row in first 20 rows
                     var headerRowIndex = -1
@@ -69,7 +69,7 @@ object FileParserUtil {
                                     assetNumber = asset.ifBlank { maquina },
                                     area = area.ifBlank { "Sala Principal" },
                                     game = juego.ifBlank { "General" },
-                                    island = isla.ifBlank { "Isla 01" }
+                                    island = isla.ifBlank { "Isla 01" },
                                 )
                             )
                         }
@@ -80,7 +80,7 @@ object FileParserUtil {
                     return allMachines
                 }
             }
-        } catch (e: Exception) {
+        } catch (_: Throwable) {
             // Not a valid Excel file or POI error, fallback to CSV parsing
         }
 
@@ -114,7 +114,7 @@ object FileParserUtil {
                 val extracted = sb.toString().trim()
                 if (extracted.isNotBlank()) return extracted
             }
-        } catch (e: Exception) {
+        } catch (_: Throwable) {
             // Not Excel
         }
 
@@ -146,13 +146,13 @@ object FileParserUtil {
                             CellType.BOOLEAN -> cell.booleanCellValue.toString()
                             else -> ""
                         }
-                    } catch (ex: Exception) {
+                    } catch (_: Exception) {
                         ""
                     }
                 }
                 else -> ""
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             ""
         }
     }
@@ -163,7 +163,7 @@ object FileParserUtil {
         // 1. Highest Priority for 'modelo': Explicit 'MODELO REPORTE', 'MODELO_REPORTE', 'MODELO DE REPORTE', 'PP/PV'
         rowCells.forEachIndexed { idx, cellStr ->
             val col = sanitizeHeader(cellStr)
-            if (col.contains("MODELO REPORTE") || col.contains("MODELO_REPORTE") || col.contains("MODELO DE REPORTE") || col.contains("PP/PV") || col.contains("TIPO DE MAQUINA")) {
+            if (col.contains("MODELO REPORTE") || col.contains("MODELO_REPORTE") || col.contains("MODELO DE REPORTE") || col.contains("PP/PV") || col.contains("PP / PV") || col.contains("TIPO DE MAQUINA")) {
                 map["modelo"] = idx
             }
         }
@@ -182,13 +182,13 @@ object FileParserUtil {
         rowCells.forEachIndexed { idx, cellStr ->
             val col = sanitizeHeader(cellStr)
             when {
-                col.contains("ASSET") -> map.putIfAbsent("asset", idx)
+                col.contains("ASSET") || col.contains("ACTIVO") || col.contains("INVENTARIO") -> map.putIfAbsent("asset", idx)
+                col.contains("SERIE") || col.contains("SERIAL") || col.contains("S/N") -> map.putIfAbsent("serie", idx)
                 col.contains("MARCA") || col.contains("BRAND") || col.contains("FABRICANTE") || col.contains("PROVEEDOR") -> map.putIfAbsent("marca", idx)
                 col.contains("TITULO") || col.contains("JUEGO") || col.contains("GAME") -> map.putIfAbsent("juego", idx)
                 col.contains("AREA") || col.contains("UBICACION") || col.contains("SALA") || col.contains("ZONE") -> map.putIfAbsent("area", idx)
-                col.contains("ISLA") || col.contains("ISLAND") || col.contains("BLOQUE") -> map.putIfAbsent("isla", idx)
-                col.contains("SERIE") || col.contains("SERIAL") -> map.putIfAbsent("serie", idx)
-                (col.contains("MAQUINA") || col.contains("TERMINAL") || col.contains("EQUIPO")) && !col.contains("SERIE") && !col.contains("TIPO") -> map.putIfAbsent("maquina", idx)
+                col.contains("ISLA") || col.contains("ISLAND") || col.contains("BLOQUE") || col.contains("LINEA") -> map.putIfAbsent("isla", idx)
+                (col.contains("MAQUINA") || col.contains("TERMINAL") || col.contains("EQUIPO") || col.contains("ID") || col.contains("NO MAQUINA") || col.contains("N MAQUINA")) && !col.contains("SERIE") && !col.contains("TIPO") -> map.putIfAbsent("maquina", idx)
             }
         }
         return map
@@ -263,6 +263,11 @@ object FileParserUtil {
             .replace("Í", "I")
             .replace("Ó", "O")
             .replace("Ú", "U")
+            .replace("N°", "N")
+            .replace("Nº", "N")
+            .replace("NO.", "N")
+            .replace("N.", "N")
+            .replace("#", "")
             .trim()
             .removeSurrounding("\"")
     }

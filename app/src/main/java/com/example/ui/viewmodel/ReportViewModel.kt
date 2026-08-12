@@ -57,7 +57,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     val visitFecha = MutableStateFlow(SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()))
     val visitProveedor = MutableStateFlow("ZITRO")
     val visitTecnico = MutableStateFlow("")
-    val visitHoraEntrada = MutableStateFlow(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()))
+    val visitHoraEntrada = MutableStateFlow("")
     val visitHoraSalida = MutableStateFlow("")
     val visitMotivoVisita = MutableStateFlow("Atención de incidencia")
     val visitAssetInput = MutableStateFlow("")
@@ -439,19 +439,44 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     // --- Stream-based Excel / CSV Catalog Import ---
-    fun importMachinesFromStream(inputStream: java.io.InputStream) {
-        viewModelScope.launch {
+    fun importMachinesFromBytes(bytes: ByteArray, clearExistingFirst: Boolean = false) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            _isExtractingFile.value = true
             try {
-                val machines = FileParserUtil.parseStreamToMachines(inputStream)
+                if (clearExistingFirst) {
+                    repository.clearAllMachines()
+                }
+                val machines = FileParserUtil.parseStreamToMachines(bytes.inputStream())
                 if (machines.isNotEmpty()) {
                     repository.importMachineCatalog(machines)
-                    _statusMessage.value = "Se importaron ${machines.size} máquinas del archivo Excel/CSV al catálogo."
+                    val actionText = if (clearExistingFirst) "Se reemplazó el catálogo actual y se importaron" else "Se importaron"
+                    _statusMessage.value = "$actionText ${machines.size} máquinas al catálogo correctamente."
+                    val sample = machines.first()
+                    _extractionResult.value = ExtractedMachineData(
+                        serialNumber = sample.serialNumber,
+                        brand = sample.brand,
+                        model = sample.model,
+                        assetNumber = sample.assetNumber,
+                        machineNumber = sample.machineNumber,
+                        issueDescription = "Catálogo actualizado"
+                    )
                 } else {
                     _statusMessage.value = "No se encontraron máquinas válidas en la hoja de cálculo."
                 }
             } catch (e: Exception) {
                 _statusMessage.value = "Error al procesar la hoja de cálculo: ${e.message}"
+            } finally {
+                _isExtractingFile.value = false
             }
+        }
+    }
+
+    fun importMachinesFromStream(inputStream: java.io.InputStream, clearExistingFirst: Boolean = false) {
+        try {
+            val bytes = inputStream.readBytes()
+            importMachinesFromBytes(bytes, clearExistingFirst)
+        } catch (e: Exception) {
+            _statusMessage.value = "Error al leer el archivo: ${e.message}"
         }
     }
 

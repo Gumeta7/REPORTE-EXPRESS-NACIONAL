@@ -153,7 +153,11 @@ fun HistoryScreen(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(reportsList, key = { it.id }) { report ->
+                items(
+                    items = reportsList,
+                    key = { it.id },
+                    contentType = { "history_card" }
+                ) { report ->
                     HistoryReportCard(
                         report = report,
                         onReOpen = {
