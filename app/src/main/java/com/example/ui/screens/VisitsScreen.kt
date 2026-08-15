@@ -747,6 +747,8 @@ fun VisitsScreen(
     }
 
     // Dialog for Initial or Edit Venue Name
+    val distinctSalasForVenue by viewModel.distinctSalas.collectAsState()
+
     if (showVenueDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -763,10 +765,10 @@ fun VisitsScreen(
             text = {
                 Column {
                     Text(
-                        text = "Ingresa el nombre de la sala para mantenerlo fijo en tus reportes de visitas.",
+                        text = "Ingresa o selecciona el nombre de la sala para mantenerlo fijo en tus reportes de visitas.",
                         style = MaterialTheme.typography.bodyMedium
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
                     OutlinedTextField(
                         value = venueInput,
                         onValueChange = { venueInput = it },
@@ -778,6 +780,27 @@ fun VisitsScreen(
                             .testTag("venue_name_dialog_input"),
                         shape = RoundedCornerShape(12.dp)
                     )
+                    if (distinctSalasForVenue.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "Salas detectadas en el catálogo:",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            distinctSalasForVenue.forEach { sName ->
+                                AssistChip(
+                                    onClick = { venueInput = sName.uppercase() },
+                                    label = { Text(sName, style = MaterialTheme.typography.labelSmall) }
+                                )
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = {

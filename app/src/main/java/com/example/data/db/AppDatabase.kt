@@ -6,14 +6,20 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [MachineEntity::class, EmailReportEntity::class, ProviderEmailEntity::class],
-    version = 2,
+    entities = [
+        MachineEntity::class,
+        EmailReportEntity::class,
+        ProviderEmailEntity::class,
+        TechnicianEntity::class
+    ],
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun machineDao(): MachineDao
     abstract fun emailReportDao(): EmailReportDao
     abstract fun providerEmailDao(): ProviderEmailDao
+    abstract fun technicianDao(): TechnicianDao
 
     companion object {
         @Volatile

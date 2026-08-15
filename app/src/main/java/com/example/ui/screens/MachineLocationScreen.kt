@@ -11,24 +11,28 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.ReportProblem
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,8 +48,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.data.db.MachineEntity
 import com.example.ui.viewmodel.ReportViewModel
@@ -65,20 +73,20 @@ fun MachineLocationScreen(
             .padding(16.dp)
             .testTag("machine_location_screen")
     ) {
-        // Search Header Input with Animated Floating Label
+        // Search Header Input
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { viewModel.updateLocationQuery(it) },
             label = {
                 Text(
-                    text = "Buscar máquina",
+                    text = "Buscar por Sala, Marca, Modelo, Asset, Serie, Área o Propietario",
                     maxLines = 1,
                     softWrap = false
                 )
             },
             placeholder = {
                 Text(
-                    text = "Ej. 444, Zitro, Isla 03",
+                    text = "Ej. Winpot, A560H, 456, FUMADORES",
                     maxLines = 1,
                     softWrap = false
                 )
@@ -127,12 +135,12 @@ fun MachineLocationScreen(
                     Icon(
                         imageVector = Icons.Default.Casino,
                         contentDescription = "Sin resultados",
-                        modifier = Modifier.height(48.dp).width(48.dp),
+                        modifier = Modifier.size(48.dp),
                         tint = MaterialTheme.colorScheme.outline
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = if (searchQuery.isNotBlank()) "No se encontraron máquinas con la búsqueda." else "El catálogo de máquinas está vacío. Adjunta un archivo Excel en la pestaña Extraer.",
+                        text = if (searchQuery.isNotBlank()) "No se encontraron máquinas con la búsqueda." else "El catálogo está vacío. Presiona Actualizar en la pestaña Actualizar.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -141,7 +149,7 @@ fun MachineLocationScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 items(
                     items = machinesList,
@@ -177,231 +185,223 @@ fun MachineLocationCard(
     onReportClick: () -> Unit
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val cardBgColor = if (isDarkTheme) Color(0xFF1B2430) else MaterialTheme.colorScheme.surface
-    val cardBorder = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF2E3D52)) else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+    val cardBgColor = if (isDarkTheme) Color(0xFF19222D) else MaterialTheme.colorScheme.surface
+    val cardBorder = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF2E3E50)) else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("machine_location_card_${machine.machineNumber}"),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = cardBgColor),
         border = cardBorder,
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Header Row: Machine Number, Brand & Modelo Reporte (PP / PV) Badge
+
+            // 1. SALA & PROPIETARIO (Header Badges)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                // Sala
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
                     modifier = Modifier.weight(1f, fill = false)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                if (isDarkTheme) Color(0xFF243242) else MaterialTheme.colorScheme.primaryContainer,
-                                RoundedCornerShape(12.dp)
-                            )
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Máquina #${machine.machineNumber}",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isDarkTheme) Color(0xFF00E5FF) else MaterialTheme.colorScheme.onPrimaryContainer
+                        Icon(
+                            imageVector = Icons.Default.Storefront,
+                            contentDescription = "Sala",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
                         )
-                    }
-                    if (machine.brand.isNotBlank()) {
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = machine.brand,
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = machine.sala.ifBlank { "Sala General" },
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = if (isDarkTheme) Color(0xFF00E5FF) else MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // PP / PV MODELO REPORTE BADGE
-                val upperModel = remember(machine.model) { machine.model.trim().uppercase() }
-                val isPropia = remember(upperModel) { upperModel.contains("(PP)") || upperModel.contains(" PP") || upperModel.endsWith("PP") || upperModel.contains("PROPIA") }
-                val isProveedor = remember(upperModel) { upperModel.contains("(PV)") || upperModel.contains(" PV") || upperModel.endsWith("PV") || upperModel.contains("PROVEEDOR") }
-
-                val badgeText = remember(isPropia, isProveedor, machine.model) {
-                    when {
-                        isPropia -> "(PP) Propia"
-                        isProveedor -> "(PV) Proveedor"
-                        machine.model.isNotBlank() -> machine.model
-                        else -> "(PP/PV) Sin tipo"
+                // Propietario
+                if (machine.propietario.isNotBlank()) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AccountCircle,
+                                contentDescription = "Propietario",
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = machine.propietario,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
                     }
-                }
-
-                val badgeBg = when {
-                    isPropia -> if (isDarkTheme) com.example.ui.theme.PropiaGreenBgDark else com.example.ui.theme.PropiaGreenBgLight
-                    isProveedor -> if (isDarkTheme) com.example.ui.theme.ProveedorPurpleBgDark else com.example.ui.theme.ProveedorPurpleBgLight
-                    else -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f)
-                }
-                val badgeFg = when {
-                    isPropia -> if (isDarkTheme) com.example.ui.theme.PropiaGreenFgDark else com.example.ui.theme.PropiaGreenFgLight
-                    isProveedor -> if (isDarkTheme) com.example.ui.theme.ProveedorPurpleFgDark else com.example.ui.theme.ProveedorPurpleFgLight
-                    else -> MaterialTheme.colorScheme.onSecondaryContainer
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = badgeBg
-                ) {
-                    Text(
-                        text = badgeText,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = badgeFg,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        maxLines = 1,
-                        softWrap = false
-                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Dedicated Modelo Reporte display row
+            // 2. MARCA & MODELO
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Modelo Reporte:",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isDarkTheme) Color(0xFF90A4AE) else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = machine.model.ifBlank { "N/A" },
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isDarkTheme) Color(0xFF00E5FF) else MaterialTheme.colorScheme.primary
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Marca:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = machine.brand.ifBlank { "N/A" },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Text(
+                        text = "Modelo:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = machine.model.ifBlank { "N/A" },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = if (isDarkTheme) Color(0xFF00E5FF) else MaterialTheme.colorScheme.secondary
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
+            HorizontalDivider(
+                color = if (isDarkTheme) Color(0xFF283648) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Highlights: Area, Island, Game
+            // 3. ASSET, SERIE & ÁREA (3 Columns Info Grid)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Area
-                InfoHighlightChip(
+                // Asset
+                MachineDetailBox(
+                    icon = Icons.Default.Numbers,
+                    label = "Asset",
+                    value = machine.assetNumber.ifBlank { machine.machineNumber },
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Serie
+                MachineDetailBox(
+                    icon = Icons.Default.Fingerprint,
+                    label = "Serie",
+                    value = machine.serialNumber.ifBlank { "N/A" },
+                    modifier = Modifier.weight(1.2f)
+                )
+
+                // Área
+                MachineDetailBox(
                     icon = Icons.Default.Place,
-                    title = "Área",
-                    value = machine.area,
-                    modifier = Modifier.weight(1f)
-                )
-
-                // Island
-                InfoHighlightChip(
-                    icon = Icons.Default.GridView,
-                    title = "Isla",
-                    value = machine.island,
-                    modifier = Modifier.weight(1f)
-                )
-
-                // Game
-                InfoHighlightChip(
-                    icon = Icons.Default.Casino,
-                    title = "Juego",
-                    value = machine.game,
+                    label = "Área",
+                    value = machine.area.ifBlank { "General" },
                     modifier = Modifier.weight(1f)
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            // Secondary Details (Asset & Serial)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Asset: ${machine.assetNumber}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isDarkTheme) Color(0xFFB0BEC5) else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "Serie: ${machine.serialNumber}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isDarkTheme) Color(0xFFB0BEC5) else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Direct Quick Report Button
+            // 4. Action Button: Reportar Falla
             Button(
                 onClick = onReportClick,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(42.dp),
-                shape = RoundedCornerShape(10.dp)
+                    .height(44.dp),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(imageVector = Icons.Default.ReportProblem, contentDescription = "Reportar")
+                Icon(
+                    imageVector = Icons.Default.ReportProblem,
+                    contentDescription = "Reportar Falla",
+                    modifier = Modifier.size(18.dp)
+                )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Reportar Falla de esta Máquina")
+                Text(
+                    text = "Reportar Falla de esta Máquina",
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }
 }
 
 @Composable
-fun InfoHighlightChip(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
+fun MachineDetailBox(
+    icon: ImageVector,
+    label: String,
     value: String,
     modifier: Modifier = Modifier
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val chipBgColor = if (isDarkTheme) Color(0xFF263344) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-    val chipBorder = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF38495E)) else null
-    val titleColor = if (isDarkTheme) Color(0xFF00E5FF) else MaterialTheme.colorScheme.primary
-    val valueColor = if (isDarkTheme) Color(0xFFF0F6FC) else MaterialTheme.colorScheme.onSurface
+    val boxBg = if (isDarkTheme) Color(0xFF233040) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+    val boxBorder = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF33455A)) else null
 
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = chipBgColor,
-        border = chipBorder
+        color = boxBg,
+        border = boxBorder
     ) {
-        Column(modifier = Modifier.padding(10.dp)) {
+        Column(modifier = Modifier.padding(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = icon,
-                    contentDescription = title,
-                    modifier = Modifier.height(14.dp).width(14.dp),
-                    tint = titleColor
+                    contentDescription = label,
+                    modifier = Modifier.size(13.dp),
+                    tint = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(3.dp))
                 Text(
-                    text = title,
+                    text = label,
                     style = MaterialTheme.typography.labelSmall,
-                    color = titleColor,
-                    fontWeight = FontWeight.SemiBold
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
                 )
             }
-            Spacer(modifier = Modifier.height(3.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = value.ifBlank { "N/A" },
+                text = value,
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.ExtraBold,
-                color = valueColor,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -438,27 +438,36 @@ fun ReportMachineFailureDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Machine Details Card
+                // Machine Summary Card (7 Campos)
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(
-                            text = "Máquina #${machine.machineNumber} - ${machine.brand}",
+                            text = "${machine.brand} - ${machine.model}",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
+                        if (machine.sala.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "• Sala: ${machine.sala}",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                         Text(
-                            text = "Modelo: ${machine.model} | Serie: ${machine.serialNumber}",
+                            text = "• Asset: ${machine.assetNumber} | Serie: ${machine.serialNumber}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        val propText = if (machine.propietario.isNotBlank()) " | Propietario: ${machine.propietario}" else ""
                         Text(
-                            text = "Asset: ${machine.assetNumber} | Isla: ${machine.island} | Área: ${machine.area}",
+                            text = "• Área: ${machine.area}$propText",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -466,7 +475,7 @@ fun ReportMachineFailureDialog(
                 }
 
                 Text(
-                    text = "Describa el inconveniente o falla:",
+                    text = "Describa la falla o inconveniente:",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )
@@ -474,7 +483,7 @@ fun ReportMachineFailureDialog(
                 OutlinedTextField(
                     value = issueInput,
                     onValueChange = { issueInput = it },
-                    placeholder = { Text("Ej: Billetero no acepta billetes, pantalla táctil descalibrada, error de comunicación, etc.") },
+                    placeholder = { Text("Ej: Billetero traba billetes, touch descalibrado, error de comunicación, etc.") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("location_report_failure_input"),

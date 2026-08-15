@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MachineDao {
-    @Query("SELECT * FROM machines ORDER BY machineNumber ASC")
+    @Query("SELECT * FROM machines ORDER BY sala ASC, machineNumber ASC")
     fun getAllMachines(): Flow<List<MachineEntity>>
 
     @Query("""
@@ -21,11 +21,17 @@ interface MachineDao {
            OR area LIKE '%' || :query || '%'
            OR game LIKE '%' || :query || '%'
            OR island LIKE '%' || :query || '%'
-        ORDER BY machineNumber ASC
+           OR sala LIKE '%' || :query || '%'
+           OR propietario LIKE '%' || :query || '%'
+           OR qrId LIKE '%' || :query || '%'
+        ORDER BY sala ASC, machineNumber ASC
     """)
     fun searchMachines(query: String): Flow<List<MachineEntity>>
 
-    @Query("SELECT * FROM machines WHERE machineNumber = :machineNum OR assetNumber = :machineNum LIMIT 1")
+    @Query("SELECT DISTINCT sala FROM machines WHERE sala != '' ORDER BY sala ASC")
+    fun getDistinctSalas(): Flow<List<String>>
+
+    @Query("SELECT * FROM machines WHERE machineNumber = :machineNum OR assetNumber = :machineNum OR serialNumber = :machineNum LIMIT 1")
     suspend fun getMachineByNumber(machineNum: String): MachineEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

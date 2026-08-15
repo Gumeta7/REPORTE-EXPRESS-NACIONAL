@@ -6,23 +6,32 @@ import com.example.data.db.MachineDao
 import com.example.data.db.MachineEntity
 import com.example.data.db.ProviderEmailDao
 import com.example.data.db.ProviderEmailEntity
+import com.example.data.db.TechnicianDao
+import com.example.data.db.TechnicianEntity
 import com.example.data.demo.DemoData
 import kotlinx.coroutines.flow.Flow
 
 class ReportRepository(
     private val machineDao: MachineDao,
     private val emailReportDao: EmailReportDao,
-    private val providerEmailDao: ProviderEmailDao
+    private val providerEmailDao: ProviderEmailDao,
+    private val technicianDao: TechnicianDao
 ) {
     val allMachines: Flow<List<MachineEntity>> = machineDao.getAllMachines()
     val allReports: Flow<List<EmailReportEntity>> = emailReportDao.getAllReports()
     val allProviderEmails: Flow<List<ProviderEmailEntity>> = providerEmailDao.getAllProviderEmails()
+    val distinctSalas: Flow<List<String>> = machineDao.getDistinctSalas()
+    val allTechnicians: Flow<List<TechnicianEntity>> = technicianDao.getAllTechnicians()
 
     suspend fun checkAndInitializeDemoData() {
         val emailCount = providerEmailDao.getProviderEmailCount()
         if (emailCount == 0) {
             providerEmailDao.insertAllProviderEmails(DemoData.sampleProviderEmails)
         }
+    }
+
+    suspend fun getMachineCount(): Int {
+        return machineDao.getMachineCount()
     }
 
     fun searchMachines(query: String): Flow<List<MachineEntity>> {
@@ -53,6 +62,24 @@ class ReportRepository(
 
     suspend fun restoreDemoMachines() {
         machineDao.insertAllMachines(DemoData.sampleMachines)
+    }
+
+    // --- Technicians / Authentication ---
+    suspend fun importTechnicians(technicians: List<TechnicianEntity>) {
+        technicianDao.clearAllTechnicians()
+        technicianDao.insertAllTechnicians(technicians)
+    }
+
+    suspend fun authenticateTechnician(user: String, pass: String): TechnicianEntity? {
+        return technicianDao.authenticate(user.trim(), pass.trim())
+    }
+
+    suspend fun getTechnicianByUser(user: String): TechnicianEntity? {
+        return technicianDao.getTechnicianByUser(user.trim())
+    }
+
+    suspend fun getTechnicianCount(): Int {
+        return technicianDao.getTechnicianCount()
     }
 
     // --- Provider Emails ---

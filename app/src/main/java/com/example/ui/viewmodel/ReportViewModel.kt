@@ -4,19 +4,23 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.api.ExtractedMachineData
-import com.example.data.api.GeminiExtractionService
 import com.example.data.db.AppDatabase
 import com.example.data.db.EmailReportEntity
 import com.example.data.db.MachineEntity
+import com.example.data.db.TechnicianEntity
+import com.example.data.remote.DriveSyncService
 import com.example.data.repository.ReportRepository
 import com.example.util.FileParserUtil
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -31,7 +35,8 @@ data class EmailDraftState(
     val brand: String = "",
     val model: String = "",
     val serialNumber: String = "",
-    val assetNumber: String = ""
+    val assetNumber: String = "",
+    val sala: String = ""
 )
 
 data class MissingProviderEmailState(
@@ -45,7 +50,20 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     private val repository: ReportRepository
     private val prefs = application.getSharedPreferences("reportes_express_prefs", android.content.Context.MODE_PRIVATE)
 
-    private val _venueName = MutableStateFlow(prefs.getString("venue_name", "") ?: "")
+    // --- Authentication & Current User Session ---
+    private val _currentUser = MutableStateFlow<TechnicianEntity?>(restoreLoggedUserFromPrefs())
+    val currentUser: StateFlow<TechnicianEntity?> = _currentUser.asStateFlow()
+
+    private val _loginErrorMessage = MutableStateFlow<String?>(null)
+    val loginErrorMessage: StateFlow<String?> = _loginErrorMessage.asStateFlow()
+
+    private val _isLoggingIn = MutableStateFlow(false)
+    val isLoggingIn: StateFlow<Boolean> = _isLoggingIn.asStateFlow()
+
+    private val _venueName = MutableStateFlow(
+        _currentUser.value?.sala?.ifBlank { prefs.getString("venue_name", "") ?: "" }
+            ?: (prefs.getString("venue_name", "") ?: "")
+    )
     val venueName: StateFlow<String> = _venueName.asStateFlow()
 
     private val _isDarkTheme = MutableStateFlow<Boolean?>(
@@ -53,10 +71,19 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     )
     val isDarkTheme: StateFlow<Boolean?> = _isDarkTheme.asStateFlow()
 
+    // --- Google Drive Synchronization State ---
+    private val _isSyncingDrive = MutableStateFlow(false)
+    val isSyncingDrive: StateFlow<Boolean> = _isSyncingDrive.asStateFlow()
+
+    private val _lastSyncTimestampFormatted = MutableStateFlow(
+        prefs.getString("last_sync_formatted", "Sin sincronizaciones previas") ?: "Sin sincronizaciones previas"
+    )
+    val lastSyncTimestampFormatted: StateFlow<String> = _lastSyncTimestampFormatted.asStateFlow()
+
     // --- Visit Form State (Persisted across tab navigation) ---
     val visitFecha = MutableStateFlow(SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()))
     val visitProveedor = MutableStateFlow("ZITRO")
-    val visitTecnico = MutableStateFlow("")
+    val visitTecnico = MutableStateFlow(_currentUser.value?.nombre ?: "")
     val visitHoraEntrada = MutableStateFlow("")
     val visitHoraSalida = MutableStateFlow("")
     val visitMotivoVisita = MutableStateFlow("Atención de incidencia")
@@ -93,12 +120,115 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         repository = ReportRepository(
             database.machineDao(),
             database.emailReportDao(),
-            database.providerEmailDao()
+            database.providerEmailDao(),
+            database.technicianDao()
         )
         viewModelScope.launch {
             repository.checkAndInitializeDemoData()
+            // Automatic initial sync from Google Drive spreadsheet on startup
+            syncFromDrive(showProgressMessage = false)
         }
     }
+
+    private fun restoreLoggedUserFromPrefs(): TechnicianEntity? {
+        val isLoggedIn = prefs.getBoolean("is_logged_in", false)
+        if (!isLoggedIn) return null
+
+        val userUsuario = prefs.getString("user_usuario", "") ?: ""
+        if (userUsuario.isBlank()) return null
+
+        return TechnicianEntity(
+            technicianId = prefs.getString("user_technician_id", "") ?: "",
+            nombre = prefs.getString("user_nombre", "") ?: "",
+            sala = prefs.getString("user_sala", "") ?: "",
+            usuario = userUsuario,
+            password = "",
+            estatus = prefs.getString("user_estatus", "ACTIVO") ?: "ACTIVO",
+            rol = prefs.getString("user_rol", "TECNICO") ?: "TECNICO"
+        )
+    }
+
+    // --- Authentication Actions ---
+    fun login(usuarioInput: String, passwordInput: String) {
+        viewModelScope.launch {
+            _isLoggingIn.value = true
+            _loginErrorMessage.value = null
+            try {
+                val cleanUser = usuarioInput.trim()
+                val cleanPass = passwordInput.trim()
+
+                if (cleanUser.isEmpty() || cleanPass.isEmpty()) {
+                    _loginErrorMessage.value = "Por favor ingresa tu usuario y contraseña."
+                    return@launch
+                }
+
+                // If no technicians in database yet, try a quick sync
+                if (repository.getTechnicianCount() == 0) {
+                    syncFromDrive(showProgressMessage = false)
+                }
+
+                val technician = repository.authenticateTechnician(cleanUser, cleanPass)
+                if (technician != null) {
+                    if (technician.estatus.trim().uppercase() == "INACTIVO") {
+                        _loginErrorMessage.value = "Tu usuario se encuentra inactivo. Contacta al administrador."
+                        return@launch
+                    }
+
+                    // Save session
+                    prefs.edit()
+                        .putBoolean("is_logged_in", true)
+                        .putString("user_technician_id", technician.technicianId)
+                        .putString("user_nombre", technician.nombre)
+                        .putString("user_sala", technician.sala)
+                        .putString("user_usuario", technician.usuario)
+                        .putString("user_estatus", technician.estatus)
+                        .putString("user_rol", technician.rol)
+                        .apply()
+
+                    _currentUser.value = technician
+                    if (technician.sala.isNotBlank() && !technician.isAdmin) {
+                        saveVenueName(technician.sala)
+                    }
+                    if (technician.nombre.isNotBlank()) {
+                        visitTecnico.value = technician.nombre
+                    }
+                } else {
+                    _loginErrorMessage.value = "Usuario o contraseña incorrectos."
+                }
+            } catch (e: Exception) {
+                _loginErrorMessage.value = "Error al iniciar sesión: ${e.message}"
+            } finally {
+                _isLoggingIn.value = false
+            }
+        }
+    }
+
+    fun logout() {
+        prefs.edit()
+            .putBoolean("is_logged_in", false)
+            .remove("user_technician_id")
+            .remove("user_nombre")
+            .remove("user_sala")
+            .remove("user_usuario")
+            .remove("user_estatus")
+            .remove("user_rol")
+            .apply()
+
+        _currentUser.value = null
+        _loginErrorMessage.value = null
+    }
+
+    fun clearLoginError() {
+        _loginErrorMessage.value = null
+    }
+
+    // --- Distinct Salas Stream ---
+    val distinctSalas: StateFlow<List<String>> = repository.distinctSalas
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     // --- Provider Emails Stream ---
     val providerEmails: StateFlow<List<com.example.data.db.ProviderEmailEntity>> = repository.allProviderEmails
@@ -115,7 +245,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     private val _historySearchQuery = MutableStateFlow("")
     val historySearchQuery: StateFlow<String> = _historySearchQuery.asStateFlow()
 
-    // --- Dynamic Machine Catalog Stream ---
+    // --- Dynamic Machine Catalog Stream (Filtered by User's Sala if not Admin) ---
     val allMachines: StateFlow<List<MachineEntity>> = repository.allMachines
         .stateIn(
             scope = viewModelScope,
@@ -123,13 +253,28 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             initialValue = emptyList()
         )
 
-    val machineCatalog: StateFlow<List<MachineEntity>> = _locationSearchQuery
-        .flatMapLatest { query -> repository.searchMachines(query) }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+    val machineCatalog: StateFlow<List<MachineEntity>> = combine(
+        _locationSearchQuery.flatMapLatest { query -> repository.searchMachines(query) },
+        _currentUser
+    ) { machines, user ->
+        if (user == null || user.isAdmin) {
+            // Admins see all machines matching the query
+            machines
+        } else {
+            // Regular technicians see ONLY machines belonging to their assigned Sala
+            val userSalaNormalized = user.sala.trim().lowercase()
+            machines.filter { m ->
+                val machineSalaNormalized = m.sala.trim().lowercase()
+                machineSalaNormalized == userSalaNormalized ||
+                    (userSalaNormalized.isNotEmpty() && machineSalaNormalized.contains(userSalaNormalized)) ||
+                    (machineSalaNormalized.isNotEmpty() && userSalaNormalized.contains(machineSalaNormalized))
+            }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     // --- Dynamic Email History Stream ---
     val reportHistory: StateFlow<List<EmailReportEntity>> = _historySearchQuery
@@ -146,9 +291,6 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _showDraftDialog = MutableStateFlow(false)
     val showDraftDialog: StateFlow<Boolean> = _showDraftDialog.asStateFlow()
-
-    private val _isExtractingFile = MutableStateFlow(false)
-    val isExtractingFile: StateFlow<Boolean> = _isExtractingFile.asStateFlow()
 
     private val _extractionResult = MutableStateFlow<ExtractedMachineData?>(null)
     val extractionResult: StateFlow<ExtractedMachineData?> = _extractionResult.asStateFlow()
@@ -175,6 +317,83 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         _statusMessage.value = null
     }
 
+    // --- Google Drive Spreadsheet Sync Function ---
+    fun syncFromDrive(
+        url: String = DriveSyncService.DEFAULT_DRIVE_SHEET_URL,
+        showProgressMessage: Boolean = true
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _isSyncingDrive.value = true
+            try {
+                val bytes = DriveSyncService.downloadSpreadsheetBytes(url)
+                if (bytes != null && bytes.isNotEmpty()) {
+                    val parsedMachines = FileParserUtil.parseStreamToMachines(bytes.inputStream())
+                    val parsedTechnicians = FileParserUtil.parseStreamToTechnicians(bytes.inputStream())
+
+                    if (parsedMachines.isNotEmpty()) {
+                        repository.clearAllMachines()
+                        repository.importMachineCatalog(parsedMachines)
+                    }
+
+                    if (parsedTechnicians.isNotEmpty()) {
+                        repository.importTechnicians(parsedTechnicians)
+
+                        // Refresh active session if user data was updated in the cloud
+                        val current = _currentUser.value
+                        if (current != null) {
+                            val refreshed = parsedTechnicians.find {
+                                it.usuario.trim().equals(current.usuario.trim(), ignoreCase = true)
+                            }
+                            if (refreshed != null) {
+                                withContext(Dispatchers.Main) {
+                                    _currentUser.value = refreshed
+                                    if (refreshed.sala.isNotBlank() && !refreshed.isAdmin) {
+                                        saveVenueName(refreshed.sala)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (parsedMachines.isNotEmpty() || parsedTechnicians.isNotEmpty()) {
+                        val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
+                        val nowFormatted = dateFormat.format(Date())
+                        prefs.edit().putString("last_sync_formatted", nowFormatted).apply()
+                        _lastSyncTimestampFormatted.value = nowFormatted
+
+                        val current = _currentUser.value
+                        if (current != null && !current.isAdmin) {
+                            val userSalaNormalized = current.sala.trim().lowercase()
+                            val userMachinesCount = parsedMachines.count { m ->
+                                val machineSalaNormalized = m.sala.trim().lowercase()
+                                machineSalaNormalized == userSalaNormalized ||
+                                    (userSalaNormalized.isNotEmpty() && machineSalaNormalized.contains(userSalaNormalized)) ||
+                                    (machineSalaNormalized.isNotEmpty() && userSalaNormalized.contains(machineSalaNormalized))
+                            }
+                            _statusMessage.value = "Datos actualizados exitosamente ($userMachinesCount máquinas)."
+                        } else {
+                            _statusMessage.value = "Datos actualizados exitosamente (${parsedMachines.size} máquinas, ${parsedTechnicians.size} técnicos)."
+                        }
+                    } else {
+                        if (showProgressMessage) {
+                            _statusMessage.value = "No se pudieron extraer registros válidos de la hoja de cálculo."
+                        }
+                    }
+                } else {
+                    if (showProgressMessage) {
+                        _statusMessage.value = "No se pudo conectar con Google Drive. Verifique su conexión a internet."
+                    }
+                }
+            } catch (e: Exception) {
+                if (showProgressMessage) {
+                    _statusMessage.value = "Error al sincronizar con Google Drive: ${e.message}"
+                }
+            } finally {
+                _isSyncingDrive.value = false
+            }
+        }
+    }
+
     fun updateCurrentDraft(
         recipient: String? = null,
         subject: String? = null,
@@ -184,7 +403,8 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         brand: String? = null,
         model: String? = null,
         serialNumber: String? = null,
-        assetNumber: String? = null
+        assetNumber: String? = null,
+        sala: String? = null
     ) {
         _currentDraft.value = _currentDraft.value.copy(
             recipient = recipient ?: _currentDraft.value.recipient,
@@ -195,7 +415,8 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             brand = brand ?: _currentDraft.value.brand,
             model = model ?: _currentDraft.value.model,
             serialNumber = serialNumber ?: _currentDraft.value.serialNumber,
-            assetNumber = assetNumber ?: _currentDraft.value.assetNumber
+            assetNumber = assetNumber ?: _currentDraft.value.assetNumber,
+            sala = sala ?: _currentDraft.value.sala
         )
     }
 
@@ -238,6 +459,8 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                     lower.contains("novomatic") -> "novomatic"
                     lower.contains("konami") -> "konami"
                     lower.contains("bally") -> "bally"
+                    lower.contains("ainsworth") -> "ainsworth"
+                    lower.contains("egt") -> "egt"
                     else -> ""
                 }
                 if (brandKeyword.isNotBlank()) {
@@ -253,16 +476,16 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 else -> "soporte@zitro.com"
             }
 
-            // 2. Extract machine number if mentioned (e.g., "maquina 473", "473", "asset 1025")
+            // 2. Extract machine number if mentioned
             val machineNumRegex = Regex("""(?:máquina|maquina|asset|terminal|mâquina)\s*#?\s*([a-zA-Z0-9\-]+)""", RegexOption.IGNORE_CASE)
             val numberMatch = machineNumRegex.find(promptText)?.groupValues?.get(1)
                 ?: promptText.split(Regex("""\s+""")).firstOrNull { word -> word.all { c -> c.isDigit() } && word.length >= 2 }
-                ?: "473"
+                ?: "456"
 
             // 3. Find machine in database catalog
             val foundMachine = repository.findMachine(numberMatch)
 
-            // 4. Extract issue description cleanly without repeating prompt phrases
+            // 4. Extract issue description cleanly
             val cleanedIssue = cleanIssueDescription(promptText, numberMatch, matchedProvider?.providerName)
 
             val greeting = getTimeOfDayGreeting()
@@ -274,9 +497,10 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val finalModel = foundMachine?.model ?: "Estándar"
             val finalSerial = foundMachine?.serialNumber ?: "SN-$numberMatch"
             val finalAsset = foundMachine?.assetNumber ?: numberMatch
+            val finalSala = foundMachine?.sala?.ifBlank { null } ?: venueName.value.ifBlank { "Sala Principal" }
             val finalArea = foundMachine?.area ?: "Sala Principal"
-            val finalIsland = foundMachine?.island ?: "Isla 01"
-            val finalGame = foundMachine?.game ?: "General"
+            val finalGame = foundMachine?.game?.ifBlank { "General" } ?: "General"
+            val propText = if (foundMachine != null && foundMachine.propietario.isNotBlank()) "\n• Propietario: ${foundMachine.propietario}" else ""
 
             val formattedBody = """
                 $greeting estimados,
@@ -286,19 +510,19 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 Detalle de la falla: $cleanedIssue.
                 
                 --- DATOS DEL EQUIPO ---
+                • Sala / Ubicación: $finalSala
+                • Marca: $finalBrand
+                • Modelo: $finalModel
                 • Asset Number: $finalAsset
                 • Número de Serie: $finalSerial
-                • Marca / Proveedor: $finalBrand
-                • Modelo: $finalModel
-                • Área / Ubicación: $finalArea
-                • Juego Instalado: $finalGame
+                • Área: $finalArea$propText
                 
                 Quedamos a la espera de sus comentarios y apoyo.
                 
                 Saludos cordiales.
             """.trimIndent()
 
-            val subjectLine = "REPORTE DE TERMINAL"
+            val subjectLine = "REPORTE DE TERMINAL - $finalSala (ASSET: $finalAsset)"
 
             val draft = EmailDraftState(
                 recipient = finalRecipient,
@@ -309,7 +533,8 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 brand = finalBrand,
                 model = finalModel,
                 serialNumber = finalSerial,
-                assetNumber = finalAsset
+                assetNumber = finalAsset,
+                sala = finalSala
             )
 
             if (matchedProvider != null && matchedProvider.email.isBlank()) {
@@ -344,6 +569,8 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
             val greeting = getTimeOfDayGreeting()
             val cleanedIssue = issueDescription.trim().ifBlank { "Falla reportada en terminal" }
+            val finalSala = machine.sala.ifBlank { venueName.value.ifBlank { "Sala Principal" } }
+            val propLine = if (machine.propietario.isNotBlank()) "\n• Propietario: ${machine.propietario}" else ""
 
             val formattedBody = """
                 $greeting estimados,
@@ -353,19 +580,19 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 Detalle de la falla: $cleanedIssue.
                 
                 --- DATOS DEL EQUIPO ---
+                • Sala / Ubicación: $finalSala
+                • Marca: ${machine.brand}
+                • Modelo: ${machine.model}
                 • Asset Number: ${machine.assetNumber}
                 • Número de Serie: ${machine.serialNumber}
-                • Marca / Proveedor: ${machine.brand}
-                • Modelo: ${machine.model}
-                • Área / Ubicación: ${machine.area} (Isla: ${machine.island})
-                • Juego Instalado: ${machine.game}
+                • Área: ${machine.area}$propLine
                 
                 Quedamos a la espera de sus comentarios y apoyo.
                 
                 Saludos cordiales.
             """.trimIndent()
 
-            val subjectLine = "REPORTE DE TERMINAL - MAQ ${machine.machineNumber}"
+            val subjectLine = "REPORTE DE TERMINAL - $finalSala (ASSET: ${machine.assetNumber})"
 
             val draft = EmailDraftState(
                 recipient = finalRecipient,
@@ -376,7 +603,8 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 brand = machine.brand,
                 model = machine.model,
                 serialNumber = machine.serialNumber,
-                assetNumber = machine.assetNumber
+                assetNumber = machine.assetNumber,
+                sala = finalSala
             )
 
             if (matchedProvider != null && matchedProvider.email.isBlank()) {
@@ -400,7 +628,6 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     private fun cleanIssueDescription(promptText: String, numberMatch: String, matchedProviderName: String?): String {
         var text = promptText.trim()
 
-        // 1. Remove action verbs at beginning
         val actionRegex = Regex("""^(?:reporta|reportar|reporte|falla\s+en|falla\s+de|favor\s+de\s+reportar|revisar|revision|atender)\s+""", RegexOption.IGNORE_CASE)
         var modified = true
         while (modified) {
@@ -409,25 +636,18 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             text = newText
         }
 
-        // 2. Remove machine reference and number
         if (numberMatch.isNotBlank()) {
             text = text.replace(Regex("""\b(?:la\s+)?(?:máquina|maquina|terminal|asset|equipo|num|número|#)\s*#?\s*""" + Regex.escape(numberMatch) + """\b""", RegexOption.IGNORE_CASE), "").trim()
             text = text.replace(Regex("""\b""" + Regex.escape(numberMatch) + """\b"""), "").trim()
         }
 
-        // 3. Remove provider name if present
         if (!matchedProviderName.isNullOrBlank()) {
             text = text.replace(Regex("""\b""" + Regex.escape(matchedProviderName) + """\b""", RegexOption.IGNORE_CASE), "").trim()
         }
-        text = text.replace(Regex("""\b(?:zitro|igt|aristocrat|novomatic|konami|bally)\b""", RegexOption.IGNORE_CASE), "").trim()
-
-        // 4. Remove residual machine words at beginning
+        text = text.replace(Regex("""\b(?:zitro|igt|aristocrat|novomatic|konami|bally|ainsworth|egt)\b""", RegexOption.IGNORE_CASE), "").trim()
         text = text.replace(Regex("""^(?:la\s+)?(?:máquina|maquina|terminal|asset|equipo)\b\s*""", RegexOption.IGNORE_CASE), "").trim()
-
-        // 5. Remove leading connectors/prepositions ("a", "por", "para", "de", "con", "en", "el", "la") at beginning
         text = text.replace(Regex("""^(?:a|por|para|de|con|en)\s+""", RegexOption.IGNORE_CASE), "").trim()
 
-        // 6. Clean punctuation & extra whitespaces
         text = text.replace(Regex("""\s+"""), " ")
             .removePrefix(".").removePrefix(",").removePrefix(":").removePrefix("-").trim()
 
@@ -436,131 +656,6 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         return text.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
-    }
-
-    // --- Stream-based Excel / CSV Catalog Import ---
-    fun importMachinesFromBytes(bytes: ByteArray, clearExistingFirst: Boolean = false) {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            _isExtractingFile.value = true
-            try {
-                if (clearExistingFirst) {
-                    repository.clearAllMachines()
-                }
-                val machines = FileParserUtil.parseStreamToMachines(bytes.inputStream())
-                if (machines.isNotEmpty()) {
-                    repository.importMachineCatalog(machines)
-                    val actionText = if (clearExistingFirst) "Se reemplazó el catálogo actual y se importaron" else "Se importaron"
-                    _statusMessage.value = "$actionText ${machines.size} máquinas al catálogo correctamente."
-                    val sample = machines.first()
-                    _extractionResult.value = ExtractedMachineData(
-                        serialNumber = sample.serialNumber,
-                        brand = sample.brand,
-                        model = sample.model,
-                        assetNumber = sample.assetNumber,
-                        machineNumber = sample.machineNumber,
-                        issueDescription = "Catálogo actualizado"
-                    )
-                } else {
-                    _statusMessage.value = "No se encontraron máquinas válidas en la hoja de cálculo."
-                }
-            } catch (e: Exception) {
-                _statusMessage.value = "Error al procesar la hoja de cálculo: ${e.message}"
-            } finally {
-                _isExtractingFile.value = false
-            }
-        }
-    }
-
-    fun importMachinesFromStream(inputStream: java.io.InputStream, clearExistingFirst: Boolean = false) {
-        try {
-            val bytes = inputStream.readBytes()
-            importMachinesFromBytes(bytes, clearExistingFirst)
-        } catch (e: Exception) {
-            _statusMessage.value = "Error al leer el archivo: ${e.message}"
-        }
-    }
-
-    fun extractDataFromStream(inputStream: java.io.InputStream, isCsvCatalog: Boolean = false) {
-        viewModelScope.launch {
-            _isExtractingFile.value = true
-            try {
-                if (isCsvCatalog) {
-                    val machines = FileParserUtil.parseStreamToMachines(inputStream)
-                    if (machines.isNotEmpty()) {
-                        repository.importMachineCatalog(machines)
-                        _statusMessage.value = "Se importaron ${machines.size} máquinas al catálogo correctamente."
-                    }
-                    return@launch
-                }
-
-                val extractedText = FileParserUtil.extractTextFromStream(inputStream)
-                extractDataFromTextOrFile(extractedText, isCsvCatalog = false)
-            } catch (e: Exception) {
-                _statusMessage.value = "Error al procesar archivo: ${e.message}"
-            } finally {
-                _isExtractingFile.value = false
-            }
-        }
-    }
-
-    // --- Step 1: File Data Extraction ---
-    fun extractDataFromTextOrFile(fileContent: String, isCsvCatalog: Boolean = false) {
-        viewModelScope.launch {
-            _isExtractingFile.value = true
-            try {
-                if (isCsvCatalog || fileContent.contains(",") && fileContent.contains("\n")) {
-                    val machines = FileParserUtil.parseCsvToMachines(fileContent)
-                    if (machines.isNotEmpty()) {
-                        repository.importMachineCatalog(machines)
-                        _statusMessage.value = "Se importaron ${machines.size} máquinas al catálogo correctamente."
-                    }
-                }
-
-                // Call Gemini / Fallback to extract 4 key points: Serial, Brand, Model, Asset
-                val result = GeminiExtractionService.extractDataFromTextOrDocument(fileContent)
-                _extractionResult.value = result
-
-                val greeting = getTimeOfDayGreeting()
-                val machineNum = result.machineNumber.ifBlank { "N/A" }
-                val issue = result.issueDescription.ifBlank { "Falla reportada en archivo adjunto" }
-
-                val generatedBody = """
-                    $greeting estimados,
-                    
-                    Nos podrían apoyar con la revisión y atención de la siguiente terminal, la cual presenta el siguiente inconveniente:
-                    
-                    Detalle de la falla: $issue.
-                    
-                    --- DATOS EXTRAÍDOS ---
-                    • Asset Number: ${result.assetNumber.ifBlank { "AST-EXTRAIDO" }}
-                    • Número de Serie: ${result.serialNumber.ifBlank { "SN-DESCONOCIDO" }}
-                    • Marca: ${result.brand.ifBlank { "N/A" }}
-                    • Modelo: ${result.model.ifBlank { "N/A" }}
-                    
-                    Quedamos a la espera de sus comentarios y apoyo.
-                    
-                    Saludos cordiales.
-                """.trimIndent()
-
-                val draft = EmailDraftState(
-                    recipient = "soporte@casino.com",
-                    subject = "REPORTE DE TERMINAL",
-                    body = generatedBody,
-                    machineNumber = machineNum,
-                    issueDescription = issue,
-                    brand = result.brand,
-                    model = result.model,
-                    serialNumber = result.serialNumber,
-                    assetNumber = result.assetNumber
-                )
-
-                _currentDraft.value = draft
-            } catch (e: Exception) {
-                _statusMessage.value = "Error extrayendo datos: ${e.message}"
-            } finally {
-                _isExtractingFile.value = false
-            }
-        }
     }
 
     // --- Step 4: History Persistence ---
@@ -605,21 +700,6 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             repository.insertMachine(machine)
             _statusMessage.value = "Máquina ${machine.machineNumber} guardada en el catálogo."
-        }
-    }
-
-    // --- Machine Catalog Deletion / Management ---
-    fun clearMachineCatalog() {
-        viewModelScope.launch {
-            repository.clearAllMachines()
-            _statusMessage.value = "Base del catálogo de máquinas eliminada completamente."
-        }
-    }
-
-    fun restoreDemoMachines() {
-        viewModelScope.launch {
-            repository.restoreDemoMachines()
-            _statusMessage.value = "Catálogo de ejemplo restablecido."
         }
     }
 
