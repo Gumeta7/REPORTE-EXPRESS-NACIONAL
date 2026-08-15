@@ -501,8 +501,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val finalArea = foundMachine?.area ?: "Sala Principal"
             val finalGame = foundMachine?.game?.ifBlank { "General" } ?: "General"
             val formattedBody = buildString {
-                appendLine("$greeting estimados,")
-                appendLine("Nos podrían apoyar con la revisión y atención de la siguiente terminal, la cual presenta el siguiente inconveniente:")
+                appendLine("$greeting estimados, nos podrían apoyar con la revisión y atención de la siguiente terminal, la cual presenta el siguiente inconveniente:")
                 appendLine()
                 appendLine("Detalle de la falla: $cleanedIssue.")
                 appendLine()
@@ -569,8 +568,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val finalSala = machine.sala.ifBlank { venueName.value.ifBlank { "Sala Principal" } }
 
             val formattedBody = buildString {
-                appendLine("$greeting estimados,")
-                appendLine("Nos podrían apoyar con la revisión y atención de la siguiente terminal, la cual presenta el siguiente inconveniente:")
+                appendLine("$greeting estimados, nos podrían apoyar con la revisión y atención de la siguiente terminal, la cual presenta el siguiente inconveniente:")
                 appendLine()
                 appendLine("Detalle de la falla: $cleanedIssue.")
                 appendLine()
