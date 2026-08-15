@@ -500,27 +500,24 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val finalSala = foundMachine?.sala?.ifBlank { null } ?: venueName.value.ifBlank { "Sala Principal" }
             val finalArea = foundMachine?.area ?: "Sala Principal"
             val finalGame = foundMachine?.game?.ifBlank { "General" } ?: "General"
-            val propText = if (foundMachine != null && foundMachine.propietario.isNotBlank()) "\n• Propietario: ${foundMachine.propietario}" else ""
-
-            val formattedBody = """
-                $greeting estimados,
-                
-                Nos podrían apoyar con la revisión y atención de la siguiente terminal, la cual presenta el siguiente inconveniente:
-                
-                Detalle de la falla: $cleanedIssue.
-                
-                --- DATOS DEL EQUIPO ---
-                • Sala / Ubicación: $finalSala
-                • Marca: $finalBrand
-                • Modelo: $finalModel
-                • Asset Number: $finalAsset
-                • Número de Serie: $finalSerial
-                • Área: $finalArea$propText
-                
-                Quedamos a la espera de sus comentarios y apoyo.
-                
-                Saludos cordiales.
-            """.trimIndent()
+            val formattedBody = buildString {
+                appendLine("$greeting estimados,")
+                appendLine("Nos podrían apoyar con la revisión y atención de la siguiente terminal, la cual presenta el siguiente inconveniente:")
+                appendLine()
+                appendLine("Detalle de la falla: $cleanedIssue.")
+                appendLine()
+                appendLine("--- Datos del equipo ---")
+                appendLine("• Sala / Ubicación: $finalSala")
+                appendLine("• Marca: $finalBrand")
+                appendLine("• Modelo: $finalModel")
+                appendLine("• Asset Number: $finalAsset")
+                appendLine("• Número de Serie: $finalSerial")
+                appendLine("• Área: $finalArea")
+                appendLine()
+                appendLine("Quedamos a la espera de sus comentarios y apoyo.")
+                appendLine()
+                append("Saludos cordiales.")
+            }
 
             val subjectLine = "REPORTE DE TERMINAL - $finalSala (ASSET: $finalAsset)"
 
@@ -570,27 +567,25 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val greeting = getTimeOfDayGreeting()
             val cleanedIssue = issueDescription.trim().ifBlank { "Falla reportada en terminal" }
             val finalSala = machine.sala.ifBlank { venueName.value.ifBlank { "Sala Principal" } }
-            val propLine = if (machine.propietario.isNotBlank()) "\n• Propietario: ${machine.propietario}" else ""
 
-            val formattedBody = """
-                $greeting estimados,
-                
-                Nos podrían apoyar con la revisión y atención de la siguiente terminal, la cual presenta el siguiente inconveniente:
-                
-                Detalle de la falla: $cleanedIssue.
-                
-                --- DATOS DEL EQUIPO ---
-                • Sala / Ubicación: $finalSala
-                • Marca: ${machine.brand}
-                • Modelo: ${machine.model}
-                • Asset Number: ${machine.assetNumber}
-                • Número de Serie: ${machine.serialNumber}
-                • Área: ${machine.area}$propLine
-                
-                Quedamos a la espera de sus comentarios y apoyo.
-                
-                Saludos cordiales.
-            """.trimIndent()
+            val formattedBody = buildString {
+                appendLine("$greeting estimados,")
+                appendLine("Nos podrían apoyar con la revisión y atención de la siguiente terminal, la cual presenta el siguiente inconveniente:")
+                appendLine()
+                appendLine("Detalle de la falla: $cleanedIssue.")
+                appendLine()
+                appendLine("--- Datos del equipo ---")
+                appendLine("• Sala / Ubicación: $finalSala")
+                appendLine("• Marca: ${machine.brand}")
+                appendLine("• Modelo: ${machine.model}")
+                appendLine("• Asset Number: ${machine.assetNumber}")
+                appendLine("• Número de Serie: ${machine.serialNumber}")
+                appendLine("• Área: ${machine.area}")
+                appendLine()
+                appendLine("Quedamos a la espera de sus comentarios y apoyo.")
+                appendLine()
+                append("Saludos cordiales.")
+            }
 
             val subjectLine = "REPORTE DE TERMINAL - $finalSala (ASSET: ${machine.assetNumber})"
 
