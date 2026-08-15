@@ -146,12 +146,18 @@ fun VisitsScreen(
     viewModel: ReportViewModel
 ) {
     val context = LocalContext.current
-    val storedVenueName by viewModel.venueName.collectAsState()
+    val currentUser by viewModel.currentUser.collectAsState()
     val providerEmailsList by viewModel.providerEmails.collectAsState()
     val allMachinesList by viewModel.allMachines.collectAsState()
 
-    var showVenueDialog by remember { mutableStateOf(storedVenueName.isBlank()) }
-    var venueInput by remember { mutableStateOf(storedVenueName) }
+    val activeSala = remember(currentUser) {
+        if (currentUser?.isAdmin == true) {
+            "CORPORATIVO"
+        } else {
+            currentUser?.sala?.trim()?.ifBlank { "CORPORATIVO" } ?: "CORPORATIVO"
+        }
+    }
+
     var showManageProvidersDialog by remember { mutableStateOf(false) }
     var showAssetGridDialog by remember { mutableStateOf(false) }
     var showIslaGridDialog by remember { mutableStateOf(false) }
@@ -167,16 +173,6 @@ fun VisitsScreen(
     val assetInput by viewModel.visitAssetInput.collectAsState()
     val islaInput by viewModel.visitIslaInput.collectAsState()
 
-    // Synchronize venueInput when storedVenueName changes
-    LaunchedEffect(storedVenueName) {
-        if (storedVenueName.isNotBlank()) {
-            venueInput = storedVenueName
-            showVenueDialog = false
-        } else {
-            showVenueDialog = true
-        }
-    }
-
     // Auto-lookup island from asset input against local database
     LaunchedEffect(assetInput) {
         val trimmedAsset = assetInput.trim()
@@ -189,9 +185,9 @@ fun VisitsScreen(
     }
 
     // Build formatted WhatsApp text
-    val whatsappText = remember(storedVenueName, fecha, proveedor, tecnico, horaEntrada, horaSalida, motivoVisita, assetInput, islaInput) {
+    val whatsappText = remember(activeSala, fecha, proveedor, tecnico, horaEntrada, horaSalida, motivoVisita, assetInput, islaInput) {
         val sb = StringBuilder()
-        sb.append("*${storedVenueName.ifBlank { "SALA REGISTRADA" }.uppercase()}*\n")
+        sb.append("*${activeSala.uppercase()}*\n")
         sb.append("*Fecha:* $fecha\n")
         sb.append("*Proveedor:* ${proveedor.uppercase()}\n")
         sb.append("*Técnico:* ${tecnico.uppercase()}\n")
@@ -218,7 +214,7 @@ fun VisitsScreen(
     ) {
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Venue Name Header Card
+        // Venue Name Header Card (Automatic & Read-Only)
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -230,45 +226,25 @@ fun VisitsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Store,
-                        contentDescription = "Sala",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(end = 12.dp)
+                Icon(
+                    imageVector = Icons.Default.Store,
+                    contentDescription = "Sala",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(end = 12.dp)
+                )
+                Column {
+                    Text(
+                        text = if (currentUser?.isAdmin == true) "Ubicación (Administrador):" else "Sala / Casino:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )
-                    Column {
-                        Text(
-                            text = "Sala / Casino:",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                        )
-                        Text(
-                            text = storedVenueName.ifBlank { "Presiona para configurar" }.uppercase(),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                }
-
-                IconButton(
-                    onClick = {
-                        venueInput = storedVenueName
-                        showVenueDialog = true
-                    },
-                    modifier = Modifier.testTag("edit_venue_name_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Cambiar Sala",
-                        tint = MaterialTheme.colorScheme.primary
+                    Text(
+                        text = activeSala.uppercase(),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
@@ -746,86 +722,7 @@ fun VisitsScreen(
         Spacer(modifier = Modifier.height(24.dp))
     }
 
-    // Dialog for Initial or Edit Venue Name
-    val distinctSalasForVenue by viewModel.distinctSalas.collectAsState()
 
-    if (showVenueDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                if (storedVenueName.isNotBlank()) {
-                    showVenueDialog = false
-                }
-            },
-            title = {
-                Text(
-                    text = "Nombre de la Sala / Casino",
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Column {
-                    Text(
-                        text = "Ingresa o selecciona el nombre de la sala para mantenerlo fijo en tus reportes de visitas.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Spacer(modifier = Modifier.height(14.dp))
-                    OutlinedTextField(
-                        value = venueInput,
-                        onValueChange = { venueInput = it },
-                        label = { Text("Nombre de Sala") },
-                        placeholder = { Text("Ej: WINPOT PUERTA DE HIERRO") },
-                        singleLine = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("venue_name_dialog_input"),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    if (distinctSalasForVenue.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = "Salas detectadas en el catálogo:",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            distinctSalasForVenue.forEach { sName ->
-                                AssistChip(
-                                    onClick = { venueInput = sName.uppercase() },
-                                    label = { Text(sName, style = MaterialTheme.typography.labelSmall) }
-                                )
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (venueInput.isNotBlank()) {
-                            viewModel.saveVenueName(venueInput)
-                            showVenueDialog = false
-                        }
-                    },
-                    enabled = venueInput.isNotBlank(),
-                    modifier = Modifier.testTag("save_venue_name_button")
-                ) {
-                    Text("Guardar Sala")
-                }
-            },
-            dismissButton = {
-                if (storedVenueName.isNotBlank()) {
-                    TextButton(onClick = { showVenueDialog = false }) {
-                        Text("Cancelar")
-                    }
-                }
-            }
-        )
-    }
 
     if (showManageProvidersDialog) {
         ManageProvidersDialog(
