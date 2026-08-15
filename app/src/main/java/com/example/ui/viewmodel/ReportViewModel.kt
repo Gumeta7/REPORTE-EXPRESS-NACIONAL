@@ -148,6 +148,18 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
+    // --- Easter Egg State (10 failed login attempts) ---
+    private val _failedAttemptsCount = MutableStateFlow(0)
+    val failedAttemptsCount: StateFlow<Int> = _failedAttemptsCount.asStateFlow()
+
+    private val _showGorillaEasterEgg = MutableStateFlow(false)
+    val showGorillaEasterEgg: StateFlow<Boolean> = _showGorillaEasterEgg.asStateFlow()
+
+    fun dismissGorillaEasterEgg() {
+        _showGorillaEasterEgg.value = false
+        _failedAttemptsCount.value = 0
+    }
+
     // --- Authentication Actions ---
     fun login(usuarioInput: String, passwordInput: String) {
         viewModelScope.launch {
@@ -174,6 +186,10 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                         return@launch
                     }
 
+                    // Reset failed attempts on success
+                    _failedAttemptsCount.value = 0
+                    _showGorillaEasterEgg.value = false
+
                     // Save session
                     prefs.edit()
                         .putBoolean("is_logged_in", true)
@@ -193,6 +209,10 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                         visitTecnico.value = technician.nombre
                     }
                 } else {
+                    _failedAttemptsCount.value += 1
+                    if (_failedAttemptsCount.value >= 10) {
+                        _showGorillaEasterEgg.value = true
+                    }
                     _loginErrorMessage.value = "Usuario o contraseña incorrectos."
                 }
             } catch (e: Exception) {
