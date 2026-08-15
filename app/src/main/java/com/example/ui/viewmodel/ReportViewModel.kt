@@ -238,6 +238,14 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             initialValue = emptyList()
         )
 
+    // --- Admin Selected Sala Filter ---
+    private val _adminSelectedSala = MutableStateFlow("")
+    val adminSelectedSala: StateFlow<String> = _adminSelectedSala.asStateFlow()
+
+    fun setAdminSelectedSala(sala: String) {
+        _adminSelectedSala.value = sala
+    }
+
     // --- Search Queries ---
     private val _locationSearchQuery = MutableStateFlow("")
     val locationSearchQuery: StateFlow<String> = _locationSearchQuery.asStateFlow()
@@ -245,7 +253,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     private val _historySearchQuery = MutableStateFlow("")
     val historySearchQuery: StateFlow<String> = _historySearchQuery.asStateFlow()
 
-    // --- Dynamic Machine Catalog Stream (Filtered by User's Sala if not Admin) ---
+    // --- Dynamic Machine Catalog Stream (Filtered by User's Sala or Admin's Selection) ---
     val allMachines: StateFlow<List<MachineEntity>> = repository.allMachines
         .stateIn(
             scope = viewModelScope,
@@ -255,11 +263,22 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
     val machineCatalog: StateFlow<List<MachineEntity>> = combine(
         _locationSearchQuery.flatMapLatest { query -> repository.searchMachines(query) },
-        _currentUser
-    ) { machines, user ->
+        _currentUser,
+        _adminSelectedSala
+    ) { machines, user, selectedSala ->
         if (user == null || user.isAdmin) {
-            // Admins see all machines matching the query
-            machines
+            // Admin: Filter by selectedSala if specified and not "TODAS"
+            if (selectedSala.isNotBlank() && !selectedSala.equals("TODAS", ignoreCase = true) && !selectedSala.equals("Todas las Salas", ignoreCase = true)) {
+                val filterSalaNormalized = selectedSala.trim().lowercase()
+                machines.filter { m ->
+                    val machineSalaNormalized = m.sala.trim().lowercase()
+                    machineSalaNormalized == filterSalaNormalized ||
+                        (filterSalaNormalized.isNotEmpty() && machineSalaNormalized.contains(filterSalaNormalized)) ||
+                        (machineSalaNormalized.isNotEmpty() && filterSalaNormalized.contains(machineSalaNormalized))
+                }
+            } else {
+                machines
+            }
         } else {
             // Regular technicians see ONLY machines belonging to their assigned Sala
             val userSalaNormalized = user.sala.trim().lowercase()
