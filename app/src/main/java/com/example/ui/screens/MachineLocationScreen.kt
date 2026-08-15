@@ -18,21 +18,20 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.ReportProblem
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -199,7 +198,7 @@ fun MachineLocationCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
 
-            // 1. SALA & PROPIETARIO (Header Badges)
+            // 1. CABECERA: SALA & PROPIETARIO (Con leyenda clara 'Propietario:')
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -218,7 +217,7 @@ fun MachineLocationCard(
                         Icon(
                             imageVector = Icons.Default.Storefront,
                             contentDescription = "Sala",
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(15.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(6.dp))
@@ -233,7 +232,7 @@ fun MachineLocationCard(
                     }
                 }
 
-                // Propietario
+                // Propietario con etiqueta explícita
                 if (machine.propietario.isNotBlank()) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Surface(
@@ -250,12 +249,14 @@ fun MachineLocationCard(
                                 modifier = Modifier.size(14.dp),
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(5.dp))
                             Text(
-                                text = machine.propietario,
+                                text = "Propietario: ${machine.propietario}",
                                 style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -264,78 +265,88 @@ fun MachineLocationCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 2. MARCA & MODELO
+            // 2. CUADRÍCULA SIMÉTRICA 2x2: (Fila 1: Marca & Modelo | Fila 2: Asset & Área)
+            // Fila 1: Marca & Modelo
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Marca:",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = machine.brand.ifBlank { "N/A" },
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
+                MachineGridBox(
+                    icon = Icons.Default.Label,
+                    label = "Marca",
+                    value = machine.brand.ifBlank { "N/A" },
+                    modifier = Modifier.weight(1f)
+                )
 
-                Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.End
-                ) {
-                    Text(
-                        text = "Modelo:",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = machine.model.ifBlank { "N/A" },
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = if (isDarkTheme) Color(0xFF00E5FF) else MaterialTheme.colorScheme.secondary
-                    )
-                }
+                MachineGridBox(
+                    icon = Icons.Default.Tune,
+                    label = "Modelo",
+                    value = machine.model.ifBlank { "N/A" },
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             Spacer(modifier = Modifier.height(10.dp))
-            HorizontalDivider(
-                color = if (isDarkTheme) Color(0xFF283648) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-            )
-            Spacer(modifier = Modifier.height(10.dp))
 
-            // 3. ASSET, SERIE & ÁREA (3 Columns Info Grid)
+            // Fila 2: Asset & Área
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Asset
-                MachineDetailBox(
+                MachineGridBox(
                     icon = Icons.Default.Numbers,
                     label = "Asset",
                     value = machine.assetNumber.ifBlank { machine.machineNumber },
                     modifier = Modifier.weight(1f)
                 )
 
-                // Serie
-                MachineDetailBox(
-                    icon = Icons.Default.Fingerprint,
-                    label = "Serie",
-                    value = machine.serialNumber.ifBlank { "N/A" },
-                    modifier = Modifier.weight(1.2f)
-                )
-
-                // Área
-                MachineDetailBox(
+                MachineGridBox(
                     icon = Icons.Default.Place,
                     label = "Área",
                     value = machine.area.ifBlank { "General" },
                     modifier = Modifier.weight(1f)
                 )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // 3. BARRA SIMÉTRICA DE SERIE
+            val boxBg = if (isDarkTheme) Color(0xFF222F3E) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            val boxBorder = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF324458)) else null
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = boxBg,
+                border = boxBorder,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Fingerprint,
+                            contentDescription = "Serie",
+                            modifier = Modifier.size(15.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Número de Serie:",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Text(
+                        text = machine.serialNumber.ifBlank { "N/A" },
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -364,15 +375,15 @@ fun MachineLocationCard(
 }
 
 @Composable
-fun MachineDetailBox(
+fun MachineGridBox(
     icon: ImageVector,
     label: String,
     value: String,
     modifier: Modifier = Modifier
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val boxBg = if (isDarkTheme) Color(0xFF233040) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-    val boxBorder = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF33455A)) else null
+    val boxBg = if (isDarkTheme) Color(0xFF222F3E) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+    val boxBorder = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF324458)) else null
 
     Surface(
         modifier = modifier,
@@ -380,15 +391,15 @@ fun MachineDetailBox(
         color = boxBg,
         border = boxBorder
     ) {
-        Column(modifier = Modifier.padding(8.dp)) {
+        Column(modifier = Modifier.padding(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = icon,
                     contentDescription = label,
-                    modifier = Modifier.size(13.dp),
+                    modifier = Modifier.size(14.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.width(3.dp))
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelSmall,
@@ -396,10 +407,10 @@ fun MachineDetailBox(
                     fontWeight = FontWeight.Bold
                 )
             }
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(3.dp))
             Text(
                 text = value,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
@@ -438,7 +449,7 @@ fun ReportMachineFailureDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Machine Summary Card (7 Campos)
+                // Machine Summary Card
                 Surface(
                     shape = RoundedCornerShape(14.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
