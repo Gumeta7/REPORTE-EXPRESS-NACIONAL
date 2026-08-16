@@ -48,6 +48,12 @@ class ReportRepository(
         return machineDao.getMachineByNumber(trimmed)
     }
 
+    suspend fun findMachineBySerialOrAssetOrQr(key: String): MachineEntity? {
+        val trimmed = key.trim()
+        if (trimmed.isEmpty()) return null
+        return machineDao.getMachineBySerialOrAssetOrQr(trimmed)
+    }
+
     suspend fun insertMachine(machine: MachineEntity) {
         machineDao.insertMachine(machine)
     }

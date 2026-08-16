@@ -1,5 +1,6 @@
 package com.example
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -48,6 +49,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,6 +69,7 @@ import com.example.ui.screens.HistoryScreen
 import com.example.ui.screens.LoginScreen
 import com.example.ui.screens.MachineLocationScreen
 import com.example.ui.screens.QuickReportScreen
+import com.example.ui.screens.ReportMachineFailureDialog
 import com.example.ui.screens.VisitsScreen
 import com.example.ui.theme.ReportesExpressTheme
 import com.example.ui.viewmodel.ReportViewModel
@@ -79,6 +82,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Handle Deep Link / QR scan when opening the app
+        viewModel.handleDeepLink(intent?.data)
+
         setContent {
             val isDarkThemePref by viewModel.isDarkTheme.collectAsState()
             val systemInDark = isSystemInDarkTheme()
@@ -96,6 +103,13 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        // Handle Deep Link / QR scan if app was already running in background
+        viewModel.handleDeepLink(intent.data)
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -112,7 +126,17 @@ fun MainAppScreen(viewModel: ReportViewModel) {
     val systemInDark = isSystemInDarkTheme()
     val activeDarkTheme = isDarkThemePref ?: systemInDark
 
+    // QR Deep Link Navigation State
+    val targetTab by viewModel.targetTabFromDeepLink.collectAsState()
+    val deepLinkMachine by viewModel.deepLinkMachine.collectAsState()
+
     var showLogoutConfirmDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(targetTab) {
+        targetTab?.let { page ->
+            pagerState.animateScrollToPage(page)
+        }
+    }
 
     Scaffold(
         modifier = Modifier
@@ -367,6 +391,20 @@ fun MainAppScreen(viewModel: ReportViewModel) {
                     TextButton(onClick = { showLogoutConfirmDialog = false }) {
                         Text("Cancelar")
                     }
+                }
+            )
+        }
+
+        // Deep Link Machine Report Dialog (Auto opened from QR scan)
+        deepLinkMachine?.let { machine ->
+            ReportMachineFailureDialog(
+                machine = machine,
+                onDismiss = {
+                    viewModel.clearDeepLinkMachine()
+                },
+                onConfirm = { failureDescription ->
+                    viewModel.generateReportForMachine(machine, failureDescription)
+                    viewModel.clearDeepLinkMachine()
                 }
             )
         }

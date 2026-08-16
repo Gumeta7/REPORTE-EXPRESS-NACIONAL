@@ -34,6 +34,12 @@ La información de cada máquina se organiza y presenta visualmente en tarjetas 
 - **Búsqueda Instantánea**: Búsqueda dinámica en tiempo real por cualquiera de los 7 campos.
 - **Reporte Directo desde Catálogo**: Botón en cada tarjeta para redactar y enviar una incidencia específica con todos los datos precargados.
 
+### 4. 📷 Lectura de Códigos QR por Cámara Nativa (Deep Links)
+- **Apertura Directa**: Al escanear el código QR de una máquina con la cámara nativa del teléfono, se abre directamente la aplicación cargando la máquina en pantalla.
+- **Formato del QR (por Número de Serie)**:
+  `https://reportesexpress.app/maquina?serie=FENIXD0031`
+- **Acceso Rápido a Reportes**: Abre de inmediato el diálogo de reporte de falla con los datos de la terminal precargados.
+
 ### 4. ⚡ Generador Rápido de Reportes
 - **Borradores Automatizados**: Genera plantillas de correo con saludos según la hora del día (*Buenos días*, *Buenas tardes*, *Buenas noches*).
 - **Asociación Inteligente**: Autocompleta automáticamente los 7 campos del equipo y el correo del proveedor según la marca.

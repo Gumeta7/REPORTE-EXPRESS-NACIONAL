@@ -115,6 +115,56 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         return repository.findMachine(assetOrNum)
     }
 
+    // --- Deep Link & QR Code Navigation State ---
+    private val _deepLinkMachine = MutableStateFlow<MachineEntity?>(null)
+    val deepLinkMachine: StateFlow<MachineEntity?> = _deepLinkMachine.asStateFlow()
+
+    private val _targetTabFromDeepLink = MutableStateFlow<Int?>(null)
+    val targetTabFromDeepLink: StateFlow<Int?> = _targetTabFromDeepLink.asStateFlow()
+
+    fun clearDeepLinkMachine() {
+        _deepLinkMachine.value = null
+        _targetTabFromDeepLink.value = null
+    }
+
+    fun handleDeepLink(uri: android.net.Uri?) {
+        if (uri == null) return
+        viewModelScope.launch {
+            try {
+                val paramKey = uri.getQueryParameter("serie")
+                    ?: uri.getQueryParameter("serial")
+                    ?: uri.getQueryParameter("asset")
+                    ?: uri.getQueryParameter("qr")
+                    ?: uri.getQueryParameter("qrid")
+                    ?: uri.getQueryParameter("id")
+                    ?: uri.lastPathSegment?.takeIf { it != "maquina" }
+
+                if (!paramKey.isNullOrBlank()) {
+                    // If no machines loaded yet, ensure initial sync is triggered
+                    if (repository.getMachineCount() == 0) {
+                        syncFromDrive(showProgressMessage = false)
+                    }
+
+                    val found = repository.findMachineBySerialOrAssetOrQr(paramKey)
+                    if (found != null) {
+                        _deepLinkMachine.value = found
+                        _locationSearchQuery.value = found.serialNumber.ifBlank { found.assetNumber }
+                        if (_currentUser.value?.isAdmin == true && found.sala.isNotBlank()) {
+                            _adminSelectedSala.value = found.sala
+                        }
+                        _targetTabFromDeepLink.value = 2 // Switch to Tab 'Máquinas'
+                    } else {
+                        _locationSearchQuery.value = paramKey
+                        _targetTabFromDeepLink.value = 2
+                        _statusMessage.value = "Máquina con identificador '$paramKey' cargada en la búsqueda."
+                    }
+                }
+            } catch (_: Exception) {
+                // Ignore deep link parse errors
+            }
+        }
+    }
+
     init {
         val database = AppDatabase.getDatabase(application)
         repository = ReportRepository(

@@ -34,6 +34,16 @@ interface MachineDao {
     @Query("SELECT * FROM machines WHERE machineNumber = :machineNum OR assetNumber = :machineNum OR serialNumber = :machineNum LIMIT 1")
     suspend fun getMachineByNumber(machineNum: String): MachineEntity?
 
+    @Query("""
+        SELECT * FROM machines 
+        WHERE LOWER(TRIM(serialNumber)) = LOWER(TRIM(:key)) 
+           OR LOWER(TRIM(assetNumber)) = LOWER(TRIM(:key)) 
+           OR LOWER(TRIM(qrId)) = LOWER(TRIM(:key))
+           OR LOWER(TRIM(machineNumber)) = LOWER(TRIM(:key))
+        LIMIT 1
+    """)
+    suspend fun getMachineBySerialOrAssetOrQr(key: String): MachineEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMachine(machine: MachineEntity)
 

@@ -32,12 +32,35 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:label="@string/app_name"
             android:theme="@style/Theme.MyApplication">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Deep Link Handler for QR Codes (URL directa y Custom Scheme) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <!-- https://reportesexpress.app/maquina?serie=XXXXX o /maquina/XXXXX -->
+                <data
+                    android:scheme="https"
+                    android:host="reportesexpress.app"
+                    android:pathPrefix="/maquina" />
+
+                <data
+                    android:scheme="http"
+                    android:host="reportesexpress.app"
+                    android:pathPrefix="/maquina" />
+
+                <!-- Esquema directo reportesexpress://maquina?serie=XXXXX -->
+                <data
+                    android:scheme="reportesexpress"
+                    android:host="maquina" />
             </intent-filter>
         </activity>
     </application>
