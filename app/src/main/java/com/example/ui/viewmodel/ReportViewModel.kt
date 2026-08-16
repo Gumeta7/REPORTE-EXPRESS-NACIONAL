@@ -122,9 +122,16 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     private val _targetTabFromDeepLink = MutableStateFlow<Int?>(null)
     val targetTabFromDeepLink: StateFlow<Int?> = _targetTabFromDeepLink.asStateFlow()
 
+    private val _deepLinkSalaMismatchError = MutableStateFlow<String?>(null)
+    val deepLinkSalaMismatchError: StateFlow<String?> = _deepLinkSalaMismatchError.asStateFlow()
+
     fun clearDeepLinkMachine() {
         _deepLinkMachine.value = null
         _targetTabFromDeepLink.value = null
+    }
+
+    fun clearDeepLinkSalaMismatchError() {
+        _deepLinkSalaMismatchError.value = null
     }
 
     fun handleDeepLink(uri: android.net.Uri?) {
@@ -147,6 +154,21 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
                     val found = repository.findMachineBySerialOrAssetOrQr(paramKey)
                     if (found != null) {
+                        val user = _currentUser.value
+                        if (user != null && !user.isAdmin) {
+                            // Check if machine belongs to technician's assigned Sala
+                            val userSalaNormalized = user.sala.trim().lowercase()
+                            val machineSalaNormalized = found.sala.trim().lowercase()
+                            val isSameSala = machineSalaNormalized == userSalaNormalized ||
+                                (userSalaNormalized.isNotEmpty() && machineSalaNormalized.contains(userSalaNormalized)) ||
+                                (machineSalaNormalized.isNotEmpty() && userSalaNormalized.contains(machineSalaNormalized))
+
+                            if (!isSameSala) {
+                                _deepLinkSalaMismatchError.value = "Esta máquina pertenece a '${found.sala}'. Tu usuario (${user.nombre}) está asignado a '${user.sala}'. No tienes permisos para acceder a máquinas de otras salas."
+                                return@launch
+                            }
+                        }
+
                         _deepLinkMachine.value = found
                         _locationSearchQuery.value = found.serialNumber.ifBlank { found.assetNumber }
                         if (_currentUser.value?.isAdmin == true && found.sala.isNotBlank()) {

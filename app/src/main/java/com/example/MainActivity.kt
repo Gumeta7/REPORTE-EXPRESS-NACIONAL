@@ -409,6 +409,45 @@ fun MainAppScreen(viewModel: ReportViewModel) {
             )
         }
 
+        // Deep Link Sala Mismatch Warning Dialog (Technician trying to scan other venue's QR)
+        val deepLinkSalaMismatchError by viewModel.deepLinkSalaMismatchError.collectAsState()
+        deepLinkSalaMismatchError?.let { errorMessage ->
+            AlertDialog(
+                onDismissRequest = { viewModel.clearDeepLinkSalaMismatchError() },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.Shield,
+                        contentDescription = "Acceso Restringido",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(36.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        text = "Ubicación No Compatible",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                },
+                text = {
+                    Text(
+                        text = errorMessage,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { viewModel.clearDeepLinkSalaMismatchError() },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Entendido", fontWeight = FontWeight.Bold)
+                    }
+                }
+            )
+        }
+
         // Missing Provider Email Alert Dialog
         missingEmailState?.let { state ->
             MissingProviderEmailDialog(
