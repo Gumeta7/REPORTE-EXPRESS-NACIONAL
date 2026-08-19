@@ -428,7 +428,8 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     // --- Google Drive Spreadsheet Sync Function ---
     fun syncFromDrive(
         url: String = DriveSyncService.DEFAULT_DRIVE_SHEET_URL,
-        showProgressMessage: Boolean = true
+        showProgressMessage: Boolean = true,
+        forceSyncMachines: Boolean = false
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             _isSyncingDrive.value = true
@@ -438,9 +439,16 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                     val parsedMachines = FileParserUtil.parseStreamToMachines(bytes.inputStream())
                     val parsedTechnicians = FileParserUtil.parseStreamToTechnicians(bytes.inputStream())
 
-                    if (parsedMachines.isNotEmpty()) {
+                    val hasLocalOverride = prefs.getBoolean("has_local_file_override", false)
+                    val localMachineCount = repository.getMachineCount()
+
+                    // Only overwrite machines if explicitly forced or if user hasn't imported a local file
+                    if (parsedMachines.isNotEmpty() && (forceSyncMachines || (!hasLocalOverride && localMachineCount == 0))) {
                         repository.clearAllMachines()
                         repository.importMachineCatalog(parsedMachines)
+                        if (forceSyncMachines) {
+                            prefs.edit().putBoolean("has_local_file_override", false).apply()
+                        }
                     }
 
                     if (parsedTechnicians.isNotEmpty()) {
@@ -470,17 +478,12 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                         _lastSyncTimestampFormatted.value = nowFormatted
 
                         val current = _currentUser.value
+                        val activeMachineCount = repository.getMachineCount()
                         if (current != null && !current.isAdmin) {
-                            val userSalaNormalized = current.sala.trim().lowercase()
-                            val userMachinesCount = parsedMachines.count { m ->
-                                val machineSalaNormalized = m.sala.trim().lowercase()
-                                machineSalaNormalized == userSalaNormalized ||
-                                    (userSalaNormalized.isNotEmpty() && machineSalaNormalized.contains(userSalaNormalized)) ||
-                                    (machineSalaNormalized.isNotEmpty() && userSalaNormalized.contains(machineSalaNormalized))
-                            }
-                            _statusMessage.value = "Datos actualizados exitosamente ($userMachinesCount máquinas)."
+                            val userMachines = repository.findMachine("") // or count
+                            _statusMessage.value = "Datos actualizados exitosamente ($activeMachineCount máquinas disponibles)."
                         } else {
-                            _statusMessage.value = "Datos actualizados exitosamente (${parsedMachines.size} máquinas, ${parsedTechnicians.size} técnicos)."
+                            _statusMessage.value = "Datos actualizados exitosamente ($activeMachineCount máquinas, ${parsedTechnicians.size} técnicos)."
                         }
                     } else {
                         if (showProgressMessage) {
@@ -520,6 +523,8 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                         if (parsedMachines.isNotEmpty()) {
                             repository.clearAllMachines()
                             repository.importMachineCatalog(parsedMachines)
+                            // Mark local override so startup sync doesn't overwrite it
+                            prefs.edit().putBoolean("has_local_file_override", true).apply()
                         }
 
                         if (parsedTechnicians.isNotEmpty()) {

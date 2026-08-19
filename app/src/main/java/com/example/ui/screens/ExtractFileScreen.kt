@@ -138,7 +138,7 @@ fun ExtractFileScreen(
 
         // Action Button: Actualizar Información desde Drive
         Button(
-            onClick = { viewModel.syncFromDrive(showProgressMessage = true) },
+            onClick = { viewModel.syncFromDrive(showProgressMessage = true, forceSyncMachines = true) },
             enabled = !isSyncing,
             modifier = Modifier
                 .fillMaxWidth()
