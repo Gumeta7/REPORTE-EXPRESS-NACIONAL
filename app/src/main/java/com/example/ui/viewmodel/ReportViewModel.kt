@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -417,7 +418,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
     val distinctBrands: StateFlow<List<String>> = allMachines.map { machines ->
         listOf("TODAS") + machines.map { it.brand.trim().uppercase() }.filter { it.isNotBlank() }.distinct().sorted()
-    }.stateIn(
+    }.distinctUntilChanged().stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = listOf("TODAS")

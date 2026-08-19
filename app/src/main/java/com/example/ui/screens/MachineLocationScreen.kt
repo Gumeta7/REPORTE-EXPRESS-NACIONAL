@@ -292,7 +292,7 @@ fun MachineLocationScreen(
                     MachineLocationCard(
                         machine = machine,
                         onReportClick = {
-                            viewModel.requestReportForMachine(machine)
+                            selectedMachineForReport = machine
                         }
                     )
                 }
@@ -317,9 +317,13 @@ fun MachineLocationCard(
     machine: MachineEntity,
     onReportClick: () -> Unit
 ) {
-    val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val cardBgColor = if (isDarkTheme) Color(0xFF19222D) else MaterialTheme.colorScheme.surface
-    val cardBorder = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF2E3E50)) else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val outlineVariantColor = MaterialTheme.colorScheme.outlineVariant
+    val isDarkTheme = remember(surfaceColor) { surfaceColor.luminance() < 0.5f }
+    val cardBgColor = remember(isDarkTheme, surfaceColor) { if (isDarkTheme) Color(0xFF19222D) else surfaceColor }
+    val cardBorder = remember(isDarkTheme, outlineVariantColor) {
+        if (isDarkTheme) BorderStroke(1.dp, Color(0xFF2E3E50)) else BorderStroke(1.dp, outlineVariantColor.copy(alpha = 0.4f))
+    }
 
     Card(
         modifier = Modifier
