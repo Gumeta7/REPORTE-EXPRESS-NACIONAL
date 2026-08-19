@@ -175,7 +175,7 @@ fun QuickReportScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Row with Asset Text Input & Picker Button
+        // Row with Asset Text Input & Picker Button (Equalized Heights)
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -184,7 +184,7 @@ fun QuickReportScreen(
             OutlinedTextField(
                 value = assetSearchInput,
                 onValueChange = { assetSearchInput = it },
-                label = { Text("Escribir Asset (Ej: 361)") },
+                label = { Text("Asset") },
                 placeholder = { Text("Ej. 361") },
                 leadingIcon = {
                     Icon(
@@ -224,30 +224,30 @@ fun QuickReportScreen(
                                 }
                                 assetSearchInput = ""
                             } else {
-                                viewModel.saveVenueName(key) // fallback search notification
+                                viewModel.saveVenueName(key)
                             }
                         }
                     }
                 },
                 enabled = assetSearchInput.isNotBlank(),
                 shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.height(54.dp)
+                modifier = Modifier.height(56.dp)
             ) {
                 Icon(imageVector = Icons.Default.Add, contentDescription = "Agregar")
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Agregar")
+                Text("Agregar", fontWeight = FontWeight.Bold)
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         // Open Full Asset Selector Modal Button
         OutlinedButton(
             onClick = { showAssetPickerModal = true },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(44.dp),
-            shape = RoundedCornerShape(12.dp)
+                .height(48.dp),
+            shape = RoundedCornerShape(14.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.List,
@@ -256,9 +256,11 @@ fun QuickReportScreen(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Seleccionar de la lista del catálogo (${userCatalog.size} disponibles)",
+                text = "Seleccionar del catálogo (${userCatalog.size} disponibles)",
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
@@ -338,16 +340,27 @@ fun QuickReportScreen(
             }
         } else {
             Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = "Ninguna máquina seleccionada. Escribe un Asset arriba o presiona 'Seleccionar de la lista'.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(12.dp)
-                )
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Ninguna máquina seleccionada. Escribe un Asset arriba o presiona 'Seleccionar del catálogo'.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
 
@@ -368,13 +381,15 @@ fun QuickReportScreen(
             onValueChange = { failureDescriptionInput = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(130.dp)
                 .testTag("failure_description_input"),
             placeholder = {
-                Text("Describe la falla o inconveniente que presentan las máquinas seleccionadas (ej. Billetero traba billetes, pantalla táctil descalibrada, error de comunicación, botón de cobro pegado, etc.)")
+                Text(
+                    text = "Describe la falla o inconveniente presentado en las máquinas (ej. Billetero traba billetes, pantalla táctil descalibrada, error de comunicación, botón de cobro pegado, etc.)",
+                    style = MaterialTheme.typography.bodyMedium
+                )
             },
-            minLines = 3,
-            maxLines = 6,
+            minLines = 4,
+            maxLines = 8,
             shape = RoundedCornerShape(16.dp)
         )
 
