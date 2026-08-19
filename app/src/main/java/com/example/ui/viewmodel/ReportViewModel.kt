@@ -663,64 +663,116 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun generateReportForMachine(machine: MachineEntity, issueDescription: String) {
+        generateReportForMultipleMachines(listOf(machine), issueDescription)
+    }
+
+    fun generateReportForMultipleMachines(
+        machines: List<MachineEntity>,
+        issueDescription: String,
+        customRecipient: String = ""
+    ) {
+        if (machines.isEmpty()) return
         viewModelScope.launch {
             val registeredProviders = providerEmails.value
-            val lowerBrand = machine.brand.lowercase().trim()
 
-            val matchedProvider = registeredProviders.find { p ->
-                val pName = p.providerName.lowercase().trim()
-                pName.isNotBlank() && (lowerBrand.contains(pName) || pName.contains(lowerBrand))
+            // 1. Unify Salas
+            val uniqueSalas = machines.map { it.sala.trim() }.filter { it.isNotBlank() }.distinct()
+            val finalSala = if (uniqueSalas.isNotEmpty()) {
+                uniqueSalas.joinToString(", ")
+            } else {
+                venueName.value.ifBlank { "Sala Principal" }
             }
 
-            val finalRecipient = matchedProvider?.email?.ifBlank { null } ?: ""
+            // 2. Unify Brands
+            val uniqueBrands = machines.map { it.brand.trim() }.filter { it.isNotBlank() }.distinct()
+            val finalBrand = if (uniqueBrands.isNotEmpty()) uniqueBrands.joinToString(", ") else "Zitro"
+
+            // 3. Unify Models
+            val uniqueModels = machines.map { it.model.trim() }.filter { it.isNotBlank() }.distinct()
+            val finalModel = if (uniqueModels.isNotEmpty()) uniqueModels.joinToString(", ") else "Estándar"
+
+            // 4. Unify Serial Numbers
+            val uniqueSerials = machines.map { it.serialNumber.trim() }.filter { it.isNotBlank() }.distinct()
+            val finalSerial = if (uniqueSerials.isNotEmpty()) uniqueSerials.joinToString(", ") else "N/A"
+
+            // 5. Unify Assets
+            val uniqueAssets = machines.map { it.assetNumber.trim().ifBlank { it.machineNumber.trim() } }.filter { it.isNotBlank() }.distinct()
+            val finalAsset = if (uniqueAssets.isNotEmpty()) uniqueAssets.joinToString(", ") else "N/A"
+
+            // 6. Unify Areas
+            val uniqueAreas = machines.map { it.area.trim() }.filter { it.isNotBlank() }.distinct()
+            val finalArea = if (uniqueAreas.isNotEmpty()) uniqueAreas.joinToString(", ") else "General"
+
+            // 7. Resolve Recipient Emails
+            val matchedEmails = mutableListOf<String>()
+            for (brand in uniqueBrands) {
+                val lowerBrand = brand.lowercase()
+                val provider = registeredProviders.find { p ->
+                    val pName = p.providerName.lowercase().trim()
+                    pName.isNotBlank() && (lowerBrand.contains(pName) || pName.contains(lowerBrand))
+                }
+                if (provider != null && provider.email.isNotBlank()) {
+                    matchedEmails.add(provider.email.trim())
+                }
+            }
+
+            val finalRecipient = when {
+                customRecipient.isNotBlank() -> customRecipient.trim()
+                matchedEmails.isNotEmpty() -> matchedEmails.distinct().joinToString(", ")
+                else -> ""
+            }
 
             val greeting = getTimeOfDayGreeting()
-            val cleanedIssue = issueDescription.trim().ifBlank { "Falla reportada en terminal" }
-            val finalSala = machine.sala.ifBlank { venueName.value.ifBlank { "Sala Principal" } }
+            val cleanedIssue = issueDescription.trim().ifBlank { "Falla reportada en terminales" }
+            val isSingle = machines.size == 1
+
+            val introLine = if (isSingle) {
+                "$greeting estimados, nos podrían apoyar con la revisión y atención de la siguiente terminal, la cual presenta el siguiente inconveniente:"
+            } else {
+                "$greeting estimados, nos podrían apoyar con la revisión y atención de las siguientes terminales, las cuales presentan el siguiente inconveniente:"
+            }
 
             val formattedBody = buildString {
-                appendLine("$greeting estimados, nos podrían apoyar con la revisión y atención de la siguiente terminal, la cual presenta el siguiente inconveniente:")
+                appendLine(introLine)
                 appendLine()
                 appendLine("Detalle de la falla: $cleanedIssue.")
                 appendLine()
-                appendLine("--- Datos del equipo ---")
+                appendLine(if (isSingle) "--- Datos del equipo ---" else "--- Datos de los equipos ---")
                 appendLine("• Sala / Ubicación: $finalSala")
-                appendLine("• Marca: ${machine.brand}")
-                appendLine("• Modelo: ${machine.model}")
-                appendLine("• Asset Number: ${machine.assetNumber}")
-                appendLine("• Número de Serie: ${machine.serialNumber}")
-                appendLine("• Área: ${machine.area}")
+                appendLine("• Marca: $finalBrand")
+                appendLine("• Modelo: $finalModel")
+                appendLine("• Asset Number: $finalAsset")
+                appendLine("• Número de Serie: $finalSerial")
+                appendLine("• Área: $finalArea")
                 appendLine()
                 appendLine("Quedamos a la espera de sus comentarios y apoyo.")
                 appendLine()
                 append("Saludos cordiales.")
             }
 
-            val subjectLine = "REPORTE DE TERMINAL - $finalSala (ASSET: ${machine.assetNumber})"
+            val subjectLine = if (isSingle) {
+                "REPORTE DE TERMINAL - $finalSala (ASSET: $finalAsset)"
+            } else {
+                "REPORTE DE TERMINALES - $finalSala (ASSETS: $finalAsset)"
+            }
 
             val draft = EmailDraftState(
                 recipient = finalRecipient,
                 subject = subjectLine,
                 body = formattedBody,
-                machineNumber = machine.machineNumber,
+                machineNumber = finalAsset,
                 issueDescription = cleanedIssue,
-                brand = machine.brand,
-                model = machine.model,
-                serialNumber = machine.serialNumber,
-                assetNumber = machine.assetNumber,
+                brand = finalBrand,
+                model = finalModel,
+                serialNumber = finalSerial,
+                assetNumber = finalAsset,
                 sala = finalSala
             )
 
-            if (matchedProvider != null && matchedProvider.email.isBlank()) {
+            if (finalRecipient.isBlank()) {
                 _missingProviderEmailState.value = MissingProviderEmailState(
-                    providerName = matchedProvider.providerName,
-                    providerId = matchedProvider.id,
-                    draftToOpen = draft
-                )
-            } else if (finalRecipient.isBlank()) {
-                _missingProviderEmailState.value = MissingProviderEmailState(
-                    providerName = machine.brand.ifBlank { "Proveedor" },
-                    providerId = matchedProvider?.id,
+                    providerName = if (uniqueBrands.isNotEmpty()) uniqueBrands.first() else "Proveedor",
+                    providerId = null,
                     draftToOpen = draft
                 )
             } else {

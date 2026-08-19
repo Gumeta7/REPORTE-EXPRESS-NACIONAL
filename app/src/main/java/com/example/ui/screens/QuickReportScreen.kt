@@ -9,9 +9,12 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,19 +23,24 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Casino
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Numbers
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,44 +53,62 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import com.example.data.db.MachineEntity
 import com.example.data.db.ProviderEmailEntity
 import com.example.ui.components.ManageProvidersDialog
 import com.example.ui.viewmodel.ReportViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun QuickReportScreen(
     viewModel: ReportViewModel
 ) {
-    var promptInput by remember { mutableStateOf("") }
+    val coroutineScope = rememberCoroutineScope()
+    val allMachinesList by viewModel.allMachines.collectAsState()
+    val userCatalog by viewModel.machineCatalog.collectAsState()
     val providerEmailsList by viewModel.providerEmails.collectAsState()
-    var selectedRecipient by remember { mutableStateOf("soporte@zitro.com") }
+
+    // Multiple Selected Machines state
+    val selectedMachines = remember { mutableStateListOf<MachineEntity>() }
+    var assetSearchInput by remember { mutableStateOf("") }
+    var failureDescriptionInput by remember { mutableStateOf("") }
+    var selectedRecipient by remember { mutableStateOf("") }
 
     var showManageProvidersDialog by remember { mutableStateOf(false) }
+    var showAssetPickerModal by remember { mutableStateOf(false) }
+    var assetPickerSearchQuery by remember { mutableStateOf("") }
 
-    val samplePrompts = listOf(
-        "reporta la maquina 444 a zitro por falla de botonera",
-        "reportar maquina 1025 a IGT por pantalla negra",
-        "reporta la maquina 882 a Aristocrat por problema en billetero",
-        "falla en maquina 551 Novomatic no acepta monedas",
-        "maquina 302 Konami pantalla tactil descalibrada"
-    )
-
-    // Auto-detect provider mentioned in prompt text to update active recipient chip
-    val lowerPrompt = promptInput.lowercase()
-    val detectedProvider = providerEmailsList.find { provider ->
-        val name = provider.providerName.lowercase().trim()
-        name.length >= 2 && lowerPrompt.contains(name)
+    // Auto-detect provider email from selected machines' brands
+    val autoDetectedProviderEmail = remember(selectedMachines.toList(), providerEmailsList) {
+        if (selectedMachines.isEmpty()) return@remember ""
+        val uniqueBrands = selectedMachines.map { it.brand.trim().lowercase() }.distinct()
+        for (b in uniqueBrands) {
+            val p = providerEmailsList.find { provider ->
+                val pName = provider.providerName.trim().lowercase()
+                pName.isNotBlank() && (b.contains(pName) || pName.contains(b))
+            }
+            if (p != null && p.email.isNotBlank()) {
+                return@remember p.email.trim()
+            }
+        }
+        ""
     }
-    val activeRecipient = detectedProvider?.email ?: selectedRecipient
+
+    val activeRecipient = if (selectedRecipient.isNotBlank()) selectedRecipient else autoDetectedProviderEmail
 
     Column(
         modifier = Modifier
@@ -102,7 +128,7 @@ fun QuickReportScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
+                    .padding(18.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
@@ -115,31 +141,246 @@ fun QuickReportScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.FlashOn,
-                        contentDescription = "Quick Report",
+                        contentDescription = "Generar Reporte",
                         tint = MaterialTheme.colorScheme.onPrimary
                     )
                 }
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(14.dp))
                 Column {
                     Text(
-                        text = "Generador Rápido de Reporte",
+                        text = "Generador de Reportes",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Escribe el reporte en una frase y la app generará el correo completo.",
+                        text = "Selecciona las máquinas por Asset y redacta la falla para generar el correo agrupado.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(18.dp))
 
-        // Recipient Selection Row with Settings/Add Action
+        // 1. CASILLA PARA SELECCIONAR MÁQUINAS POR ASSET
+        Text(
+            text = "Máquinas a Reportar (Selección por Asset):",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Row with Asset Text Input & Picker Button
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                value = assetSearchInput,
+                onValueChange = { assetSearchInput = it },
+                label = { Text("Escribir Asset (Ej: 361)") },
+                placeholder = { Text("Ej. 361") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Numbers,
+                        contentDescription = "Asset"
+                    )
+                },
+                trailingIcon = {
+                    if (assetSearchInput.isNotEmpty()) {
+                        IconButton(onClick = { assetSearchInput = "" }) {
+                            Icon(imageVector = Icons.Default.Clear, contentDescription = "Limpiar")
+                        }
+                    }
+                },
+                singleLine = true,
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("asset_search_input"),
+                shape = RoundedCornerShape(14.dp)
+            )
+
+            // Add button
+            Button(
+                onClick = {
+                    val key = assetSearchInput.trim()
+                    if (key.isNotBlank()) {
+                        coroutineScope.launch {
+                            val machine = viewModel.getMachineForAsset(key)
+                                ?: userCatalog.find {
+                                    it.assetNumber.trim().equals(key, ignoreCase = true) ||
+                                    it.machineNumber.trim().equals(key, ignoreCase = true) ||
+                                    it.serialNumber.trim().equals(key, ignoreCase = true)
+                                }
+                            if (machine != null) {
+                                if (selectedMachines.none { it.id == machine.id }) {
+                                    selectedMachines.add(machine)
+                                }
+                                assetSearchInput = ""
+                            } else {
+                                viewModel.saveVenueName(key) // fallback search notification
+                            }
+                        }
+                    }
+                },
+                enabled = assetSearchInput.isNotBlank(),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.height(54.dp)
+            ) {
+                Icon(imageVector = Icons.Default.Add, contentDescription = "Agregar")
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Agregar")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Open Full Asset Selector Modal Button
+        OutlinedButton(
+            onClick = { showAssetPickerModal = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(44.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.List,
+                contentDescription = "Seleccionar de la lista",
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Seleccionar de la lista del catálogo (${userCatalog.size} disponibles)",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Display Selected Machines Chips / Cards
+        if (selectedMachines.isNotEmpty()) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Máquinas seleccionadas (${selectedMachines.size}):",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        TextButton(
+                            onClick = { selectedMachines.clear() }
+                        ) {
+                            Text("Quitar todas", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        selectedMachines.forEach { m ->
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(start = 10.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Casino,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Asset: ${m.assetNumber.ifBlank { m.machineNumber }} · ${m.model} (${m.serialNumber})",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    IconButton(
+                                        onClick = { selectedMachines.remove(m) },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Quitar",
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Ninguna máquina seleccionada. Escribe un Asset arriba o presiona 'Seleccionar de la lista'.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        // 2. CAMPO: DESCRIPCIÓN DE LA FALLA
+        Text(
+            text = "Descripción de la falla:",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        OutlinedTextField(
+            value = failureDescriptionInput,
+            onValueChange = { failureDescriptionInput = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(130.dp)
+                .testTag("failure_description_input"),
+            placeholder = {
+                Text("Describe la falla o inconveniente que presentan las máquinas seleccionadas (ej. Billetero traba billetes, pantalla táctil descalibrada, error de comunicación, botón de cobro pegado, etc.)")
+            },
+            minLines = 3,
+            maxLines = 6,
+            shape = RoundedCornerShape(16.dp)
+        )
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        // 3. SELECCIÓN DE CORREO DEL PROVEEDOR
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -147,7 +388,7 @@ fun QuickReportScreen(
         ) {
             Text(
                 text = "Correo del Proveedor:",
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold
             )
 
@@ -157,15 +398,15 @@ fun QuickReportScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Agregar",
-                    modifier = Modifier.height(16.dp).width(16.dp)
+                    contentDescription = "Gestionar",
+                    modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Gestionar Correos", style = MaterialTheme.typography.labelMedium)
+                Text("Gestionar Correos", style = MaterialTheme.typography.labelSmall)
             }
         }
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -188,68 +429,20 @@ fun QuickReportScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Prompt Input Field
-        Text(
-            text = "Escribe tu reporte o selecciona un ejemplo:",
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = promptInput,
-            onValueChange = { promptInput = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp)
-                .testTag("quick_report_prompt_input"),
-            placeholder = { Text("Ej: reporta la maquina 444 a zitro por falla de botonera") },
-            maxLines = 4,
-            shape = RoundedCornerShape(16.dp)
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Example Chips
-        Text(
-            text = "Sugerencias de rápida selección:",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            samplePrompts.forEach { sample ->
-                Card(
-                    modifier = Modifier.clickable { promptInput = sample },
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text(
-                        text = sample,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                    )
-                }
-            }
-        }
-
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Generate Button
+        // 4. BOTÓN GENERAR REPORTE
         Button(
             onClick = {
-                if (promptInput.isNotBlank()) {
-                    viewModel.generateQuickReport(promptInput, activeRecipient)
+                if (selectedMachines.isNotEmpty() && failureDescriptionInput.isNotBlank()) {
+                    viewModel.generateReportForMultipleMachines(
+                        machines = selectedMachines.toList(),
+                        issueDescription = failureDescriptionInput,
+                        customRecipient = activeRecipient
+                    )
                 }
             },
+            enabled = selectedMachines.isNotEmpty() && failureDescriptionInput.isNotBlank(),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp)
@@ -259,37 +452,155 @@ fun QuickReportScreen(
             Icon(imageVector = Icons.Default.Send, contentDescription = "Generar")
             Spacer(modifier = Modifier.width(10.dp))
             Text(
-                text = "Generar y Revisar Correo",
+                text = if (selectedMachines.size > 1) "Generar Reporte (${selectedMachines.size} Máquinas)" else "Generar y Revisar Correo",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
         }
 
         Spacer(modifier = Modifier.height(20.dp))
+    }
 
-        // Requirement info box
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(14.dp),
-                verticalAlignment = Alignment.Top
+    // Modal Asset Multi-Selector Dialog
+    if (showAssetPickerModal) {
+        Dialog(onDismissRequest = { showAssetPickerModal = false }) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.85f),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp
             ) {
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = "Ayuda",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "El generador busca automáticamente la máquina en el catálogo local para incluir Marca, Modelo, Número de Serie, Asset, Área, Isla y Juego exactos en el cuerpo del correo.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Seleccionar Máquinas por Asset",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        IconButton(onClick = { showAssetPickerModal = false }) {
+                            Icon(imageVector = Icons.Default.Close, contentDescription = "Cerrar")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = assetPickerSearchQuery,
+                        onValueChange = { assetPickerSearchQuery = it },
+                        placeholder = { Text("Buscar por Asset, Serie, Modelo...") },
+                        leadingIcon = {
+                            Icon(imageVector = Icons.Default.Search, contentDescription = null)
+                        },
+                        trailingIcon = {
+                            if (assetPickerSearchQuery.isNotEmpty()) {
+                                IconButton(onClick = { assetPickerSearchQuery = "" }) {
+                                    Icon(imageVector = Icons.Default.Clear, contentDescription = "Limpiar")
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    val filteredList = remember(userCatalog, assetPickerSearchQuery) {
+                        if (assetPickerSearchQuery.isBlank()) {
+                            userCatalog
+                        } else {
+                            val q = assetPickerSearchQuery.trim().lowercase()
+                            userCatalog.filter {
+                                it.assetNumber.lowercase().contains(q) ||
+                                it.serialNumber.lowercase().contains(q) ||
+                                it.model.lowercase().contains(q) ||
+                                it.brand.lowercase().contains(q) ||
+                                it.area.lowercase().contains(q)
+                            }
+                        }
+                    }
+
+                    Text(
+                        text = "${filteredList.size} máquinas encontradas (${selectedMachines.size} seleccionadas):",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        items(items = filteredList, key = { it.id }) { machine ->
+                            val isChecked = selectedMachines.any { it.id == machine.id }
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (isChecked) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        if (isChecked) {
+                                            selectedMachines.removeAll { it.id == machine.id }
+                                        } else {
+                                            selectedMachines.add(machine)
+                                        }
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Checkbox(
+                                        checked = isChecked,
+                                        onCheckedChange = { checked ->
+                                            if (checked) {
+                                                if (selectedMachines.none { it.id == machine.id }) {
+                                                    selectedMachines.add(machine)
+                                                }
+                                            } else {
+                                                selectedMachines.removeAll { it.id == machine.id }
+                                            }
+                                        }
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Asset: ${machine.assetNumber.ifBlank { machine.machineNumber }} · ${machine.brand} - ${machine.model}",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "Serie: ${machine.serialNumber} | Área: ${machine.area}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Button(
+                        onClick = { showAssetPickerModal = false },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Aceptar Selección (${selectedMachines.size})", fontWeight = FontWeight.Bold)
+                    }
+                }
             }
         }
     }
