@@ -70,6 +70,8 @@ fun MachineLocationScreen(
     val machinesList by viewModel.machineCatalog.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
     val distinctSalas by viewModel.distinctSalas.collectAsState()
+    val distinctBrands by viewModel.distinctBrands.collectAsState()
+    val selectedBrandFilter by viewModel.selectedBrandFilter.collectAsState()
     val adminSelectedSala by viewModel.adminSelectedSala.collectAsState()
 
     val isAdmin = currentUser?.isAdmin == true
@@ -95,7 +97,7 @@ fun MachineLocationScreen(
             },
             placeholder = {
                 Text(
-                    text = "Ej. Winpot, A560H, 456, FUMADORES",
+                    text = "Ej. Winpot, A560H, 361, FUMADORES",
                     maxLines = 1,
                     softWrap = false
                 )
@@ -137,7 +139,6 @@ fun MachineLocationScreen(
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // "Todas las Salas" Chip
                 val isAllSelected = adminSelectedSala.isBlank() || adminSelectedSala.equals("TODAS", ignoreCase = true)
                 FilterChip(
                     selected = isAllSelected,
@@ -157,7 +158,6 @@ fun MachineLocationScreen(
                     shape = RoundedCornerShape(10.dp)
                 )
 
-                // Chips for each detected Sala
                 distinctSalas.forEach { sName ->
                     val isSelected = adminSelectedSala.trim().equals(sName.trim(), ignoreCase = true)
                     FilterChip(
@@ -181,27 +181,81 @@ fun MachineLocationScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Catalog Count Header
-        val headerTitle = if (isAdmin) {
-            if (adminSelectedSala.isNotBlank() && !adminSelectedSala.equals("TODAS", ignoreCase = true)) {
-                "Catálogo de Máquinas - $adminSelectedSala (${machinesList.size}):"
-            } else {
-                "Catálogo de Máquinas - Todas las Salas (${machinesList.size}):"
+        // Brand Filter Chips Bar
+        if (distinctBrands.size > 1) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "Filtrar por Marca:",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                distinctBrands.forEach { bName ->
+                    val isSelected = selectedBrandFilter.trim().equals(bName.trim(), ignoreCase = true)
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { viewModel.updateSelectedBrandFilter(bName) },
+                        label = { Text(bName, style = MaterialTheme.typography.labelMedium) },
+                        leadingIcon = {
+                            if (isSelected) {
+                                Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp))
+                            } else {
+                                Icon(imageVector = Icons.Default.Label, contentDescription = null, modifier = Modifier.size(14.dp))
+                            }
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.secondary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onSecondary
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                }
             }
-        } else {
-            "Catálogo de Máquinas (${machinesList.size}):"
         }
 
-        Text(
-            text = headerTitle,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Spacer(modifier = Modifier.height(12.dp))
 
-        Spacer(modifier = Modifier.height(8.dp))
+        // Catalog Count Header with Dynamic Badge
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val headerTitle = if (isAdmin && adminSelectedSala.isNotBlank() && !adminSelectedSala.equals("TODAS", ignoreCase = true)) {
+                "Catálogo - $adminSelectedSala"
+            } else {
+                "Catálogo de Máquinas"
+            }
+
+            Text(
+                text = headerTitle,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Text(
+                    text = "${machinesList.size} máquinas",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
 
         if (machinesList.isEmpty()) {
             Box(
@@ -219,7 +273,7 @@ fun MachineLocationScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = if (searchQuery.isNotBlank()) "No se encontraron máquinas con la búsqueda." else "No hay máquinas registradas para la sala seleccionada.",
+                        text = if (searchQuery.isNotBlank() || selectedBrandFilter != "TODAS") "No se encontraron máquinas con los filtros aplicados." else "No hay máquinas registradas.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -238,7 +292,7 @@ fun MachineLocationScreen(
                     MachineLocationCard(
                         machine = machine,
                         onReportClick = {
-                            selectedMachineForReport = machine
+                            viewModel.requestReportForMachine(machine)
                         }
                     )
                 }

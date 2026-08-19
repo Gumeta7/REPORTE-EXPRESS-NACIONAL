@@ -115,10 +115,66 @@ fun HistoryScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // Filter Chips for History Types (Todos, Incidencias, Visitas)
+        var selectedTypeFilter by remember { mutableStateOf("TODOS") }
+
+        val filteredReports = remember(reportsList, selectedTypeFilter) {
+            when (selectedTypeFilter) {
+                "INCIDENCIAS" -> reportsList.filter { !it.subject.contains("Visita", ignoreCase = true) && !it.subject.contains("Técnica", ignoreCase = true) }
+                "VISITAS" -> reportsList.filter { it.subject.contains("Visita", ignoreCase = true) || it.subject.contains("Técnica", ignoreCase = true) }
+                else -> reportsList
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val isAll = selectedTypeFilter == "TODOS"
+            androidx.compose.material3.FilterChip(
+                selected = isAll,
+                onClick = { selectedTypeFilter = "TODOS" },
+                label = { Text("Todos (${reportsList.size})") },
+                colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                shape = RoundedCornerShape(10.dp)
+            )
+
+            val isIncidencias = selectedTypeFilter == "INCIDENCIAS"
+            val incidenciasCount = remember(reportsList) { reportsList.count { !it.subject.contains("Visita", ignoreCase = true) } }
+            androidx.compose.material3.FilterChip(
+                selected = isIncidencias,
+                onClick = { selectedTypeFilter = "INCIDENCIAS" },
+                label = { Text("🚨 Incidencias ($incidenciasCount)") },
+                colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.errorContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onErrorContainer
+                ),
+                shape = RoundedCornerShape(10.dp)
+            )
+
+            val isVisitas = selectedTypeFilter == "VISITAS"
+            val visitasCount = remember(reportsList) { reportsList.count { it.subject.contains("Visita", ignoreCase = true) } }
+            androidx.compose.material3.FilterChip(
+                selected = isVisitas,
+                onClick = { selectedTypeFilter = "VISITAS" },
+                label = { Text("📋 Visitas ($visitasCount)") },
+                colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ),
+                shape = RoundedCornerShape(10.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
 
         Text(
-            text = "Historial de Correos Enviados (${reportsList.size}):",
+            text = "Historial de Correos Enviados (${filteredReports.size}):",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -126,7 +182,7 @@ fun HistoryScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (reportsList.isEmpty()) {
+        if (filteredReports.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -142,7 +198,7 @@ fun HistoryScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Aún no se han enviado ni guardado correos.",
+                        text = if (searchQuery.isNotBlank() || selectedTypeFilter != "TODOS") "No se encontraron registros con el filtro aplicado." else "Aún no se han enviado ni guardado correos.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -154,7 +210,7 @@ fun HistoryScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(
-                    items = reportsList,
+                    items = filteredReports,
                     key = { it.id },
                     contentType = { "history_card" }
                 ) { report ->

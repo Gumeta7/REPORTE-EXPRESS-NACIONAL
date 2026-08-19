@@ -350,26 +350,46 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             initialValue = emptyList()
         )
 
+    // --- Brand Filter State ---
+    private val _selectedBrandFilter = MutableStateFlow("TODAS")
+    val selectedBrandFilter: StateFlow<String> = _selectedBrandFilter.asStateFlow()
+
+    fun updateSelectedBrandFilter(brand: String) {
+        _selectedBrandFilter.value = brand
+    }
+
+    // Direct machine selection for report from Machine Card
+    private val _requestedMachineForReport = MutableStateFlow<MachineEntity?>(null)
+    val requestedMachineForReport: StateFlow<MachineEntity?> = _requestedMachineForReport.asStateFlow()
+
+    fun requestReportForMachine(machine: MachineEntity) {
+        _requestedMachineForReport.value = machine
+        _targetTabFromDeepLink.value = 0 // Switch to 'Generar' tab
+    }
+
+    fun clearRequestedMachineForReport() {
+        _requestedMachineForReport.value = null
+    }
+
     val machineCatalog: StateFlow<List<MachineEntity>> = combine(
         _locationSearchQuery.flatMapLatest { query -> repository.searchMachines(query) },
         _currentUser,
-        _adminSelectedSala
-    ) { machines, user, selectedSala ->
-        if (user == null || user.isAdmin) {
-            // Admin: Filter by selectedSala if specified and not "TODAS"
+        _adminSelectedSala,
+        _selectedBrandFilter
+    ) { machines, user, selectedSala, brandFilter ->
+        val salaFiltered = if (user == null || user.isAdmin) {
             if (selectedSala.isNotBlank() && !selectedSala.equals("TODAS", ignoreCase = true) && !selectedSala.equals("Todas las Salas", ignoreCase = true)) {
                 val filterSalaNormalized = selectedSala.trim().lowercase()
                 machines.filter { m ->
                     val machineSalaNormalized = m.sala.trim().lowercase()
                     machineSalaNormalized == filterSalaNormalized ||
                         (filterSalaNormalized.isNotEmpty() && machineSalaNormalized.contains(filterSalaNormalized)) ||
-                        (machineSalaNormalized.isNotEmpty() && filterSalaNormalized.contains(machineSalaNormalized))
+                        (machineSalaNormalized.isNotEmpty() && userSalaNormalized(filterSalaNormalized, machineSalaNormalized))
                 }
             } else {
                 machines
             }
         } else {
-            // Regular technicians see ONLY machines belonging to their assigned Sala
             val userSalaNormalized = user.sala.trim().lowercase()
             machines.filter { m ->
                 val machineSalaNormalized = m.sala.trim().lowercase()
@@ -378,10 +398,28 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                     (machineSalaNormalized.isNotEmpty() && userSalaNormalized.contains(machineSalaNormalized))
             }
         }
+
+        if (brandFilter.isNotBlank() && !brandFilter.equals("TODAS", ignoreCase = true)) {
+            salaFiltered.filter { it.brand.trim().equals(brandFilter.trim(), ignoreCase = true) }
+        } else {
+            salaFiltered
+        }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
+    )
+
+    private fun userSalaNormalized(filter: String, target: String): Boolean {
+        return target.contains(filter)
+    }
+
+    val distinctBrands: StateFlow<List<String>> = allMachines.map { machines ->
+        listOf("TODAS") + machines.map { it.brand.trim().uppercase() }.filter { it.isNotBlank() }.distinct().sorted()
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = listOf("TODAS")
     )
 
     // --- Dynamic Email History Stream ---

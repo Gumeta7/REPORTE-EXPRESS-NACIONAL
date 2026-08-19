@@ -81,6 +81,7 @@ fun QuickReportScreen(
     val allMachinesList by viewModel.allMachines.collectAsState()
     val userCatalog by viewModel.machineCatalog.collectAsState()
     val providerEmailsList by viewModel.providerEmails.collectAsState()
+    val requestedMachineForReport by viewModel.requestedMachineForReport.collectAsState()
 
     // Multiple Selected Machines state
     val selectedMachines = remember { mutableStateListOf<MachineEntity>() }
@@ -91,6 +92,16 @@ fun QuickReportScreen(
     var showManageProvidersDialog by remember { mutableStateOf(false) }
     var showAssetPickerModal by remember { mutableStateOf(false) }
     var assetPickerSearchQuery by remember { mutableStateOf("") }
+
+    // Catch direct report requests from Machine Catalog cards
+    LaunchedEffect(requestedMachineForReport) {
+        requestedMachineForReport?.let { machine ->
+            if (selectedMachines.none { it.id == machine.id }) {
+                selectedMachines.add(machine)
+            }
+            viewModel.clearRequestedMachineForReport()
+        }
+    }
 
     // Auto-detect provider email from selected machines' brands
     val autoDetectedProviderEmail = remember(selectedMachines.toList(), providerEmailsList) {
