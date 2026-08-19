@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
@@ -27,6 +29,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -131,15 +135,15 @@ fun HistoryScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .androidx.compose.foundation.horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+                .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             val isAll = selectedTypeFilter == "TODOS"
-            androidx.compose.material3.FilterChip(
+            FilterChip(
                 selected = isAll,
                 onClick = { selectedTypeFilter = "TODOS" },
                 label = { Text("Todos (${reportsList.size})") },
-                colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = MaterialTheme.colorScheme.primary,
                     selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                 ),
@@ -148,11 +152,11 @@ fun HistoryScreen(
 
             val isIncidencias = selectedTypeFilter == "INCIDENCIAS"
             val incidenciasCount = remember(reportsList) { reportsList.count { !it.subject.contains("Visita", ignoreCase = true) } }
-            androidx.compose.material3.FilterChip(
+            FilterChip(
                 selected = isIncidencias,
                 onClick = { selectedTypeFilter = "INCIDENCIAS" },
                 label = { Text("🚨 Incidencias ($incidenciasCount)") },
-                colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = MaterialTheme.colorScheme.errorContainer,
                     selectedLabelColor = MaterialTheme.colorScheme.onErrorContainer
                 ),
@@ -161,11 +165,11 @@ fun HistoryScreen(
 
             val isVisitas = selectedTypeFilter == "VISITAS"
             val visitasCount = remember(reportsList) { reportsList.count { it.subject.contains("Visita", ignoreCase = true) } }
-            androidx.compose.material3.FilterChip(
+            FilterChip(
                 selected = isVisitas,
                 onClick = { selectedTypeFilter = "VISITAS" },
                 label = { Text("📋 Visitas ($visitasCount)") },
-                colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
                     selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
                 ),
