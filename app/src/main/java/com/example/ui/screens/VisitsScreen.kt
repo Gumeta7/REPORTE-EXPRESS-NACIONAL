@@ -458,11 +458,12 @@ fun VisitsScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Technician Input
+        // Technician Input (Visitor Name)
         OutlinedTextField(
             value = tecnico,
             onValueChange = { viewModel.updateVisitTecnico(it) },
-            label = { Text("Técnico(s)") },
+            label = { Text("Técnico(s) que visita(n)") },
+            placeholder = { Text("Nombre de la persona que realiza la visita") },
             leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
             modifier = Modifier
                 .fillMaxWidth()

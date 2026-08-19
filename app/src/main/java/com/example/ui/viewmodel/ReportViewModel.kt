@@ -83,7 +83,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     // --- Visit Form State (Persisted across tab navigation) ---
     val visitFecha = MutableStateFlow(SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()))
     val visitProveedor = MutableStateFlow("ZITRO")
-    val visitTecnico = MutableStateFlow(_currentUser.value?.nombre ?: "")
+    val visitTecnico = MutableStateFlow("")
     val visitHoraEntrada = MutableStateFlow("")
     val visitHoraSalida = MutableStateFlow("")
     val visitMotivoVisita = MutableStateFlow("Atención de incidencia")
@@ -276,9 +276,6 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                     _currentUser.value = technician
                     if (technician.sala.isNotBlank() && !technician.isAdmin) {
                         saveVenueName(technician.sala)
-                    }
-                    if (technician.nombre.isNotBlank()) {
-                        visitTecnico.value = technician.nombre
                     }
                 } else {
                     _failedAttemptsCount.value += 1
