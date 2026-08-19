@@ -9,7 +9,7 @@ import java.io.InputStream
 
 object FileParserUtil {
 
-    fun parseStreamToMachines(inputStream: InputStream): List<MachineEntity> {
+    fun parseStreamToMachines(inputStream: InputStream, defaultSala: String = ""): List<MachineEntity> {
         val bytes = inputStream.readBytes()
         if (bytes.isEmpty()) return emptyList()
 
@@ -55,7 +55,7 @@ object FileParserUtil {
                             getCellValueAsString(row.getCell(c))
                         }
                         val map = findHeaderIndices(rowCells)
-                        if (map.containsKey("asset") || map.containsKey("serie") || map.containsKey("marca") || map.containsKey("sala") || map.containsKey("maquina")) {
+                        if (map.containsKey("asset") || map.containsKey("serie") || map.containsKey("marca") || map.containsKey("sala") || map.containsKey("maquina") || map.containsKey("modelo")) {
                             headerRowIndex = r
                             columnIndices = map
                             break
@@ -74,7 +74,8 @@ object FileParserUtil {
                         }
 
                         val asset = cleanNumericString(getVal("asset", 0))
-                        val sala = getVal("sala", -1)
+                        val salaRaw = getVal("sala", -1)
+                        val sala = salaRaw.ifBlank { defaultSala }
                         val marca = getVal("marca", 1)
                         val modelo = getVal("modelo", 2)
                         val juego = getVal("juego", 3)
@@ -85,7 +86,7 @@ object FileParserUtil {
                         val qrId = getVal("qrid", -1)
                         val maquina = cleanNumericString(getVal("maquina", -1)).ifBlank { asset }.ifBlank { serie }
 
-                        if (maquina.isNotBlank() || asset.isNotBlank() || serie.isNotBlank() || sala.isNotBlank()) {
+                        if (maquina.isNotBlank() || asset.isNotBlank() || serie.isNotBlank() || marca.isNotBlank()) {
                             allMachines.add(
                                 MachineEntity(
                                     machineNumber = maquina.ifBlank { "M-${allMachines.size + 1}" },
@@ -114,7 +115,7 @@ object FileParserUtil {
         }
 
         val text = String(bytes, Charsets.UTF_8)
-        return parseCsvToMachines(text)
+        return parseCsvToMachines(text, defaultSala)
     }
 
     fun parseStreamToTechnicians(inputStream: InputStream): List<TechnicianEntity> {
@@ -306,7 +307,7 @@ object FileParserUtil {
         return map
     }
 
-    fun parseCsvToMachines(csvText: String): List<MachineEntity> {
+    fun parseCsvToMachines(csvText: String, defaultSala: String = ""): List<MachineEntity> {
         val rawLines = csvText.lines().filter { it.isNotBlank() }
         if (rawLines.isEmpty()) return emptyList()
 
@@ -342,7 +343,8 @@ object FileParserUtil {
             }
 
             val asset = cleanNumericString(getValue("asset", 0))
-            val sala = getValue("sala", -1)
+            val salaRaw = getValue("sala", -1)
+            val sala = salaRaw.ifBlank { defaultSala }
             val marca = getValue("marca", 1)
             val modelo = getValue("modelo", 2)
             val juego = getValue("juego", 3)
@@ -353,7 +355,7 @@ object FileParserUtil {
             val qrId = getValue("qrid", -1)
             val maquina = cleanNumericString(getValue("maquina", -1)).ifBlank { asset }.ifBlank { serie }
 
-            if (maquina.isNotBlank() || asset.isNotBlank() || serie.isNotBlank() || sala.isNotBlank()) {
+            if (maquina.isNotBlank() || asset.isNotBlank() || serie.isNotBlank() || marca.isNotBlank()) {
                 machines.add(
                     MachineEntity(
                         machineNumber = maquina.ifBlank { "M-${machines.size + 1}" },

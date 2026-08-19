@@ -510,13 +510,14 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch(Dispatchers.IO) {
             _isSyncingDrive.value = true
             try {
+                val userDefaultSala = _currentUser.value?.sala?.trim()?.ifBlank { venueName.value.trim() } ?: venueName.value.trim()
                 val inputStream = getApplication<Application>().contentResolver.openInputStream(uri)
                 if (inputStream != null) {
                     val bytes = inputStream.readBytes()
                     inputStream.close()
 
                     if (bytes.isNotEmpty()) {
-                        val parsedMachines = FileParserUtil.parseStreamToMachines(bytes.inputStream())
+                        val parsedMachines = FileParserUtil.parseStreamToMachines(bytes.inputStream(), defaultSala = userDefaultSala)
                         val parsedTechnicians = FileParserUtil.parseStreamToTechnicians(bytes.inputStream())
 
                         if (parsedMachines.isNotEmpty()) {
