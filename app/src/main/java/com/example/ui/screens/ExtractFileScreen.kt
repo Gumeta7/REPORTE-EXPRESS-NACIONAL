@@ -1,5 +1,8 @@
 package com.example.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,15 +25,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -60,6 +68,15 @@ fun ExtractFileScreen(
     val isAdmin = currentUser?.isAdmin == true
     val displayedCount = if (isAdmin) catalogMachines.size else userMachines.size
 
+    // File picker launcher for local Excel spreadsheet (.xlsx, .xls)
+    val excelFilePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            viewModel.importFromLocalExcelUri(it)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -67,9 +84,9 @@ fun ExtractFileScreen(
             .padding(20.dp)
             .testTag("extract_file_screen"),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+        verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        // Hero Card - Sincronización en la Nube
+        // Hero Card - Sincronización
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
@@ -108,9 +125,9 @@ fun ExtractFileScreen(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = if (isAdmin) {
-                            "Sincroniza en automático el catálogo de todas las salas y máquinas alojadas en Google Drive."
+                            "Sincroniza en automático desde Google Drive o sube directamente tu archivo Excel (.xlsx)."
                         } else {
-                            "Sincroniza en automático el catálogo de máquinas de tu sala alojado en Google Drive."
+                            "Sincroniza el catálogo de tu sala desde Google Drive o carga tu archivo Excel local."
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f)
@@ -125,7 +142,7 @@ fun ExtractFileScreen(
             enabled = !isSyncing,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(58.dp)
+                .height(56.dp)
                 .testTag("sync_drive_button"),
             shape = RoundedCornerShape(16.dp)
         ) {
@@ -137,23 +154,49 @@ fun ExtractFileScreen(
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = "Sincronizando con Drive...",
+                    text = "Procesando catálogo...",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
             } else {
                 Icon(
                     imageVector = Icons.Default.Refresh,
-                    contentDescription = "Actualizar",
+                    contentDescription = "Actualizar desde Drive",
                     modifier = Modifier.size(22.dp)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = "Actualizar Información",
+                    text = "Sincronizar desde Google Drive",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
             }
+        }
+
+        // Action Button: Cargar Archivo Excel Localmente
+        OutlinedButton(
+            onClick = {
+                excelFilePickerLauncher.launch("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            },
+            enabled = !isSyncing,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp)
+                .testTag("upload_excel_button"),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.UploadFile,
+                contentDescription = "Subir Excel",
+                modifier = Modifier.size(22.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = "Cargar Archivo Excel (.xlsx)",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
         }
 
         // Status Message Banner
@@ -255,7 +298,7 @@ fun ExtractFileScreen(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Última Sincronización:",
+                            text = "Última Actualización:",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

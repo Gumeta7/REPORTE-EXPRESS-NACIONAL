@@ -505,6 +505,78 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    // --- Local Excel File Import Function ---
+    fun importFromLocalExcelUri(uri: android.net.Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _isSyncingDrive.value = true
+            try {
+                val inputStream = getApplication<Application>().contentResolver.openInputStream(uri)
+                if (inputStream != null) {
+                    val bytes = inputStream.readBytes()
+                    inputStream.close()
+
+                    if (bytes.isNotEmpty()) {
+                        val parsedMachines = FileParserUtil.parseStreamToMachines(bytes.inputStream())
+                        val parsedTechnicians = FileParserUtil.parseStreamToTechnicians(bytes.inputStream())
+
+                        if (parsedMachines.isNotEmpty()) {
+                            repository.clearAllMachines()
+                            repository.importMachineCatalog(parsedMachines)
+                        }
+
+                        if (parsedTechnicians.isNotEmpty()) {
+                            repository.importTechnicians(parsedTechnicians)
+
+                            val current = _currentUser.value
+                            if (current != null) {
+                                val refreshed = parsedTechnicians.find {
+                                    it.usuario.trim().equals(current.usuario.trim(), ignoreCase = true)
+                                }
+                                if (refreshed != null) {
+                                    withContext(Dispatchers.Main) {
+                                        _currentUser.value = refreshed
+                                        if (refreshed.sala.isNotBlank() && !refreshed.isAdmin) {
+                                            saveVenueName(refreshed.sala)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (parsedMachines.isNotEmpty() || parsedTechnicians.isNotEmpty()) {
+                            val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
+                            val nowFormatted = dateFormat.format(Date())
+                            prefs.edit().putString("last_sync_formatted", nowFormatted).apply()
+                            _lastSyncTimestampFormatted.value = nowFormatted
+
+                            val current = _currentUser.value
+                            if (current != null && !current.isAdmin) {
+                                val userSalaNormalized = current.sala.trim().lowercase()
+                                val userMachinesCount = parsedMachines.count { m ->
+                                    val machineSalaNormalized = m.sala.trim().lowercase()
+                                    machineSalaNormalized == userSalaNormalized ||
+                                        (userSalaNormalized.isNotEmpty() && machineSalaNormalized.contains(userSalaNormalized)) ||
+                                        (machineSalaNormalized.isNotEmpty() && userSalaNormalized.contains(machineSalaNormalized))
+                                }
+                                _statusMessage.value = "Archivo local cargado exitosamente ($userMachinesCount máquinas de tu sala)."
+                            } else {
+                                _statusMessage.value = "Archivo local cargado exitosamente (${parsedMachines.size} máquinas, ${parsedTechnicians.size} técnicos)."
+                            }
+                        } else {
+                            _statusMessage.value = "No se pudieron extraer registros válidos del archivo Excel seleccionado."
+                        }
+                    }
+                } else {
+                    _statusMessage.value = "No se pudo abrir el archivo seleccionado."
+                }
+            } catch (e: Exception) {
+                _statusMessage.value = "Error al procesar archivo Excel: ${e.message}"
+            } finally {
+                _isSyncingDrive.value = false
+            }
+        }
+    }
+
     fun updateCurrentDraft(
         recipient: String? = null,
         subject: String? = null,
