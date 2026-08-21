@@ -63,11 +63,12 @@ object FileParserUtil {
                     }
 
                     val startRow = if (headerRowIndex != -1) headerRowIndex + 1 else 0
+                    val isHeaderFound = headerRowIndex != -1
 
                     for (r in startRow..sheet.lastRowNum) {
                         val row = sheet.getRow(r) ?: continue
                         fun getVal(key: String, fallbackCol: Int): String {
-                            val idx = columnIndices[key] ?: fallbackCol
+                            val idx = columnIndices[key] ?: if (isHeaderFound) -1 else fallbackCol
                             if (idx < 0) return ""
                             val cell = row.getCell(idx) ?: return ""
                             return getCellValueAsString(cell).trim()
@@ -80,7 +81,7 @@ object FileParserUtil {
                         val modelo = getVal("modelo", 2)
                         val juego = getVal("juego", 3)
                         val area = getVal("area", 4)
-                        val isla = getVal("isla", 5)
+                        val isla = cleanNumericString(getVal("isla", -1))
                         val serie = getVal("serie", 6)
                         val propietario = getVal("propietario", -1)
                         val qrId = getVal("qrid", -1)
@@ -96,7 +97,7 @@ object FileParserUtil {
                                     assetNumber = asset.ifBlank { maquina },
                                     area = area.ifBlank { "Sala Principal" },
                                     game = juego.ifBlank { "General" },
-                                    island = isla.ifBlank { "Isla 01" },
+                                    island = isla,
                                     sala = sala,
                                     qrId = qrId,
                                     propietario = propietario
@@ -349,7 +350,7 @@ object FileParserUtil {
             val modelo = getValue("modelo", 2)
             val juego = getValue("juego", 3)
             val area = getValue("area", 4)
-            val isla = getValue("isla", 5)
+            val isla = cleanNumericString(getValue("isla", -1))
             val serie = getValue("serie", 6)
             val propietario = getValue("propietario", -1)
             val qrId = getValue("qrid", -1)
@@ -365,7 +366,7 @@ object FileParserUtil {
                         assetNumber = asset.ifBlank { maquina },
                         area = area.ifBlank { "Sala Principal" },
                         game = juego.ifBlank { "General" },
-                        island = isla.ifBlank { "Isla 01" },
+                        island = isla,
                         sala = sala,
                         qrId = qrId,
                         propietario = propietario

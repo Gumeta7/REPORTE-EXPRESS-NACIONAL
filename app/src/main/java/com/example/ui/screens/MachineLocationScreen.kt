@@ -436,10 +436,17 @@ fun MachineLocationCard(
                     modifier = Modifier.weight(1f)
                 )
 
+                val areaAndIsland = buildString {
+                    append(machine.area.ifBlank { "General" })
+                    if (machine.island.isNotBlank()) {
+                        append(" · Isla ${machine.island}")
+                    }
+                }
+
                 MachineGridBox(
                     icon = Icons.Default.Place,
-                    label = "Área",
-                    value = machine.area.ifBlank { "General" },
+                    label = if (machine.island.isNotBlank()) "Área / Isla" else "Área",
+                    value = areaAndIsland,
                     modifier = Modifier.weight(1f)
                 )
             }

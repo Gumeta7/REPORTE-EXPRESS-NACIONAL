@@ -50,11 +50,11 @@ interface MachineDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAllMachines(machines: List<MachineEntity>)
 
-    @Query("DELETE FROM machines WHERE id = :id")
-    suspend fun deleteMachineById(id: Int)
-
     @Query("DELETE FROM machines")
     suspend fun clearAllMachines()
+
+    @Query("SELECT * FROM machines")
+    suspend fun getAllMachinesList(): List<MachineEntity>
 
     @Query("SELECT COUNT(*) FROM machines")
     suspend fun getMachineCount(): Int

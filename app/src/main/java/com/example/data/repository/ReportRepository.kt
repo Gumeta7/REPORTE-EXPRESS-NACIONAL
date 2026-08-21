@@ -62,6 +62,62 @@ class ReportRepository(
         machineDao.insertAllMachines(machines)
     }
 
+    suspend fun mergeAndImportMachines(incomingMachines: List<MachineEntity>) {
+        val existingList = machineDao.getAllMachinesList()
+        if (existingList.isEmpty()) {
+            machineDao.insertAllMachines(incomingMachines)
+            return
+        }
+
+        val existingByAsset = mutableMapOf<String, MachineEntity>()
+        val existingBySerial = mutableMapOf<String, MachineEntity>()
+        val existingByNum = mutableMapOf<String, MachineEntity>()
+
+        for (m in existingList) {
+            val a = m.assetNumber.trim().lowercase()
+            val s = m.serialNumber.trim().lowercase()
+            val n = m.machineNumber.trim().lowercase()
+            if (a.isNotBlank()) existingByAsset[a] = m
+            if (s.isNotBlank()) existingBySerial[s] = m
+            if (n.isNotBlank()) existingByNum[n] = m
+        }
+
+        val mergedResults = mutableListOf<MachineEntity>()
+
+        for (inc in incomingMachines) {
+            val a = inc.assetNumber.trim().lowercase()
+            val s = inc.serialNumber.trim().lowercase()
+            val n = inc.machineNumber.trim().lowercase()
+
+            val existing = (if (a.isNotBlank()) existingByAsset[a] else null)
+                ?: (if (s.isNotBlank()) existingBySerial[s] else null)
+                ?: (if (n.isNotBlank()) existingByNum[n] else null)
+
+            if (existing != null) {
+                // Complementamos los datos sin sobreescribir con valores vacíos
+                val merged = MachineEntity(
+                    id = existing.id,
+                    machineNumber = inc.machineNumber.ifBlank { existing.machineNumber },
+                    brand = inc.brand.ifBlank { existing.brand },
+                    model = inc.model.ifBlank { existing.model },
+                    serialNumber = inc.serialNumber.ifBlank { existing.serialNumber },
+                    assetNumber = inc.assetNumber.ifBlank { existing.assetNumber },
+                    area = inc.area.ifBlank { existing.area },
+                    game = inc.game.ifBlank { existing.game },
+                    island = inc.island.ifBlank { existing.island },
+                    sala = inc.sala.ifBlank { existing.sala },
+                    qrId = inc.qrId.ifBlank { existing.qrId },
+                    propietario = inc.propietario.ifBlank { existing.propietario }
+                )
+                mergedResults.add(merged)
+            } else {
+                mergedResults.add(inc)
+            }
+        }
+
+        machineDao.insertAllMachines(mergedResults)
+    }
+
     suspend fun clearAllMachines() {
         machineDao.clearAllMachines()
     }

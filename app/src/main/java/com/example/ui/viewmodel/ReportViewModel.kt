@@ -482,10 +482,14 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                     val hasLocalOverride = prefs.getBoolean("has_local_file_override", false)
                     val localMachineCount = repository.getMachineCount()
 
-                    // Only overwrite machines if explicitly forced or if user hasn't imported a local file
-                    if (parsedMachines.isNotEmpty() && (forceSyncMachines || (!hasLocalOverride && localMachineCount == 0))) {
-                        repository.clearAllMachines()
-                        repository.importMachineCatalog(parsedMachines)
+                    // Merge and complement machines without destroying existing non-empty fields like island
+                    if (parsedMachines.isNotEmpty()) {
+                        if (forceSyncMachines && localMachineCount == 0) {
+                            repository.clearAllMachines()
+                            repository.importMachineCatalog(parsedMachines)
+                        } else {
+                            repository.mergeAndImportMachines(parsedMachines)
+                        }
                         if (forceSyncMachines) {
                             prefs.edit().putBoolean("has_local_file_override", false).apply()
                         }
@@ -561,8 +565,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                         val parsedTechnicians = FileParserUtil.parseStreamToTechnicians(bytes.inputStream())
 
                         if (parsedMachines.isNotEmpty()) {
-                            repository.clearAllMachines()
-                            repository.importMachineCatalog(parsedMachines)
+                            repository.mergeAndImportMachines(parsedMachines)
                             // Mark local override so startup sync doesn't overwrite it
                             prefs.edit().putBoolean("has_local_file_override", true).apply()
                         }
