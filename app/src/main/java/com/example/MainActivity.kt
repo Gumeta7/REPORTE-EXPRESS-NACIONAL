@@ -62,6 +62,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.ui.components.EmailDraftPreviewDialog
 import com.example.ui.components.MissingProviderEmailDialog
 import com.example.ui.screens.ExtractFileScreen
@@ -146,62 +147,55 @@ fun MainAppScreen(viewModel: ReportViewModel) {
             TopAppBar(
                 title = {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        // Stylized "G" Badge Logo
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    MaterialTheme.colorScheme.primaryContainer,
-                                    RoundedCornerShape(10.dp)
-                                )
-                                .padding(horizontal = 10.dp, vertical = 4.dp),
-                            contentAlignment = Alignment.Center
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f, fill = false)
                         ) {
-                            Text(
-                                text = "G",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Black,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text(
-                                text = when (pagerState.currentPage) {
-                                    0 -> "Reportes Express"
-                                    1 -> "Actualizar Información"
-                                    2 -> "Máquinas"
-                                    3 -> "Registro de Visitas"
-                                    else -> "Historial de Reportes"
-                                },
-                                fontWeight = FontWeight.ExtraBold,
-                                style = MaterialTheme.typography.titleMedium
-                            )
                             currentUser?.let { user ->
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = if (user.isAdmin) Icons.Default.Shield else Icons.Default.Person,
-                                        contentDescription = "User",
-                                        modifier = Modifier.size(12.dp),
-                                        tint = if (user.isAdmin) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
-                                    )
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                    val userDisplay = if (user.isAdmin) {
-                                        "${user.nombre} (ADMIN)"
-                                    } else {
-                                        "${user.nombre} · ${user.sala}"
-                                    }
+                                com.example.ui.components.TechnicianMonogramAvatar(
+                                    name = user.nombre,
+                                    size = 38
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
                                     Text(
-                                        text = userDisplay,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        text = user.nombre,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = if (user.isAdmin) "Administrador Corporativo" else "Técnico Especialista",
+                                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.SemiBold,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 }
+                            } ?: run {
+                                Text(
+                                    text = "Reportes Express",
+                                    fontWeight = FontWeight.ExtraBold,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
                             }
                         }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        // Casino Venue Brand Badge in Top Bar
+                        val activeVenue = currentUser?.sala?.trim()?.ifBlank { "CORPORATIVO" } ?: "CORPORATIVO"
+                        com.example.ui.components.VenueLogoBadge(
+                            venueName = activeVenue,
+                            compact = true
+                        )
                     }
                 },
                 actions = {

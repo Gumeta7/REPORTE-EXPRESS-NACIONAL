@@ -318,64 +318,43 @@ fun MachineLocationCard(
     onReportClick: () -> Unit
 ) {
     val surfaceColor = MaterialTheme.colorScheme.surface
-    val outlineVariantColor = MaterialTheme.colorScheme.outlineVariant
     val isDarkTheme = remember(surfaceColor) { surfaceColor.luminance() < 0.5f }
-    val cardBgColor = remember(isDarkTheme, surfaceColor) { if (isDarkTheme) Color(0xFF19222D) else surfaceColor }
-    val cardBorder = remember(isDarkTheme, outlineVariantColor) {
-        if (isDarkTheme) BorderStroke(1.dp, Color(0xFF2E3E50)) else BorderStroke(1.dp, outlineVariantColor.copy(alpha = 0.4f))
+    val cardBgColor = remember(isDarkTheme, surfaceColor) { if (isDarkTheme) Color(0xFF1E293B) else surfaceColor }
+    val cardBorder = remember(isDarkTheme) {
+        if (isDarkTheme) BorderStroke(1.dp, Color(0xFF334155)) else BorderStroke(1.dp, Color(0xFFE2E8F0))
     }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("machine_location_card_${machine.machineNumber}"),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = cardBgColor),
         border = cardBorder,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
 
-            // 1. CABECERA: SALA & PROPIETARIO (Con leyenda clara 'Propietario:')
+            // 1. CABECERA: SALA (con VenueLogoBadge) & PROPIETARIO
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Sala
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
+                // Sala Logo / Badge
+                com.example.ui.components.VenueLogoBadge(
+                    venueName = machine.sala.ifBlank { "CORPORATIVO" },
+                    compact = true,
                     modifier = Modifier.weight(1f, fill = false)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Storefront,
-                            contentDescription = "Sala",
-                            modifier = Modifier.size(15.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = machine.sala.ifBlank { "Sala General" },
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
+                )
 
                 // Propietario con etiqueta explícita
                 if (machine.propietario.isNotBlank()) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Surface(
                         shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer
+                        color = if (isDarkTheme) Color(0xFF0F172A) else MaterialTheme.colorScheme.secondaryContainer,
+                        border = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF334155)) else null
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -454,8 +433,8 @@ fun MachineLocationCard(
             Spacer(modifier = Modifier.height(10.dp))
 
             // 3. BARRA SIMÉTRICA DE SERIE
-            val boxBg = if (isDarkTheme) Color(0xFF222F3E) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            val boxBorder = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF324458)) else null
+            val boxBg = if (isDarkTheme) Color(0xFF0F172A) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            val boxBorder = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF334155)) else null
 
             Surface(
                 shape = RoundedCornerShape(12.dp),
@@ -525,8 +504,8 @@ fun MachineGridBox(
     modifier: Modifier = Modifier
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val boxBg = if (isDarkTheme) Color(0xFF222F3E) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
-    val boxBorder = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF324458)) else null
+    val boxBg = if (isDarkTheme) Color(0xFF0F172A) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+    val boxBorder = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF334155)) else BorderStroke(1.dp, Color(0xFFE2E8F0))
 
     Surface(
         modifier = modifier,

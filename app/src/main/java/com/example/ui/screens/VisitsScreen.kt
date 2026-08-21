@@ -242,33 +242,37 @@ fun VisitsScreen(
                 .fillMaxWidth()
                 .testTag("venue_name_card"),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Icon(
-                    imageVector = Icons.Default.Store,
-                    contentDescription = "Sala",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(end = 12.dp)
-                )
-                Column {
+                Column(modifier = Modifier.weight(1f, fill = false)) {
                     Text(
-                        text = if (currentUser?.isAdmin == true) "Ubicación (Administrador):" else "Sala / Casino:",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        text = if (currentUser?.isAdmin == true) "Ubicación (Administrador):" else "Sala / Casino Activo:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = activeSala.uppercase(),
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                com.example.ui.components.VenueLogoBadge(
+                    venueName = activeSala,
+                    compact = false
+                )
             }
         }
 

@@ -12,29 +12,31 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = AccentCyan,
-    onPrimary = Color.Black,
-    primaryContainer = Color(0xFF1F2937),
-    onPrimaryContainer = Color.White,
-    secondary = AccentElectricBlue,
-    onSecondary = Color.Black,
-    secondaryContainer = DarkSurfaceVariant,
-    onSecondaryContainer = TextPrimaryDark,
+    primary = CobaltPrimary,
+    onPrimary = Color.White,
+    primaryContainer = CobaltContainerDark,
+    onPrimaryContainer = CobaltCyan,
+    secondary = CobaltCyan,
+    onSecondary = Slate950,
+    secondaryContainer = Slate800,
+    onSecondaryContainer = Slate100,
     background = DarkBackground,
     onBackground = TextPrimaryDark,
     surface = DarkSurface,
     onSurface = TextPrimaryDark,
     surfaceVariant = DarkSurfaceVariant,
     onSurfaceVariant = TextSecondaryDark,
+    outline = Slate700,
+    outlineVariant = Slate700,
     error = Color(0xFFEF4444)
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = PrimaryBlue,
+    primary = CobaltPrimary,
     onPrimary = Color.White,
     primaryContainer = LightContainer,
-    onPrimaryContainer = PrimaryBlueVariant,
-    secondary = PrimaryBlueVariant,
+    onPrimaryContainer = CobaltDark,
+    secondary = CobaltDark,
     onSecondary = Color.White,
     secondaryContainer = LightSurfaceVariant,
     onSecondaryContainer = TextPrimaryLight,
@@ -44,6 +46,8 @@ private val LightColorScheme = lightColorScheme(
     onSurface = TextPrimaryLight,
     surfaceVariant = LightSurfaceVariant,
     onSurfaceVariant = TextSecondaryLight,
+    outline = Slate300,
+    outlineVariant = Slate200,
     error = Color(0xFFDC2626)
 )
 
