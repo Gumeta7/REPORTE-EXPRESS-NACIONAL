@@ -175,6 +175,26 @@ fun VisitsScreen(
     val assetInput by viewModel.visitAssetInput.collectAsState()
     val islaInput by viewModel.visitIslaInput.collectAsState()
 
+    // Time input TextFieldValues to ensure cursor stays at the end when formatting
+    var horaEntradaTfv by remember {
+        mutableStateOf(TextFieldValue(horaEntrada, TextRange(horaEntrada.length)))
+    }
+    var horaSalidaTfv by remember {
+        mutableStateOf(TextFieldValue(horaSalida, TextRange(horaSalida.length)))
+    }
+
+    LaunchedEffect(horaEntrada) {
+        if (horaEntrada != horaEntradaTfv.text) {
+            horaEntradaTfv = TextFieldValue(horaEntrada, TextRange(horaEntrada.length))
+        }
+    }
+
+    LaunchedEffect(horaSalida) {
+        if (horaSalida != horaSalidaTfv.text) {
+            horaSalidaTfv = TextFieldValue(horaSalida, TextRange(horaSalida.length))
+        }
+    }
+
     // Auto-lookup island from asset input against local database
     LaunchedEffect(assetInput) {
         val trimmedAsset = assetInput.trim()
