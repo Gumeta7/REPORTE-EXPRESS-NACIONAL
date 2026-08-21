@@ -62,7 +62,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -252,17 +254,17 @@ fun VisitsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Form Title
+        // Hero Section Title
         Text(
             text = "Registro de Visita Técnica",
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Date Input Row (Symmetrical with Time Rows)
+        // Date Picker Row (Symmetrical & Centered)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -272,7 +274,7 @@ fun VisitsScreen(
                 value = fecha,
                 onValueChange = { viewModel.updateVisitFecha(it) },
                 label = { Text("Fecha", maxLines = 1, softWrap = false) },
-                placeholder = { Text("dd/mm/aaaa", maxLines = 1, softWrap = false) },
+                placeholder = { Text("dd/MM/yyyy", maxLines = 1, softWrap = false) },
                 leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
                 trailingIcon = {
                     if (fecha.isNotBlank()) {
@@ -294,14 +296,12 @@ fun VisitsScreen(
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .height(56.dp)
-                    .width(56.dp)
-                    .testTag("open_calendar_button"),
-                contentPadding = PaddingValues(0.dp)
+                    .testTag("open_date_picker_button"),
+                contentPadding = PaddingValues(horizontal = 14.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.CalendarToday,
-                    contentDescription = "Abrir Calendario",
-                    tint = MaterialTheme.colorScheme.primary,
+                    contentDescription = "Elegir Fecha",
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -316,14 +316,24 @@ fun VisitsScreen(
             verticalAlignment = Alignment.Bottom
         ) {
             OutlinedTextField(
-                value = horaEntrada,
-                onValueChange = { viewModel.updateVisitHoraEntrada(format24HourTime(it)) },
+                value = horaEntradaTfv,
+                onValueChange = { tfv ->
+                    val formatted = format24HourTime(tfv.text)
+                    horaEntradaTfv = TextFieldValue(
+                        text = formatted,
+                        selection = TextRange(formatted.length)
+                    )
+                    viewModel.updateVisitHoraEntrada(formatted)
+                },
                 label = { Text("Hora de entrada", maxLines = 1, softWrap = false) },
                 placeholder = { Text("Ej: 09:30", maxLines = 1, softWrap = false) },
                 leadingIcon = { Icon(Icons.Default.AccessTime, contentDescription = null) },
                 trailingIcon = {
                     if (horaEntrada.isNotBlank()) {
-                        IconButton(onClick = { viewModel.updateVisitHoraEntrada("") }) {
+                        IconButton(onClick = {
+                            horaEntradaTfv = TextFieldValue("", TextRange.Zero)
+                            viewModel.updateVisitHoraEntrada("")
+                        }) {
                             Icon(Icons.Default.Close, contentDescription = "Limpiar hora de entrada")
                         }
                     }
@@ -340,6 +350,7 @@ fun VisitsScreen(
             OutlinedButton(
                 onClick = {
                     val currentTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+                    horaEntradaTfv = TextFieldValue(currentTime, TextRange(currentTime.length))
                     viewModel.updateVisitHoraEntrada(currentTime)
                 },
                 shape = RoundedCornerShape(12.dp),
@@ -361,14 +372,24 @@ fun VisitsScreen(
             verticalAlignment = Alignment.Bottom
         ) {
             OutlinedTextField(
-                value = horaSalida,
-                onValueChange = { viewModel.updateVisitHoraSalida(format24HourTime(it)) },
+                value = horaSalidaTfv,
+                onValueChange = { tfv ->
+                    val formatted = format24HourTime(tfv.text)
+                    horaSalidaTfv = TextFieldValue(
+                        text = formatted,
+                        selection = TextRange(formatted.length)
+                    )
+                    viewModel.updateVisitHoraSalida(formatted)
+                },
                 label = { Text("Hora de salida (opcional)", maxLines = 1, softWrap = false) },
                 placeholder = { Text("Ej: 18:30", maxLines = 1, softWrap = false) },
                 leadingIcon = { Icon(Icons.Default.AccessTime, contentDescription = null) },
                 trailingIcon = {
                     if (horaSalida.isNotBlank()) {
-                        IconButton(onClick = { viewModel.updateVisitHoraSalida("") }) {
+                        IconButton(onClick = {
+                            horaSalidaTfv = TextFieldValue("", TextRange.Zero)
+                            viewModel.updateVisitHoraSalida("")
+                        }) {
                             Icon(Icons.Default.Close, contentDescription = "Limpiar hora de salida")
                         }
                     }
@@ -385,6 +406,7 @@ fun VisitsScreen(
             OutlinedButton(
                 onClick = {
                     val currentTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+                    horaSalidaTfv = TextFieldValue(currentTime, TextRange(currentTime.length))
                     viewModel.updateVisitHoraSalida(currentTime)
                 },
                 shape = RoundedCornerShape(12.dp),
