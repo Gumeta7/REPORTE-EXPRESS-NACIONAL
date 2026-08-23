@@ -12,7 +12,7 @@ object DriveSyncService {
 
     // Default Spreadsheet URL in Google Drive provided by user
     const val DEFAULT_DRIVE_SHEET_URL =
-        "https://docs.google.com/spreadsheets/d/1gMdeRZUao2VWrUsmQ83OMWJxTdFulgYrKyV5XD-Olbs/edit?usp=sharing"
+        "https://docs.google.com/spreadsheets/d/1HSyA-GdDOmwdGwK5n1u3eNrggENZjqQqJNHInFbeHeU/edit?usp=sharing"
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(25, TimeUnit.SECONDS)
@@ -31,7 +31,7 @@ object DriveSyncService {
         } else if (trimmed.contains("/export?")) {
             trimmed
         } else {
-            "https://docs.google.com/spreadsheets/d/1gMdeRZUao2VWrUsmQ83OMWJxTdFulgYrKyV5XD-Olbs/export?format=xlsx"
+            "https://docs.google.com/spreadsheets/d/1HSyA-GdDOmwdGwK5n1u3eNrggENZjqQqJNHInFbeHeU/export?format=xlsx"
         }
     }
 
