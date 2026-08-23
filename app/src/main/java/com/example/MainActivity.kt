@@ -230,117 +230,30 @@ fun MainAppScreen(viewModel: ReportViewModel) {
             )
         },
         bottomBar = {
-            Surface(
-                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-                tonalElevation = 8.dp,
-                shadowElevation = 8.dp,
-                color = MaterialTheme.colorScheme.surface
-            ) {
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier.testTag("main_navigation_bar")
-                ) {
-                    val pageAnimSpec = androidx.compose.animation.core.tween<Float>(
-                        durationMillis = 380,
-                        easing = androidx.compose.animation.core.FastOutSlowInEasing
-                    )
-                    NavigationBarItem(
-                        selected = pagerState.currentPage == 0,
-                        onClick = {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(0, animationSpec = pageAnimSpec)
-                            }
-                        },
-                        icon = { Icon(imageVector = Icons.Default.FlashOn, contentDescription = "Generar") },
-                        label = {
-                            Text(
-                                text = "Generar",
-                                style = MaterialTheme.typography.labelSmall,
-                                maxLines = 1,
-                                softWrap = false,
-                                fontWeight = if (pagerState.currentPage == 0) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        modifier = Modifier.testTag("tab_quick_report")
-                    )
-                    NavigationBarItem(
-                        selected = pagerState.currentPage == 1,
-                        onClick = {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(1, animationSpec = pageAnimSpec)
-                            }
-                        },
-                        icon = { Icon(imageVector = Icons.Default.CloudSync, contentDescription = "Actualizar") },
-                        label = {
-                            Text(
-                                text = "Actualizar",
-                                style = MaterialTheme.typography.labelSmall,
-                                maxLines = 1,
-                                softWrap = false,
-                                fontWeight = if (pagerState.currentPage == 1) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        modifier = Modifier.testTag("tab_extract_file")
-                    )
-                    NavigationBarItem(
-                        selected = pagerState.currentPage == 2,
-                        onClick = {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(2, animationSpec = pageAnimSpec)
-                            }
-                        },
-                        icon = { Icon(imageVector = Icons.Default.Casino, contentDescription = "Máquinas") },
-                        label = {
-                            Text(
-                                text = "Máquinas",
-                                style = MaterialTheme.typography.labelSmall,
-                                maxLines = 1,
-                                softWrap = false,
-                                fontWeight = if (pagerState.currentPage == 2) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        modifier = Modifier.testTag("tab_machine_location")
-                    )
-                    NavigationBarItem(
-                        selected = pagerState.currentPage == 3,
-                        onClick = {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(3, animationSpec = pageAnimSpec)
-                            }
-                        },
-                        icon = { Icon(imageVector = Icons.Default.AssignmentInd, contentDescription = "Visitas") },
-                        label = {
-                            Text(
-                                text = "Visitas",
-                                style = MaterialTheme.typography.labelSmall,
-                                maxLines = 1,
-                                softWrap = false,
-                                fontWeight = if (pagerState.currentPage == 3) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        modifier = Modifier.testTag("tab_visits")
-                    )
-                    NavigationBarItem(
-                        selected = pagerState.currentPage == 4,
-                        onClick = {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(4, animationSpec = pageAnimSpec)
-                            }
-                        },
-                        icon = { Icon(imageVector = Icons.Default.History, contentDescription = "Historial") },
-                        label = {
-                            Text(
-                                text = "Historial",
-                                style = MaterialTheme.typography.labelSmall,
-                                maxLines = 1,
-                                softWrap = false,
-                                fontWeight = if (pagerState.currentPage == 4) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        modifier = Modifier.testTag("tab_history")
-                    )
-                }
+            val navItems = remember {
+                listOf(
+                    com.example.ui.components.NavigationTabItem("Generar", Icons.Default.FlashOn, "tab_quick_report"),
+                    com.example.ui.components.NavigationTabItem("Actualizar", Icons.Default.CloudSync, "tab_extract_file"),
+                    com.example.ui.components.NavigationTabItem("Máquinas", Icons.Default.Casino, "tab_machine_location"),
+                    com.example.ui.components.NavigationTabItem("Visitas", Icons.Default.AssignmentInd, "tab_visits"),
+                    com.example.ui.components.NavigationTabItem("Historial", Icons.Default.History, "tab_history")
+                )
             }
+            com.example.ui.components.AnimatedExpandingBottomBar(
+                selectedIndex = pagerState.currentPage,
+                onItemSelected = { index ->
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(
+                            index,
+                            animationSpec = androidx.compose.animation.core.tween(
+                                durationMillis = 350,
+                                easing = androidx.compose.animation.core.FastOutSlowInEasing
+                            )
+                        )
+                    }
+                },
+                items = navItems
+            )
         }
     ) { innerPadding ->
         HorizontalPager(
