@@ -195,9 +195,8 @@ fun MainAppScreen(viewModel: ReportViewModel) {
 
                         Spacer(modifier = Modifier.width(6.dp))
 
-                        // Casino Venue Brand Badge / Personal User Logo in Top Bar
-                        val isParraUser = currentUser?.usuario?.trim()?.equals("aparra", ignoreCase = true) == true ||
-                                currentUser?.nombre?.trim()?.contains("parra", ignoreCase = true) == true
+                        // Casino Venue Brand Badge / Personal User Logo in Top Bar (Exclusivo para usuario aparra)
+                        val isParraUser = currentUser?.usuario?.trim()?.equals("aparra", ignoreCase = true) == true
 
                         if (isParraUser) {
                             Box(
