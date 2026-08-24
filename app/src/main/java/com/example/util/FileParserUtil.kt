@@ -79,7 +79,7 @@ object FileParserUtil {
                         val sala = salaRaw.ifBlank { defaultSala }
                         val marca = getVal("marca", 1)
                         val modelo = getVal("modelo", 2)
-                        val juego = getVal("juego", 3)
+                        val juego = getVal("juego", -1)
                         val area = getVal("area", 4)
                         val isla = cleanNumericString(getVal("isla", -1))
                         val serie = getVal("serie", 6)
@@ -96,7 +96,7 @@ object FileParserUtil {
                                     serialNumber = serie.ifBlank { if (maquina.isNotBlank()) "SN-$maquina" else "SN-DESCONOCIDO" },
                                     assetNumber = asset.ifBlank { maquina },
                                     area = area.ifBlank { "Sala Principal" },
-                                    game = juego.ifBlank { "General" },
+                                    game = juego,
                                     island = isla,
                                     sala = sala,
                                     qrId = qrId,
@@ -348,7 +348,7 @@ object FileParserUtil {
             val sala = salaRaw.ifBlank { defaultSala }
             val marca = getValue("marca", 1)
             val modelo = getValue("modelo", 2)
-            val juego = getValue("juego", 3)
+            val juego = getValue("juego", -1)
             val area = getValue("area", 4)
             val isla = cleanNumericString(getValue("isla", -1))
             val serie = getValue("serie", 6)
@@ -365,7 +365,7 @@ object FileParserUtil {
                         serialNumber = serie.ifBlank { if (maquina.isNotBlank()) "SN-$maquina" else "SN-DESCONOCIDO" },
                         assetNumber = asset.ifBlank { maquina },
                         area = area.ifBlank { "Sala Principal" },
-                        game = juego.ifBlank { "General" },
+                        game = juego,
                         island = isla,
                         sala = sala,
                         qrId = qrId,
