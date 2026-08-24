@@ -1,12 +1,14 @@
 package com.example.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,12 +31,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.ui.theme.Slate700
 import com.example.ui.theme.Slate800
 import com.example.ui.theme.Slate900
@@ -46,7 +52,9 @@ data class VenueBrandStyle(
     val badgeGradient: Brush,
     val borderColor: Color,
     val textColor: Color,
-    val iconTint: Color
+    val iconTint: Color,
+    val logoDrawableDark: Int? = null,
+    val logoDrawableLight: Int? = null
 )
 
 @Composable
@@ -58,10 +66,12 @@ fun rememberVenueBrandStyle(venueName: String): VenueBrandStyle {
                 brandName = "WINPOT",
                 shortCode = "WP",
                 icon = Icons.Default.Stars,
-                badgeGradient = Brush.horizontalGradient(listOf(Color(0xFF1E3A8A), Color(0xFF0284C7))),
-                borderColor = Color(0xFF38BDF8),
+                badgeGradient = Brush.horizontalGradient(listOf(Color(0xFF0F172A), Color(0xFF1E293B))),
+                borderColor = Color(0xFFE11D48),
                 textColor = Color(0xFFF8FAFC),
-                iconTint = Color(0xFF38BDF8)
+                iconTint = Color(0xFFE11D48),
+                logoDrawableDark = R.drawable.logo_winpot_dark,
+                logoDrawableLight = R.drawable.logo_winpot_light
             )
             upper.contains("CALIENTE") -> VenueBrandStyle(
                 brandName = "CALIENTE",
@@ -119,54 +129,79 @@ fun VenueLogoBadge(
     compact: Boolean = false
 ) {
     val style = rememberVenueBrandStyle(venueName)
+    val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val logoDrawable = if (isDarkTheme) style.logoDrawableDark else style.logoDrawableLight
 
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, style.borderColor.copy(alpha = 0.5f)),
-        color = Color.Transparent
-    ) {
-        Box(
-            modifier = Modifier
-                .background(style.badgeGradient)
-                .padding(horizontal = if (compact) 8.dp else 12.dp, vertical = if (compact) 4.dp else 6.dp)
+    if (logoDrawable != null) {
+        // Official Institutional Brand Logo Image
+        Surface(
+            modifier = modifier,
+            shape = RoundedCornerShape(10.dp),
+            color = if (isDarkTheme) Color(0xFF0F172A).copy(alpha = 0.6f) else Color.White.copy(alpha = 0.9f),
+            border = BorderStroke(1.dp, if (isDarkTheme) Color(0xFF334155) else Color(0xFFE2E8F0))
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+            Box(
+                modifier = Modifier.padding(horizontal = if (compact) 6.dp else 10.dp, vertical = if (compact) 2.dp else 4.dp),
+                contentAlignment = Alignment.Center
             ) {
-                // Brand Icon
-                Icon(
-                    imageVector = style.icon,
+                Image(
+                    painter = painterResource(id = logoDrawable),
                     contentDescription = style.brandName,
-                    tint = style.iconTint,
-                    modifier = Modifier.size(if (compact) 14.dp else 18.dp)
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .height(if (compact) 26.dp else 36.dp)
+                        .width(if (compact) 68.dp else 95.dp)
                 )
-
-                Spacer(modifier = Modifier.width(6.dp))
-
-                // Brand Name / Monogram
-                Column {
-                    Text(
-                        text = style.brandName,
-                        style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Black,
-                        color = style.textColor,
-                        letterSpacing = 0.8.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+            }
+        }
+    } else {
+        // Fallback Stylized Heraldic Badge
+        Surface(
+            modifier = modifier,
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, style.borderColor.copy(alpha = 0.5f)),
+            color = Color.Transparent
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(style.badgeGradient)
+                    .padding(horizontal = if (compact) 8.dp else 12.dp, vertical = if (compact) 4.dp else 6.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = style.icon,
+                        contentDescription = style.brandName,
+                        tint = style.iconTint,
+                        modifier = Modifier.size(if (compact) 14.dp else 18.dp)
                     )
-                    if (!compact && venueName.trim().uppercase() != style.brandName) {
-                        val subName = venueName.trim().uppercase().removePrefix(style.brandName).trim()
-                        if (subName.isNotBlank()) {
-                            Text(
-                                text = subName,
-                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 9.sp),
-                                fontWeight = FontWeight.SemiBold,
-                                color = style.textColor.copy(alpha = 0.8f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    Column {
+                        Text(
+                            text = style.brandName,
+                            style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Black,
+                            color = style.textColor,
+                            letterSpacing = 0.8.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (!compact && venueName.trim().uppercase() != style.brandName) {
+                            val subName = venueName.trim().uppercase().removePrefix(style.brandName).trim()
+                            if (subName.isNotBlank()) {
+                                Text(
+                                    text = subName,
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 9.sp),
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = style.textColor.copy(alpha = 0.8f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
                 }
