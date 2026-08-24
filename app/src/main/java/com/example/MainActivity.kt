@@ -1,14 +1,29 @@
 package com.example
 
+import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,11 +37,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import kotlinx.coroutines.withTimeout
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AssignmentInd
@@ -118,11 +144,33 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+// Helper para vibración háptica al disparar evento secreto
+fun triggerHapticVibration(context: Context) {
+    try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+            vibratorManager?.defaultVibrator?.vibrate(
+                VibrationEffect.createOneShot(160, VibrationEffect.DEFAULT_AMPLITUDE)
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator?.vibrate(VibrationEffect.createOneShot(160, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator?.vibrate(160)
+            }
+        }
+    } catch (_: Exception) {}
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainAppScreen(viewModel: ReportViewModel) {
     val coroutineScope = rememberCoroutineScope()
     val pagerState = rememberPagerState(initialPage = 0) { 5 }
+    val context = LocalContext.current
 
     val currentUser by viewModel.currentUser.collectAsState()
     val missingEmailState by viewModel.missingProviderEmailState.collectAsState()
@@ -137,6 +185,7 @@ fun MainAppScreen(viewModel: ReportViewModel) {
     val deepLinkMachine by viewModel.deepLinkMachine.collectAsState()
 
     var showLogoutConfirmDialog by remember { mutableStateOf(false) }
+    var showParraSecretPreview by remember { mutableStateOf(false) }
 
     LaunchedEffect(targetTab) {
         targetTab?.let { page ->
@@ -200,7 +249,31 @@ fun MainAppScreen(viewModel: ReportViewModel) {
 
                         if (isParraUser) {
                             Box(
-                                modifier = Modifier.padding(horizontal = 4.dp),
+                                modifier = Modifier
+                                    .padding(horizontal = 4.dp)
+                                    .pointerInput(Unit) {
+                                        awaitEachGesture {
+                                            val down = awaitFirstDown(requireUnconsumed = false)
+                                            var triggered = false
+                                            try {
+                                                withTimeout(3000L) {
+                                                    while (true) {
+                                                        val event = awaitPointerEvent()
+                                                        val change = event.changes.firstOrNull { it.id == down.id }
+                                                        if (change == null || !change.pressed) {
+                                                            break
+                                                        }
+                                                    }
+                                                }
+                                            } catch (_: PointerEventTimeoutCancellationException) {
+                                                triggered = true
+                                            }
+                                            if (triggered) {
+                                                triggerHapticVibration(context)
+                                                showParraSecretPreview = true
+                                            }
+                                        }
+                                    },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Image(
@@ -419,6 +492,68 @@ fun MainAppScreen(viewModel: ReportViewModel) {
                     viewModel.saveDraftToHistory()
                 }
             )
+        }
+
+        // Modal de Visualización Personal para aparra (3 segundos)
+        if (showParraSecretPreview) {
+            Dialog(
+                onDismissRequest = { showParraSecretPreview = false },
+                properties = DialogProperties(
+                    usePlatformDefaultWidth = false,
+                    dismissOnClickOutside = true
+                )
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.82f))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            showParraSecretPreview = false
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) +
+                                scaleIn(
+                                    initialScale = 0.75f,
+                                    animationSpec = androidx.compose.animation.core.spring(
+                                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                                        stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                                    )
+                                ),
+                        exit = fadeOut(animationSpec = androidx.compose.animation.core.tween(200)) +
+                                scaleOut(targetScale = 0.75f)
+                    ) {
+                        Card(
+                            modifier = Modifier
+                                .padding(28.dp)
+                                .wrapContentSize(),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 20.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier.padding(20.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.logo_parra),
+                                    contentDescription = "Logo Personal aparra",
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier
+                                        .size(200.dp)
+                                        .clip(RoundedCornerShape(18.dp))
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
