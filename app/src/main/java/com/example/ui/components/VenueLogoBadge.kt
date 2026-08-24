@@ -150,7 +150,9 @@ fun rememberVenueBrandStyle(venueName: String): VenueBrandStyle {
                 badgeGradient = Brush.horizontalGradient(listOf(Color(0xFF1E293B), Color(0xFF334155))),
                 borderColor = Color(0xFF64748B),
                 textColor = Color(0xFFF8FAFC),
-                iconTint = Color(0xFF94A3B8)
+                iconTint = Color(0xFF94A3B8),
+                logoDrawableDark = R.drawable.logo_corporativo,
+                logoDrawableLight = R.drawable.logo_corporativo
             )
         }
     }
