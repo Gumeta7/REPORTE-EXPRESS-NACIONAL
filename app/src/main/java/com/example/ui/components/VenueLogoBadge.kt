@@ -84,6 +84,17 @@ fun rememberVenueBrandStyle(venueName: String): VenueBrandStyle {
                 logoDrawableDark = R.drawable.logo_capri_dark,
                 logoDrawableLight = R.drawable.logo_capri_light
             )
+            upper.contains("DIAMOND") || upper.contains("DIAMONDS") -> VenueBrandStyle(
+                brandName = "DIAMONDS",
+                shortCode = "DM",
+                icon = Icons.Default.Diamond,
+                badgeGradient = Brush.horizontalGradient(listOf(Color(0xFF450A0A), Color(0xFF991B1B))),
+                borderColor = Color(0xFFDC2626),
+                textColor = Color(0xFFFEF2F2),
+                iconTint = Color(0xFFF87171),
+                logoDrawableDark = R.drawable.logo_diamonds,
+                logoDrawableLight = R.drawable.logo_diamonds
+            )
             upper.contains("CALIENTE") -> VenueBrandStyle(
                 brandName = "CALIENTE",
                 shortCode = "CAL",
