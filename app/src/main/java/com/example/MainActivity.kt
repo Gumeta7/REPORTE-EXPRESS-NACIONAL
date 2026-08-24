@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -20,9 +21,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AssignmentInd
@@ -191,12 +195,31 @@ fun MainAppScreen(viewModel: ReportViewModel) {
 
                         Spacer(modifier = Modifier.width(6.dp))
 
-                        // Casino Venue Brand Badge in Top Bar
-                        val activeVenue = currentUser?.sala?.trim()?.ifBlank { "CORPORATIVO" } ?: "CORPORATIVO"
-                        com.example.ui.components.VenueLogoBadge(
-                            venueName = activeVenue,
-                            compact = true
-                        )
+                        // Casino Venue Brand Badge / Personal User Logo in Top Bar
+                        val isParraUser = currentUser?.usuario?.trim()?.equals("aparra", ignoreCase = true) == true ||
+                                currentUser?.nombre?.trim()?.contains("parra", ignoreCase = true) == true
+
+                        if (isParraUser) {
+                            Box(
+                                modifier = Modifier.padding(horizontal = 4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.logo_parra),
+                                    contentDescription = "Logo Personal",
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier
+                                        .height(34.dp)
+                                        .widthIn(min = 45.dp, max = 95.dp)
+                                )
+                            }
+                        } else {
+                            val activeVenue = currentUser?.sala?.trim()?.ifBlank { "CORPORATIVO" } ?: "CORPORATIVO"
+                            com.example.ui.components.VenueLogoBadge(
+                                venueName = activeVenue,
+                                compact = true
+                            )
+                        }
                     }
                 },
                 actions = {
