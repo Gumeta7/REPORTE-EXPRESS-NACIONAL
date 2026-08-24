@@ -95,6 +95,17 @@ fun rememberVenueBrandStyle(venueName: String): VenueBrandStyle {
                 logoDrawableDark = R.drawable.logo_diamonds,
                 logoDrawableLight = R.drawable.logo_diamonds
             )
+            upper.contains("VENETO") -> VenueBrandStyle(
+                brandName = "VENETO",
+                shortCode = "VN",
+                icon = Icons.Default.Casino,
+                badgeGradient = Brush.horizontalGradient(listOf(Color(0xFF1C1917), Color(0xFF44403C))),
+                borderColor = Color(0xFFB45309),
+                textColor = Color(0xFFFFFBEB),
+                iconTint = Color(0xFFF59E0B),
+                logoDrawableDark = R.drawable.logo_veneto,
+                logoDrawableLight = R.drawable.logo_veneto
+            )
             upper.contains("CALIENTE") -> VenueBrandStyle(
                 brandName = "CALIENTE",
                 shortCode = "CAL",
