@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -166,26 +167,19 @@ fun VenueLogoBadge(
     val logoDrawable = if (isDarkTheme) style.logoDrawableDark else style.logoDrawableLight
 
     if (logoDrawable != null) {
-        // Official Institutional Brand Logo Image
-        Surface(
-            modifier = modifier,
-            shape = RoundedCornerShape(10.dp),
-            color = if (isDarkTheme) Color(0xFF0F172A).copy(alpha = 0.6f) else Color.White.copy(alpha = 0.9f),
-            border = BorderStroke(1.dp, if (isDarkTheme) Color(0xFF334155) else Color(0xFFE2E8F0))
+        // Official Institutional Brand Logo Image - Clean, Direct & Unboxed
+        Box(
+            modifier = modifier.padding(horizontal = if (compact) 4.dp else 8.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier.padding(horizontal = if (compact) 6.dp else 10.dp, vertical = if (compact) 2.dp else 4.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = logoDrawable),
-                    contentDescription = style.brandName,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .height(if (compact) 26.dp else 36.dp)
-                        .width(if (compact) 68.dp else 95.dp)
-                )
-            }
+            Image(
+                painter = painterResource(id = logoDrawable),
+                contentDescription = style.brandName,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .height(if (compact) 32.dp else 42.dp)
+                    .widthIn(min = 60.dp, max = if (compact) 105.dp else 145.dp)
+            )
         }
     } else {
         // Fallback Stylized Heraldic Badge
