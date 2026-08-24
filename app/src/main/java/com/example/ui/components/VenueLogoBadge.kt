@@ -73,6 +73,17 @@ fun rememberVenueBrandStyle(venueName: String): VenueBrandStyle {
                 logoDrawableDark = R.drawable.logo_winpot_dark,
                 logoDrawableLight = R.drawable.logo_winpot_light
             )
+            upper.contains("CAPRI") -> VenueBrandStyle(
+                brandName = "CAPRI",
+                shortCode = "CAP",
+                icon = Icons.Default.Casino,
+                badgeGradient = Brush.horizontalGradient(listOf(Color(0xFF4A0E17), Color(0xFF881337))),
+                borderColor = Color(0xFFBE123C),
+                textColor = Color(0xFFFFF1F2),
+                iconTint = Color(0xFFFDA4AF),
+                logoDrawableDark = R.drawable.logo_capri_dark,
+                logoDrawableLight = R.drawable.logo_capri_light
+            )
             upper.contains("CALIENTE") -> VenueBrandStyle(
                 brandName = "CALIENTE",
                 shortCode = "CAL",
