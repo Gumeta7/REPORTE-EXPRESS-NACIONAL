@@ -46,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -220,6 +221,7 @@ fun HistoryScreen(
                     key = { it.id },
                     contentType = { "history_card" }
                 ) { report ->
+                    val isVisit = report.subject.contains("Visita", ignoreCase = true)
                     HistoryReportCard(
                         report = report,
                         onReOpen = {
@@ -238,11 +240,19 @@ fun HistoryScreen(
                             )
                         },
                         onCopy = {
-                            EmailIntentUtil.copyToClipboard(
-                                context,
-                                "Reporte de Correo",
-                                "Asunto: ${report.subject}\n\n${report.body}"
-                            )
+                            if (isVisit) {
+                                EmailIntentUtil.copyToClipboard(
+                                    context,
+                                    "Registro Visita WhatsApp",
+                                    report.body
+                                )
+                            } else {
+                                EmailIntentUtil.copyToClipboard(
+                                    context,
+                                    "Reporte de Correo",
+                                    "Asunto: ${report.subject}\n\n${report.body}"
+                                )
+                            }
                         },
                         onDelete = { reportToDelete = report },
                         onSendGmail = {
@@ -260,6 +270,25 @@ fun HistoryScreen(
                                 report.subject,
                                 report.body
                             )
+                        },
+                        onSendWhatsApp = {
+                            val whatsappIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(android.content.Intent.EXTRA_TEXT, report.body)
+                                setPackage("com.whatsapp")
+                            }
+                            try {
+                                context.startActivity(whatsappIntent)
+                            } catch (e: Exception) {
+                                val shareIntent = android.content.Intent.createChooser(
+                                    android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(android.content.Intent.EXTRA_TEXT, report.body)
+                                    },
+                                    "Enviar por WhatsApp"
+                                )
+                                context.startActivity(shareIntent)
+                            }
                         }
                     )
                 }
@@ -323,12 +352,14 @@ fun HistoryReportCard(
     onCopy: () -> Unit,
     onDelete: () -> Unit,
     onSendGmail: () -> Unit,
-    onSendOutlook: () -> Unit
+    onSendOutlook: () -> Unit,
+    onSendWhatsApp: () -> Unit = {}
 ) {
     val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
     val formattedDate = remember(report.timestamp) { dateFormat.format(Date(report.timestamp)) }
+    val isVisit = report.subject.contains("Visita", ignoreCase = true) || report.status.contains("WhatsApp", ignoreCase = true)
     val displayAsset = report.assetNumber.ifBlank { report.machineNumber.ifBlank { "N/A" } }
-    val displayIssue = report.issueDescription.ifBlank { "Falla sin especificar" }
+    val displayIssue = report.issueDescription.ifBlank { if (isVisit) "Visita técnica" else "Falla sin especificar" }
 
     Card(
         modifier = Modifier
@@ -340,21 +371,33 @@ fun HistoryReportCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-            // Header Row: Recipient & Timestamp
+            // Header Row: Recipient / Brand & Timestamp
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Para: ${report.recipient}",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
-                )
+                if (isVisit) {
+                    Text(
+                        text = "📋 Visita: ${report.brand.ifBlank { "General" }}",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF16A34A),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                } else {
+                    Text(
+                        text = "Para: ${report.recipient}",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = formattedDate,
@@ -365,13 +408,13 @@ fun HistoryReportCard(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Asset Number Row
+            // Asset Number / Isla Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Asset Number: ",
+                    text = if (isVisit) "Asset / Isla: " else "Asset Number: ",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -386,13 +429,13 @@ fun HistoryReportCard(
 
             Spacer(modifier = Modifier.height(2.dp))
 
-            // Falla (Issue Description) Row
+            // Falla / Motivo Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top
             ) {
                 Text(
-                    text = "Falla: ",
+                    text = if (isVisit) "Motivo: " else "Falla: ",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -415,22 +458,33 @@ fun HistoryReportCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    IconButton(onClick = onSendGmail, modifier = Modifier.height(32.dp).width(32.dp)) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Reenviar Gmail",
-                            tint = GmailRed,
-                            modifier = Modifier.height(18.dp).width(18.dp)
-                        )
-                    }
+                    if (isVisit) {
+                        IconButton(onClick = onSendWhatsApp, modifier = Modifier.height(32.dp).width(32.dp)) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Reenviar WhatsApp",
+                                tint = Color(0xFF25D366),
+                                modifier = Modifier.height(18.dp).width(18.dp)
+                            )
+                        }
+                    } else {
+                        IconButton(onClick = onSendGmail, modifier = Modifier.height(32.dp).width(32.dp)) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Reenviar Gmail",
+                                tint = GmailRed,
+                                modifier = Modifier.height(18.dp).width(18.dp)
+                            )
+                        }
 
-                    IconButton(onClick = onSendOutlook, modifier = Modifier.height(32.dp).width(32.dp)) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Reenviar Outlook",
-                            tint = OutlookBlue,
-                            modifier = Modifier.height(18.dp).width(18.dp)
-                        )
+                        IconButton(onClick = onSendOutlook, modifier = Modifier.height(32.dp).width(32.dp)) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Reenviar Outlook",
+                                tint = OutlookBlue,
+                                modifier = Modifier.height(18.dp).width(18.dp)
+                            )
+                        }
                     }
 
                     IconButton(onClick = onCopy, modifier = Modifier.height(32.dp).width(32.dp)) {

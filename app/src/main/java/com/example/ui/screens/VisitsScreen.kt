@@ -699,7 +699,21 @@ fun VisitsScreen(
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     val clip = ClipData.newPlainText("Registro Visita WhatsApp", whatsappText)
                     clipboard.setPrimaryClip(clip)
-                    Toast.makeText(context, "Texto copiado para WhatsApp", Toast.LENGTH_SHORT).show()
+
+                    viewModel.saveVisitToHistory(
+                        sala = activeSala,
+                        fecha = fecha,
+                        proveedor = proveedor,
+                        tecnico = tecnico,
+                        horaEntrada = horaEntrada,
+                        horaSalida = horaSalida,
+                        motivoVisita = motivoVisita,
+                        asset = assetInput,
+                        isla = islaInput,
+                        fullText = whatsappText
+                    )
+
+                    Toast.makeText(context, "Texto copiado y visita guardada en el historial", Toast.LENGTH_SHORT).show()
                 },
                 modifier = Modifier
                     .weight(1f)
@@ -715,6 +729,21 @@ fun VisitsScreen(
 
             Button(
                 onClick = {
+                    viewModel.saveVisitToHistory(
+                        sala = activeSala,
+                        fecha = fecha,
+                        proveedor = proveedor,
+                        tecnico = tecnico,
+                        horaEntrada = horaEntrada,
+                        horaSalida = horaSalida,
+                        motivoVisita = motivoVisita,
+                        asset = assetInput,
+                        isla = islaInput,
+                        fullText = whatsappText
+                    )
+
+                    Toast.makeText(context, "Visita guardada en el historial", Toast.LENGTH_SHORT).show()
+
                     val whatsappIntent = Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
                         putExtra(Intent.EXTRA_TEXT, whatsappText)

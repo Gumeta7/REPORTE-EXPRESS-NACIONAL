@@ -956,6 +956,47 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun saveVisitToHistory(
+        sala: String,
+        fecha: String,
+        proveedor: String,
+        tecnico: String,
+        horaEntrada: String,
+        horaSalida: String,
+        motivoVisita: String,
+        asset: String,
+        isla: String,
+        fullText: String
+    ) {
+        viewModelScope.launch {
+            if (fullText.isNotBlank()) {
+                val assetOrIsla = buildString {
+                    if (asset.isNotBlank()) append(asset.trim())
+                    if (isla.isNotBlank()) {
+                        if (isNotEmpty()) append(" · ")
+                        append("Isla ${isla.trim()}")
+                    }
+                }.ifBlank { "N/A" }
+
+                val visitReport = EmailReportEntity(
+                    recipient = "WhatsApp",
+                    subject = "Visita Técnica - ${sala.trim().ifBlank { "Corporativo" }} - ${proveedor.trim().ifBlank { "General" }}",
+                    body = fullText,
+                    machineNumber = assetOrIsla,
+                    issueDescription = motivoVisita.trim().ifBlank { "Servicio / Mantenimiento de Visita" },
+                    brand = proveedor.trim().ifBlank { "General" },
+                    model = if (isla.isNotBlank()) "Isla $isla" else "",
+                    serialNumber = if (tecnico.isNotBlank()) "Téc: ${tecnico.trim()}" else "",
+                    assetNumber = asset.trim(),
+                    timestamp = System.currentTimeMillis(),
+                    status = "Enviado WhatsApp"
+                )
+                repository.saveReport(visitReport)
+                _statusMessage.value = "Visita registrada y guardada en el historial."
+            }
+        }
+    }
+
     fun deleteHistoryReport(id: Int) {
         viewModelScope.launch {
             repository.deleteReport(id)
