@@ -3,8 +3,10 @@ package com.example.data.remote
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
 object DriveSyncService {
@@ -13,6 +15,9 @@ object DriveSyncService {
     // Default Spreadsheet URL in Google Drive provided by user
     const val DEFAULT_DRIVE_SHEET_URL =
         "https://docs.google.com/spreadsheets/d/1HSyA-GdDOmwdGwK5n1u3eNrggENZjqQqJNHInFbeHeU/edit?usp=sharing"
+
+    // Webhook URL configurable para enviar incidencias automáticamente a la pestaña 'Incidencias'
+    var customWebhookUrl: String = ""
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(25, TimeUnit.SECONDS)
@@ -61,5 +66,38 @@ object DriveSyncService {
                 Log.e(TAG, "Error downloading spreadsheet from Drive", e)
             }
             return@withContext null
+        }
+
+    /**
+     * Envía la información de una incidencia a la pestaña 'Incidencias' del Google Spreadsheet vía Webhook POST.
+     */
+    suspend fun postIncidenciaToDriveSheet(payload: IncidenciaTicketPayload): Boolean =
+        withContext(Dispatchers.IO) {
+            val webhook = customWebhookUrl.trim()
+            if (webhook.isBlank()) {
+                Log.w(TAG, "No se ha configurado la URL de Webhook de Incidencias en la hoja de cálculo.")
+                return@withContext false
+            }
+
+            try {
+                val jsonPayload = payload.toJsonString()
+                Log.d(TAG, "Enviando incidencia a Webhook: $webhook con datos: $jsonPayload")
+
+                val mediaType = "application/json; charset=utf-8".toMediaType()
+                val body = jsonPayload.toRequestBody(mediaType)
+                val request = Request.Builder()
+                    .url(webhook)
+                    .post(body)
+                    .header("User-Agent", "ReportesExpress/2.0")
+                    .build()
+
+                val response = client.newCall(request).execute()
+                val isSuccess = response.isSuccessful
+                Log.d(TAG, "Respuesta de registro de incidencia Webhook: HTTP ${response.code} (éxito=$isSuccess)")
+                return@withContext isSuccess
+            } catch (e: Exception) {
+                Log.e(TAG, "Error al enviar la incidencia a Google Sheets", e)
+                return@withContext false
+            }
         }
 }

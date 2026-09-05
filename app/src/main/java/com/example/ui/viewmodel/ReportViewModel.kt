@@ -38,7 +38,10 @@ data class EmailDraftState(
     val model: String = "",
     val serialNumber: String = "",
     val assetNumber: String = "",
-    val sala: String = ""
+    val sala: String = "",
+    val area: String = "",
+    val propietario: String = "",
+    val ticketId: String? = null
 )
 
 data class MissingProviderEmailState(
@@ -728,13 +731,18 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val finalAsset = foundMachine?.assetNumber ?: numberMatch
             val finalSala = foundMachine?.sala?.ifBlank { null } ?: venueName.value.ifBlank { "Sala Principal" }
             val finalArea = foundMachine?.area ?: "Sala Principal"
-            val finalGame = foundMachine?.game?.ifBlank { "General" } ?: "General"
+            val finalPropietario = foundMachine?.propietario?.ifBlank { "WINPOT" } ?: "WINPOT"
+            val ticketId = com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial)
+
             val formattedBody = buildString {
                 appendLine("$greeting estimados, nos podrían apoyar con la revisión y atención de la siguiente terminal, la cual presenta el siguiente inconveniente:")
                 appendLine()
                 appendLine("Detalle de la falla: $cleanedIssue.")
                 appendLine()
                 appendLine("--- Datos del equipo ---")
+                if (ticketId != null) {
+                    appendLine("• ID Ticket: $ticketId")
+                }
                 appendLine("• Sala / Ubicación: $finalSala")
                 appendLine("• Marca: $finalBrand")
                 appendLine("• Modelo: $finalModel")
@@ -747,7 +755,11 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 append("Saludos cordiales.")
             }
 
-            val subjectLine = "REPORTE DE TERMINAL - $finalSala (ASSET: $finalAsset)"
+            val subjectLine = if (ticketId != null) {
+                "REPORTE DE TERMINAL [$ticketId] - $finalSala (ASSET: $finalAsset)"
+            } else {
+                "REPORTE DE TERMINAL - $finalSala (ASSET: $finalAsset)"
+            }
 
             val draft = EmailDraftState(
                 recipient = finalRecipient,
@@ -759,7 +771,10 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 model = finalModel,
                 serialNumber = finalSerial,
                 assetNumber = finalAsset,
-                sala = finalSala
+                sala = finalSala,
+                area = finalArea,
+                propietario = finalPropietario,
+                ticketId = ticketId
             )
 
             if (matchedProvider != null && matchedProvider.email.isBlank()) {
@@ -842,7 +857,8 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
             val greeting = getTimeOfDayGreeting()
             val cleanedIssue = issueDescription.trim().ifBlank { "Falla reportada en terminales" }
-            val isSingle = machines.size == 1
+            val finalPropietario = machines.map { it.propietario.trim() }.firstOrNull { it.isNotBlank() } ?: "WINPOT"
+            val ticketId = if (isSingle) com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial) else null
 
             val introLine = if (isSingle) {
                 "$greeting estimados, nos podrían apoyar con la revisión y atención de la siguiente terminal, la cual presenta el siguiente inconveniente:"
@@ -856,6 +872,9 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 appendLine("Detalle de la falla: $cleanedIssue.")
                 appendLine()
                 appendLine(if (isSingle) "--- Datos del equipo ---" else "--- Datos de los equipos ---")
+                if (ticketId != null) {
+                    appendLine("• ID Ticket: $ticketId")
+                }
                 appendLine("• Sala / Ubicación: $finalSala")
                 appendLine("• Marca: $finalBrand")
                 appendLine("• Modelo: $finalModel")
@@ -868,7 +887,9 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 append("Saludos cordiales.")
             }
 
-            val subjectLine = if (isSingle) {
+            val subjectLine = if (ticketId != null) {
+                "REPORTE DE TERMINAL [$ticketId] - $finalSala (ASSET: $finalAsset)"
+            } else if (isSingle) {
                 "REPORTE DE TERMINAL - $finalSala (ASSET: $finalAsset)"
             } else {
                 "REPORTE DE TERMINALES - $finalSala (ASSETS: $finalAsset)"
@@ -884,7 +905,10 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 model = finalModel,
                 serialNumber = finalSerial,
                 assetNumber = finalAsset,
-                sala = finalSala
+                sala = finalSala,
+                area = finalArea,
+                propietario = finalPropietario,
+                ticketId = ticketId
             )
 
             if (finalRecipient.isBlank()) {
@@ -932,7 +956,46 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         return text.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
     }
 
-    // --- Step 4: History Persistence ---
+    // --- Step 4: History Persistence & Drive Sheet Sync ---
+    val incidenciasWebhookUrl = MutableStateFlow(prefs.getString("incidencias_webhook_url", "") ?: "")
+
+    fun updateIncidenciasWebhookUrl(url: String) {
+        val trimmed = url.trim()
+        prefs.edit().putString("incidencias_webhook_url", trimmed).apply()
+        incidenciasWebhookUrl.value = trimmed
+        com.example.data.remote.DriveSyncService.customWebhookUrl = trimmed
+    }
+
+    fun dispatchIncidenciaToDriveSheet(draft: EmailDraftState = _currentDraft.value) {
+        val ticketId = draft.ticketId ?: return
+        viewModelScope.launch {
+            val user = _currentUser.value
+            val payload = com.example.data.remote.IncidenciaTicketPayload(
+                idTicket = ticketId,
+                sala = draft.sala,
+                marca = draft.brand,
+                modelo = draft.model,
+                serie = draft.serialNumber,
+                asset = draft.assetNumber,
+                area = draft.area,
+                propietario = draft.propietario.ifBlank { "WINPOT" },
+                idTecnico = user?.technicianId ?: "",
+                tecnico = user?.nombre ?: "",
+                falla = draft.issueDescription
+            )
+            val webhookUrl = prefs.getString("incidencias_webhook_url", "") ?: ""
+            com.example.data.remote.DriveSyncService.customWebhookUrl = webhookUrl
+            if (webhookUrl.isNotBlank()) {
+                val success = com.example.data.remote.DriveSyncService.postIncidenciaToDriveSheet(payload)
+                if (success) {
+                    _statusMessage.value = "Incidencia registrada en Google Sheets ($ticketId)."
+                } else {
+                    _statusMessage.value = "Ticket $ticketId guardado localmente (sin conexión al Excel)."
+                }
+            }
+        }
+    }
+
     fun saveDraftToHistory() {
         viewModelScope.launch {
             val draft = _currentDraft.value
@@ -952,6 +1015,9 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 )
                 repository.saveReport(reportEntity)
                 _statusMessage.value = "Correo guardado en el historial de reportes."
+
+                // Si se generó un ID_Ticket oficial, registrar en Google Sheets automáticamente
+                dispatchIncidenciaToDriveSheet(draft)
             }
         }
     }
