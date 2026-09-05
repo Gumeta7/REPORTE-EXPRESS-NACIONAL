@@ -208,6 +208,7 @@ fun EmailDraftPreviewDialog(
                             draftState.subject,
                             draftState.body
                         )
+                        onDismiss()
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -232,6 +233,7 @@ fun EmailDraftPreviewDialog(
                             draftState.subject,
                             draftState.body
                         )
+                        onDismiss()
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -260,6 +262,7 @@ fun EmailDraftPreviewDialog(
                                 draftState.subject,
                                 draftState.body
                             )
+                            onDismiss()
                         },
                         modifier = Modifier
                             .weight(1f)

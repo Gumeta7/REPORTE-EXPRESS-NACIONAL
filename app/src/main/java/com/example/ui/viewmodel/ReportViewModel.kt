@@ -654,6 +654,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
     fun openDraftDialog(draft: EmailDraftState) {
         _currentDraft.value = draft
+        lastSavedDraftFingerprint = null
         _showDraftDialog.value = true
     }
 
@@ -946,6 +947,9 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     // --- Step 4: History Persistence & Drive Sheet Sync ---
+    private val dispatchedTicketIds = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+    private var lastSavedDraftFingerprint: String? = null
+
     val incidenciasWebhookUrl = MutableStateFlow(
         prefs.getString("incidencias_webhook_url", com.example.data.remote.DriveSyncService.DEFAULT_INCIDENCIAS_WEBHOOK_URL)
             ?: com.example.data.remote.DriveSyncService.DEFAULT_INCIDENCIAS_WEBHOOK_URL
@@ -962,6 +966,12 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
     fun dispatchIncidenciaToDriveSheet(draft: EmailDraftState = _currentDraft.value) {
         val ticketId = draft.ticketId ?: return
+        if (dispatchedTicketIds.contains(ticketId)) {
+            // Prevenir duplicidad en Google Sheets si ya fue despachado
+            return
+        }
+        dispatchedTicketIds.add(ticketId)
+
         viewModelScope.launch {
             val user = _currentUser.value
             val payload = com.example.data.remote.IncidenciaTicketPayload(
@@ -994,6 +1004,13 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val draft = _currentDraft.value
             if (draft.body.isNotBlank()) {
+                val currentFingerprint = "${draft.ticketId ?: ""}_${draft.subject}_${draft.machineNumber}"
+                if (lastSavedDraftFingerprint == currentFingerprint) {
+                    // Prevenir doble inserción en el historial si el usuario envía y luego guarda
+                    return@launch
+                }
+                lastSavedDraftFingerprint = currentFingerprint
+
                 val reportEntity = EmailReportEntity(
                     recipient = draft.recipient,
                     subject = draft.subject,
