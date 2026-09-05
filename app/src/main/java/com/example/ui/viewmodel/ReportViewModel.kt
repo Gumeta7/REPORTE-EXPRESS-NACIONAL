@@ -850,6 +850,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
             val greeting = getTimeOfDayGreeting()
             val cleanedIssue = issueDescription.trim().ifBlank { "Falla reportada en terminales" }
+            val isSingle = machines.size == 1
             val finalPropietario = machines.map { it.propietario.trim() }.firstOrNull { it.isNotBlank() } ?: "WINPOT"
             val ticketId = if (isSingle) com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial) else null
 
