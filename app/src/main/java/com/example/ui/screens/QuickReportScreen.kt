@@ -42,6 +42,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Divider
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -89,6 +91,8 @@ fun QuickReportScreen(
     var assetSearchInput by remember { mutableStateOf("") }
     var failureDescriptionInput by remember { mutableStateOf("") }
     var selectedRecipient by remember { mutableStateOf("") }
+    var selectedOperativa by remember { mutableStateOf("NO") }
+    var selectedPrioridad by remember { mutableStateOf("MEDIA") }
 
     var showManageProvidersDialog by remember { mutableStateOf(false) }
     var showAssetPickerModal by remember { mutableStateOf(false) }
@@ -405,9 +409,80 @@ fun QuickReportScreen(
             shape = RoundedCornerShape(16.dp)
         )
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 3. SELECCIÓN DE OPERATIVA Y PRIORIDAD
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // Estatus Operativo
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "¿Operativa?",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FilterChip(
+                        selected = selectedOperativa == "NO",
+                        onClick = { selectedOperativa = "NO" },
+                        label = { Text("NO", fontWeight = FontWeight.Bold) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.errorContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    )
+                    FilterChip(
+                        selected = selectedOperativa == "SI",
+                        onClick = { selectedOperativa = "SI" },
+                        label = { Text("SÍ", fontWeight = FontWeight.Bold) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
+                }
+            }
+
+            // Prioridad
+            Column(modifier = Modifier.weight(1.3f)) {
+                Text(
+                    text = "Prioridad:",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    FilterChip(
+                        selected = selectedPrioridad == "BAJA",
+                        onClick = { selectedPrioridad = "BAJA" },
+                        label = { Text("Baja", style = MaterialTheme.typography.labelSmall) }
+                    )
+                    FilterChip(
+                        selected = selectedPrioridad == "MEDIA",
+                        onClick = { selectedPrioridad = "MEDIA" },
+                        label = { Text("Media", style = MaterialTheme.typography.labelSmall) }
+                    )
+                    FilterChip(
+                        selected = selectedPrioridad == "CRITICA",
+                        onClick = { selectedPrioridad = "CRITICA" },
+                        label = { Text("Crítica", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.error,
+                            selectedLabelColor = MaterialTheme.colorScheme.onError
+                        )
+                    )
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(18.dp))
 
-        // 3. SELECCIÓN DE CORREO DEL PROVEEDOR
+        // 4. SELECCIÓN DE CORREO DEL PROVEEDOR
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -458,14 +533,16 @@ fun QuickReportScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // 4. BOTÓN GENERAR REPORTE
+        // 5. BOTÓN GENERAR REPORTE
         Button(
             onClick = {
                 if (selectedMachines.isNotEmpty() && failureDescriptionInput.isNotBlank()) {
                     viewModel.generateReportForMultipleMachines(
                         machines = selectedMachines.toList(),
                         issueDescription = failureDescriptionInput,
-                        customRecipient = activeRecipient
+                        customRecipient = activeRecipient,
+                        operativa = selectedOperativa,
+                        prioridad = selectedPrioridad
                     )
                 }
             },

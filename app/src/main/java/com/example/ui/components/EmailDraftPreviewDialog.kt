@@ -23,6 +23,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -186,8 +188,87 @@ fun EmailDraftPreviewDialog(
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
+
+                // Parámetros de la Incidencia (Operativa y Prioridad)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                    ),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "Estado del Reporte",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Operativa
+                            Column {
+                                Text("¿Operativa?", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    FilterChip(
+                                        selected = draftState.operativa == "NO",
+                                        onClick = { onDraftUpdated(draftState.copy(operativa = "NO")) },
+                                        label = { Text("NO", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.errorContainer,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onErrorContainer
+                                        )
+                                    )
+                                    FilterChip(
+                                        selected = draftState.operativa == "SI",
+                                        onClick = { onDraftUpdated(draftState.copy(operativa = "SI")) },
+                                        label = { Text("SÍ", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    )
+                                }
+                            }
+
+                            // Prioridad
+                            Column {
+                                Text("Prioridad", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    FilterChip(
+                                        selected = draftState.prioridad == "BAJA",
+                                        onClick = { onDraftUpdated(draftState.copy(prioridad = "BAJA")) },
+                                        label = { Text("Baja", style = MaterialTheme.typography.labelSmall) }
+                                    )
+                                    FilterChip(
+                                        selected = draftState.prioridad == "MEDIA",
+                                        onClick = { onDraftUpdated(draftState.copy(prioridad = "MEDIA")) },
+                                        label = { Text("Media", style = MaterialTheme.typography.labelSmall) }
+                                    )
+                                    FilterChip(
+                                        selected = draftState.prioridad == "CRITICA",
+                                        onClick = { onDraftUpdated(draftState.copy(prioridad = "CRITICA")) },
+                                        label = { Text("Crítica", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.error,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onError
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Action Buttons for Sending / Copying / Saving
                 Text(

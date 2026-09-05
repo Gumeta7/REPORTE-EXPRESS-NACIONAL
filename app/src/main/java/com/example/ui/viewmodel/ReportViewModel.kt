@@ -41,7 +41,9 @@ data class EmailDraftState(
     val sala: String = "",
     val area: String = "",
     val propietario: String = "",
-    val ticketId: String? = null
+    val ticketId: String? = null,
+    val operativa: String = "NO",
+    val prioridad: String = "MEDIA"
 )
 
 data class MissingProviderEmailState(
@@ -768,7 +770,9 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 sala = finalSala,
                 area = finalArea,
                 propietario = finalPropietario,
-                ticketId = ticketId
+                ticketId = ticketId,
+                operativa = operativa,
+                prioridad = prioridad
             )
 
             if (matchedProvider != null && matchedProvider.email.isBlank()) {
@@ -789,14 +793,26 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun generateReportForMachine(machine: MachineEntity, issueDescription: String) {
-        generateReportForMultipleMachines(listOf(machine), issueDescription)
+    fun generateReportForMachine(
+        machine: MachineEntity,
+        issueDescription: String,
+        operativa: String = "NO",
+        prioridad: String = "MEDIA"
+    ) {
+        generateReportForMultipleMachines(
+            machines = listOf(machine),
+            issueDescription = issueDescription,
+            operativa = operativa,
+            prioridad = prioridad
+        )
     }
 
     fun generateReportForMultipleMachines(
         machines: List<MachineEntity>,
         issueDescription: String,
-        customRecipient: String = ""
+        customRecipient: String = "",
+        operativa: String = "NO",
+        prioridad: String = "MEDIA"
     ) {
         if (machines.isEmpty()) return
         viewModelScope.launch {
@@ -898,7 +914,9 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 sala = finalSala,
                 area = finalArea,
                 propietario = finalPropietario,
-                ticketId = ticketId
+                ticketId = ticketId,
+                operativa = operativa,
+                prioridad = prioridad
             )
 
             if (finalRecipient.isBlank()) {
@@ -985,7 +1003,9 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 propietario = draft.propietario.ifBlank { "WINPOT" },
                 idTecnico = user?.technicianId ?: "",
                 tecnico = user?.nombre ?: "",
-                falla = draft.issueDescription
+                falla = draft.issueDescription,
+                operativa = draft.operativa.ifBlank { "NO" },
+                prioridad = draft.prioridad.ifBlank { "MEDIA" }
             )
             val configuredUrl = prefs.getString("incidencias_webhook_url", "")?.trim().orEmpty()
             com.example.data.remote.DriveSyncService.customWebhookUrl = configuredUrl.ifBlank {
