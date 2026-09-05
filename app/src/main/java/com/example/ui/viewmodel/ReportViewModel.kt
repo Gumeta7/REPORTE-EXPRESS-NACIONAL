@@ -675,7 +675,12 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     // --- Step 5: Quick Prompt Report Generator ---
-    fun generateQuickReport(promptText: String, customRecipient: String = "soporte@zitro.com") {
+    fun generateQuickReport(
+        promptText: String,
+        customRecipient: String = "soporte@zitro.com",
+        operativa: String = "NO",
+        prioridad: String = "MEDIA"
+    ) {
         viewModelScope.launch {
             val lower = promptText.lowercase().trim()
             val registeredProviders = providerEmails.value
