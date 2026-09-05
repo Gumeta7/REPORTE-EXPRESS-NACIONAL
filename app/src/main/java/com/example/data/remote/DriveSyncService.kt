@@ -16,8 +16,12 @@ object DriveSyncService {
     const val DEFAULT_DRIVE_SHEET_URL =
         "https://docs.google.com/spreadsheets/d/1HSyA-GdDOmwdGwK5n1u3eNrggENZjqQqJNHInFbeHeU/edit?usp=sharing"
 
+    // Official Webhook URL for Google Sheets 'Incidencias' sheet
+    const val DEFAULT_INCIDENCIAS_WEBHOOK_URL =
+        "https://script.google.com/macros/s/AKfycbySoz08HcbdN8bpA3MT5vuMuxBR9ZpFVzmx_O1HGuqJGdmvklMOnPWQdTI5eoF9DuMnLA/exec"
+
     // Webhook URL configurable para enviar incidencias automáticamente a la pestaña 'Incidencias'
-    var customWebhookUrl: String = ""
+    var customWebhookUrl: String = DEFAULT_INCIDENCIAS_WEBHOOK_URL
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(25, TimeUnit.SECONDS)
@@ -73,7 +77,7 @@ object DriveSyncService {
      */
     suspend fun postIncidenciaToDriveSheet(payload: IncidenciaTicketPayload): Boolean =
         withContext(Dispatchers.IO) {
-            val webhook = customWebhookUrl.trim()
+            val webhook = customWebhookUrl.trim().ifBlank { DEFAULT_INCIDENCIAS_WEBHOOK_URL }
             if (webhook.isBlank()) {
                 Log.w(TAG, "No se ha configurado la URL de Webhook de Incidencias en la hoja de cálculo.")
                 return@withContext false

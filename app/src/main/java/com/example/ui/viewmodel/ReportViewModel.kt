@@ -740,9 +740,6 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 appendLine("Detalle de la falla: $cleanedIssue.")
                 appendLine()
                 appendLine("--- Datos del equipo ---")
-                if (ticketId != null) {
-                    appendLine("• ID Ticket: $ticketId")
-                }
                 appendLine("• Sala / Ubicación: $finalSala")
                 appendLine("• Marca: $finalBrand")
                 appendLine("• Modelo: $finalModel")
@@ -755,11 +752,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 append("Saludos cordiales.")
             }
 
-            val subjectLine = if (ticketId != null) {
-                "REPORTE DE TERMINAL [$ticketId] - $finalSala (ASSET: $finalAsset)"
-            } else {
-                "REPORTE DE TERMINAL - $finalSala (ASSET: $finalAsset)"
-            }
+            val subjectLine = "REPORTE DE TERMINAL - $finalSala (ASSET: $finalAsset)"
 
             val draft = EmailDraftState(
                 recipient = finalRecipient,
@@ -872,9 +865,6 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 appendLine("Detalle de la falla: $cleanedIssue.")
                 appendLine()
                 appendLine(if (isSingle) "--- Datos del equipo ---" else "--- Datos de los equipos ---")
-                if (ticketId != null) {
-                    appendLine("• ID Ticket: $ticketId")
-                }
                 appendLine("• Sala / Ubicación: $finalSala")
                 appendLine("• Marca: $finalBrand")
                 appendLine("• Modelo: $finalModel")
@@ -887,9 +877,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 append("Saludos cordiales.")
             }
 
-            val subjectLine = if (ticketId != null) {
-                "REPORTE DE TERMINAL [$ticketId] - $finalSala (ASSET: $finalAsset)"
-            } else if (isSingle) {
+            val subjectLine = if (isSingle) {
                 "REPORTE DE TERMINAL - $finalSala (ASSET: $finalAsset)"
             } else {
                 "REPORTE DE TERMINALES - $finalSala (ASSETS: $finalAsset)"
@@ -957,13 +945,18 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     // --- Step 4: History Persistence & Drive Sheet Sync ---
-    val incidenciasWebhookUrl = MutableStateFlow(prefs.getString("incidencias_webhook_url", "") ?: "")
+    val incidenciasWebhookUrl = MutableStateFlow(
+        prefs.getString("incidencias_webhook_url", com.example.data.remote.DriveSyncService.DEFAULT_INCIDENCIAS_WEBHOOK_URL)
+            ?: com.example.data.remote.DriveSyncService.DEFAULT_INCIDENCIAS_WEBHOOK_URL
+    )
 
     fun updateIncidenciasWebhookUrl(url: String) {
         val trimmed = url.trim()
         prefs.edit().putString("incidencias_webhook_url", trimmed).apply()
         incidenciasWebhookUrl.value = trimmed
-        com.example.data.remote.DriveSyncService.customWebhookUrl = trimmed
+        com.example.data.remote.DriveSyncService.customWebhookUrl = trimmed.ifBlank {
+            com.example.data.remote.DriveSyncService.DEFAULT_INCIDENCIAS_WEBHOOK_URL
+        }
     }
 
     fun dispatchIncidenciaToDriveSheet(draft: EmailDraftState = _currentDraft.value) {
@@ -983,15 +976,15 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 tecnico = user?.nombre ?: "",
                 falla = draft.issueDescription
             )
-            val webhookUrl = prefs.getString("incidencias_webhook_url", "") ?: ""
-            com.example.data.remote.DriveSyncService.customWebhookUrl = webhookUrl
-            if (webhookUrl.isNotBlank()) {
-                val success = com.example.data.remote.DriveSyncService.postIncidenciaToDriveSheet(payload)
-                if (success) {
-                    _statusMessage.value = "Incidencia registrada en Google Sheets ($ticketId)."
-                } else {
-                    _statusMessage.value = "Ticket $ticketId guardado localmente (sin conexión al Excel)."
-                }
+            val configuredUrl = prefs.getString("incidencias_webhook_url", "")?.trim().orEmpty()
+            com.example.data.remote.DriveSyncService.customWebhookUrl = configuredUrl.ifBlank {
+                com.example.data.remote.DriveSyncService.DEFAULT_INCIDENCIAS_WEBHOOK_URL
+            }
+            val success = com.example.data.remote.DriveSyncService.postIncidenciaToDriveSheet(payload)
+            if (success) {
+                _statusMessage.value = "Incidencia registrada en Google Sheets ($ticketId)."
+            } else {
+                _statusMessage.value = "Ticket $ticketId guardado localmente."
             }
         }
     }
