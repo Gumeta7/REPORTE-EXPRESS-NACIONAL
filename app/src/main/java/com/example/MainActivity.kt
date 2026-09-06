@@ -482,11 +482,7 @@ fun MainAppScreen(viewModel: ReportViewModel) {
                 draftState = currentDraftState,
                 onDismiss = { viewModel.closeDraftDialog() },
                 onDraftUpdated = { updatedDraft ->
-                    viewModel.updateCurrentDraft(
-                        recipient = updatedDraft.recipient,
-                        subject = updatedDraft.subject,
-                        body = updatedDraft.body
-                    )
+                    viewModel.updateCurrentDraft(updatedDraft)
                 },
                 onSaveToHistory = {
                     viewModel.saveDraftToHistory()

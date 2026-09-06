@@ -628,6 +628,10 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun updateCurrentDraft(draft: EmailDraftState) {
+        _currentDraft.value = draft
+    }
+
     fun updateCurrentDraft(
         recipient: String? = null,
         subject: String? = null,
@@ -638,7 +642,9 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         model: String? = null,
         serialNumber: String? = null,
         assetNumber: String? = null,
-        sala: String? = null
+        sala: String? = null,
+        operativa: String? = null,
+        prioridad: String? = null
     ) {
         _currentDraft.value = _currentDraft.value.copy(
             recipient = recipient ?: _currentDraft.value.recipient,
@@ -650,7 +656,9 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             model = model ?: _currentDraft.value.model,
             serialNumber = serialNumber ?: _currentDraft.value.serialNumber,
             assetNumber = assetNumber ?: _currentDraft.value.assetNumber,
-            sala = sala ?: _currentDraft.value.sala
+            sala = sala ?: _currentDraft.value.sala,
+            operativa = operativa ?: _currentDraft.value.operativa,
+            prioridad = prioridad ?: _currentDraft.value.prioridad
         )
     }
 

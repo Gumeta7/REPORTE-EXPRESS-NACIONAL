@@ -304,8 +304,13 @@ fun MachineLocationScreen(
         ReportMachineFailureDialog(
             machine = selectedMachineForReport!!,
             onDismiss = { selectedMachineForReport = null },
-            onConfirm = { failureDescription ->
-                viewModel.generateReportForMachine(selectedMachineForReport!!, failureDescription)
+            onConfirm = { failureDescription, operativa, prioridad ->
+                viewModel.generateReportForMachine(
+                    machine = selectedMachineForReport!!,
+                    issueDescription = failureDescription,
+                    operativa = operativa,
+                    prioridad = prioridad
+                )
                 selectedMachineForReport = null
             }
         )
@@ -591,9 +596,11 @@ fun MachineGridBox(
 fun ReportMachineFailureDialog(
     machine: MachineEntity,
     onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
+    onConfirm: (description: String, operativa: String, prioridad: String) -> Unit
 ) {
     var issueInput by remember { mutableStateOf("") }
+    var selectedOperativa by remember { mutableStateOf("NO") }
+    var selectedPrioridad by remember { mutableStateOf("MEDIA") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -652,6 +659,120 @@ fun ReportMachineFailureDialog(
                     }
                 }
 
+                // Estado Operativo y Prioridad
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                    ),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // ¿Operativa?
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "¿Operativa?",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = if (selectedOperativa == "NO") "Fuera de servicio" else "En servicio",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (selectedOperativa == "NO") MaterialTheme.colorScheme.error else Color(0xFF16A34A)
+                                )
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                FilterChip(
+                                    selected = selectedOperativa == "NO",
+                                    onClick = { selectedOperativa = "NO" },
+                                    label = { Text("NO", fontWeight = FontWeight.Bold) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.error,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onError
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                FilterChip(
+                                    selected = selectedOperativa == "SI",
+                                    onClick = { selectedOperativa = "SI" },
+                                    label = { Text("SÍ", fontWeight = FontWeight.Bold) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = Color(0xFF16A34A),
+                                        selectedLabelColor = Color.White
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                            }
+                        }
+
+                        // Prioridad
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = "Prioridad:",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                FilterChip(
+                                    selected = selectedPrioridad == "BAJA",
+                                    onClick = { selectedPrioridad = "BAJA" },
+                                    label = {
+                                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                            Text("Baja")
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                FilterChip(
+                                    selected = selectedPrioridad == "MEDIA",
+                                    onClick = { selectedPrioridad = "MEDIA" },
+                                    label = {
+                                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                            Text("Media", fontWeight = FontWeight.Bold)
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                FilterChip(
+                                    selected = selectedPrioridad == "CRITICA",
+                                    onClick = { selectedPrioridad = "CRITICA" },
+                                    label = {
+                                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                            Text("Crítica", fontWeight = FontWeight.ExtraBold)
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.error,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onError
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
                 Text(
                     text = "Describa la falla o inconveniente:",
                     style = MaterialTheme.typography.bodyMedium,
@@ -673,7 +794,7 @@ fun ReportMachineFailureDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(issueInput) },
+                onClick = { onConfirm(issueInput, selectedOperativa, selectedPrioridad) },
                 enabled = issueInput.isNotBlank(),
                 modifier = Modifier.testTag("confirm_location_report_failure_button")
             ) {
