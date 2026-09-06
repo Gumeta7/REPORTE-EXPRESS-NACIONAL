@@ -205,10 +205,6 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             database.providerEmailDao(),
             database.technicianDao()
         )
-        val cachedIncidencias = loadCachedIncidencias()
-        if (cachedIncidencias.isNotEmpty()) {
-            _rawIncidencias.value = cachedIncidencias
-        }
         viewModelScope.launch {
             repository.checkAndInitializeDemoData()
             // Automatic initial sync from Google Drive spreadsheet on startup
@@ -437,7 +433,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     )
 
     // --- Dynamic Incidencias Stream (From Google Sheets) ---
-    private val _rawIncidencias = MutableStateFlow<List<IncidenciaItem>>(emptyList())
+    private val _rawIncidencias = MutableStateFlow<List<IncidenciaItem>>(loadCachedIncidencias())
     val rawIncidencias: StateFlow<List<IncidenciaItem>> = _rawIncidencias.asStateFlow()
 
     private val _incidenciasSearchQuery = MutableStateFlow("")
