@@ -405,8 +405,13 @@ fun MainAppScreen(viewModel: ReportViewModel) {
                 onDismiss = {
                     viewModel.clearDeepLinkMachine()
                 },
-                onConfirm = { failureDescription ->
-                    viewModel.generateReportForMachine(machine, failureDescription)
+                onConfirm = { failureDescription, operativa, prioridad ->
+                    viewModel.generateReportForMachine(
+                        machine = machine,
+                        issueDescription = failureDescription,
+                        operativa = operativa,
+                        prioridad = prioridad
+                    )
                     viewModel.clearDeepLinkMachine()
                 }
             )
