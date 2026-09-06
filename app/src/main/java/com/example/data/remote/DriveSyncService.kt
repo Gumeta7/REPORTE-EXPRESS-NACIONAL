@@ -32,6 +32,9 @@ object DriveSyncService {
 
     fun normalizeToExportUrl(url: String): String {
         val trimmed = url.trim()
+        if (trimmed.contains("script.google.com")) {
+            return trimmed
+        }
         val sheetIdRegex = Regex("""/spreadsheets/d/([a-zA-Z0-9-_]+)""")
         val match = sheetIdRegex.find(trimmed)
         return if (match != null) {
@@ -40,18 +43,24 @@ object DriveSyncService {
         } else if (trimmed.contains("/export?")) {
             trimmed
         } else {
-            "https://docs.google.com/spreadsheets/d/1HSyA-GdDOmwdGwK5n1u3eNrggENZjqQqJNHInFbeHeU/export?format=xlsx"
+            DEFAULT_INCIDENCIAS_WEBHOOK_URL
         }
     }
 
-    suspend fun downloadSpreadsheetBytes(url: String = DEFAULT_DRIVE_SHEET_URL): ByteArray? =
+    suspend fun downloadSpreadsheetBytes(url: String = DEFAULT_INCIDENCIAS_WEBHOOK_URL): ByteArray? =
         withContext(Dispatchers.IO) {
             try {
-                val exportUrl = normalizeToExportUrl(url)
-                Log.d(TAG, "Downloading spreadsheet from: $exportUrl")
+                // If url is default sheet url or empty, use the webhook which works even with private sheets
+                val targetUrl = if (url.isBlank() || url.contains("docs.google.com/spreadsheets")) {
+                    DEFAULT_INCIDENCIAS_WEBHOOK_URL
+                } else {
+                    normalizeToExportUrl(url)
+                }
+
+                Log.d(TAG, "Downloading spreadsheet from: $targetUrl")
 
                 val request = Request.Builder()
-                    .url(exportUrl)
+                    .url(targetUrl)
                     .header("User-Agent", "Mozilla/5.0 (Android; Mobile; ReportesExpress/2.0)")
                     .build()
 
@@ -59,9 +68,22 @@ object DriveSyncService {
                 if (response.isSuccessful) {
                     val body = response.body
                     if (body != null) {
-                        val bytes = body.bytes()
-                        Log.d(TAG, "Spreadsheet downloaded successfully (${bytes.size} bytes)")
-                        return@withContext bytes
+                        val rawBytes = body.bytes()
+                        // If returned as base64 string from Apps Script doGet
+                        if (rawBytes.isNotEmpty() && !rawBytes.startsWithZipMagic()) {
+                            try {
+                                val stringContent = String(rawBytes, Charsets.UTF_8).trim()
+                                val decoded = android.util.Base64.decode(stringContent, android.util.Base64.DEFAULT)
+                                if (decoded != null && decoded.startsWithZipMagic()) {
+                                    Log.d(TAG, "Spreadsheet decoded from Base64 successfully (${decoded.size} bytes)")
+                                    return@withContext decoded
+                                }
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Response was not base64 zip, falling back to raw bytes", e)
+                            }
+                        }
+                        Log.d(TAG, "Spreadsheet downloaded successfully (${rawBytes.size} bytes)")
+                        return@withContext rawBytes
                     }
                 } else {
                     Log.e(TAG, "Failed to download sheet. HTTP Status: ${response.code}")
@@ -71,6 +93,11 @@ object DriveSyncService {
             }
             return@withContext null
         }
+
+    private fun ByteArray.startsWithZipMagic(): Boolean {
+        // ZIP/XLSX magic header is PK.. (0x50, 0x4B, 0x03, 0x04)
+        return this.size >= 4 && this[0] == 0x50.toByte() && this[1] == 0x4B.toByte()
+    }
 
     /**
      * Envía la información de una incidencia a la pestaña 'Incidencias' del Google Spreadsheet vía Webhook POST.
