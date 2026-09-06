@@ -97,18 +97,18 @@ fun IncidenciasDashboardScreen(
     ) {
         item {
             Spacer(modifier = Modifier.height(6.dp))
-            // 1. Header Informativo - Modo Solo Lectura
+            // 1. Header Informativo de la Sala
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),
-                shape = RoundedCornerShape(20.dp)
+                shape = RoundedCornerShape(22.dp)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(horizontal = 18.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -122,70 +122,58 @@ fun IncidenciasDashboardScreen(
                                     MaterialTheme.colorScheme.primary,
                                     RoundedCornerShape(14.dp)
                                 )
-                                .padding(10.dp)
+                                .padding(12.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Assessment,
                                 contentDescription = "Dashboard de Sala",
-                                tint = MaterialTheme.colorScheme.onPrimary
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(26.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(14.dp))
                         Column {
+                            Text(
+                                text = "Incidencias de Sala",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = "Incidencias de Sala",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    text = activeSala,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Lock,
-                                            contentDescription = "Solo lectura",
-                                            modifier = Modifier.size(11.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = "Solo Lectura",
-                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
                             }
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "Ubicación: $activeSala",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
-                                fontWeight = FontWeight.SemiBold
-                            )
                         }
                     }
 
-                    IconButton(
-                        onClick = { viewModel.syncFromDrive(showProgressMessage = true) },
-                        modifier = Modifier.testTag("refresh_dashboard_button")
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                        modifier = Modifier.padding(start = 8.dp)
                     ) {
-                        if (isSyncing) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Refrescar Incidencias",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                        IconButton(
+                            onClick = { viewModel.syncFromDrive(showProgressMessage = true) },
+                            modifier = Modifier
+                                .size(42.dp)
+                                .testTag("refresh_dashboard_button")
+                        ) {
+                            if (isSyncing) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Refrescar Incidencias",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                     }
                 }
