@@ -503,14 +503,38 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         initialValue = emptyList()
     )
 
-    // --- Dynamic Email History Stream ---
-    val reportHistory: StateFlow<List<EmailReportEntity>> = _historySearchQuery
-        .flatMapLatest { query -> repository.searchReports(query) }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+    // --- Dynamic Email History Stream (Filtered by Technician's Sala) ---
+    val reportHistory: StateFlow<List<EmailReportEntity>> = combine(
+        _historySearchQuery.flatMapLatest { query -> repository.searchReports(query) },
+        _currentUser,
+        _adminSelectedSala
+    ) { reports, user, adminSala ->
+        if (user == null || user.isAdmin) {
+            if (adminSala.isNotBlank() && !adminSala.equals("TODAS", ignoreCase = true) && !adminSala.equals("Todas las Salas", ignoreCase = true)) {
+                val filterSalaNorm = adminSala.trim().lowercase()
+                reports.filter { r ->
+                    val combinedText = "${r.subject} ${r.body}".lowercase()
+                    combinedText.contains(filterSalaNorm)
+                }
+            } else {
+                reports
+            }
+        } else {
+            val userSalaNorm = user.sala.trim().lowercase()
+            if (userSalaNorm.isBlank()) {
+                reports
+            } else {
+                reports.filter { r ->
+                    val combinedText = "${r.subject} ${r.body}".lowercase()
+                    combinedText.contains(userSalaNorm)
+                }
+            }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     // --- Active Draft & Dialog State ---
     private val _currentDraft = MutableStateFlow(EmailDraftState())

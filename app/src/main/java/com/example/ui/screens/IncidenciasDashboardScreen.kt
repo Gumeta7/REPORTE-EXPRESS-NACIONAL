@@ -16,18 +16,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
-import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
@@ -48,7 +44,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
@@ -93,233 +88,237 @@ fun IncidenciasDashboardScreen(
         incidencias.count { it.operativa.equals("NO", ignoreCase = true) }
     }
 
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
-            .testTag("incidencias_dashboard_screen")
+            .padding(horizontal = 16.dp)
+            .testTag("incidencias_dashboard_screen"),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // 1. Header Informativo - Modo Solo Lectura
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            ),
-            shape = RoundedCornerShape(20.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+        item {
+            Spacer(modifier = Modifier.height(6.dp))
+            // 1. Header Informativo - Modo Solo Lectura
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                ),
+                shape = RoundedCornerShape(20.dp)
             ) {
                 Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                MaterialTheme.colorScheme.primary,
-                                RoundedCornerShape(14.dp)
-                            )
-                            .padding(10.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Assessment,
-                            contentDescription = "Dashboard de Sala",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "Incidencias de Sala",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    MaterialTheme.colorScheme.primary,
+                                    RoundedCornerShape(14.dp)
+                                )
+                                .padding(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Assessment,
+                                contentDescription = "Dashboard de Sala",
+                                tint = MaterialTheme.colorScheme.onPrimary
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Incidencias de Sala",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Lock,
-                                        contentDescription = "Solo lectura",
-                                        modifier = Modifier.size(10.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                    Text(
-                                        text = "Solo Lectura",
-                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Lock,
+                                            contentDescription = "Solo lectura",
+                                            modifier = Modifier.size(11.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Solo Lectura",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Ubicación: $activeSala",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
-                        Text(
-                            text = "Ubicación: $activeSala",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
-                            fontWeight = FontWeight.SemiBold
-                        )
                     }
-                }
 
-                IconButton(
-                    onClick = { viewModel.syncFromDrive(showProgressMessage = true) },
-                    modifier = Modifier.testTag("refresh_dashboard_button")
-                ) {
-                    if (isSyncing) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refrescar Incidencias",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                    IconButton(
+                        onClick = { viewModel.syncFromDrive(showProgressMessage = true) },
+                        modifier = Modifier.testTag("refresh_dashboard_button")
+                    ) {
+                        if (isSyncing) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Refrescar Incidencias",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // 2. KPIs Dinámicos de la Sala
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            KpiStatCard(
-                label = "Total",
-                count = totalCount,
-                icon = Icons.Default.Assessment,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.weight(1f)
-            )
-            KpiStatCard(
-                label = "Abiertas",
-                count = abiertasCount,
-                icon = Icons.Default.Warning,
-                color = Color(0xFFDC2626), // Rojo
-                modifier = Modifier.weight(1f)
-            )
-            KpiStatCard(
-                label = "En Proceso",
-                count = procesoCount,
-                icon = Icons.Default.HourglassTop,
-                color = Color(0xFFEA580C), // Naranja
-                modifier = Modifier.weight(1f)
-            )
-            KpiStatCard(
-                label = "Fuera Serv.",
-                count = inoperativasCount,
-                icon = Icons.Default.Error,
-                color = Color(0xFF991B1B), // Guinda
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // 3. Barra de Búsqueda
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { viewModel.updateIncidenciasSearchQuery(it) },
-            label = { Text("Buscar por Ticket, Asset, Serie, Marca o Falla") },
-            placeholder = { Text("Ej: WIN-001, 456, Touch...") },
-            leadingIcon = {
-                Icon(imageVector = Icons.Default.Search, contentDescription = "Buscar")
-            },
-            trailingIcon = {
-                if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { viewModel.updateIncidenciasSearchQuery("") }) {
-                        Icon(imageVector = Icons.Default.Clear, contentDescription = "Limpiar")
-                    }
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("incidencias_search_input"),
-            shape = RoundedCornerShape(14.dp),
-            singleLine = true
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // 4. Filtros Rápidos por Estado
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            val estados = listOf("TODOS", "ABIERTO", "EN PROCESO", "CERRADO")
-            estados.forEach { est ->
-                val isSelected = selectedEstadoFilter.equals(est, ignoreCase = true)
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { viewModel.updateSelectedIncidenciaEstadoFilter(est) },
-                    label = { Text(est, fontWeight = FontWeight.Bold) },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                    )
+        item {
+            // 2. KPIs Dinámicos de la Sala
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                KpiStatCard(
+                    label = "Total",
+                    count = totalCount,
+                    icon = Icons.Default.Assessment,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f)
+                )
+                KpiStatCard(
+                    label = "Abiertas",
+                    count = abiertasCount,
+                    icon = Icons.Default.Warning,
+                    color = Color(0xFFDC2626), // Rojo
+                    modifier = Modifier.weight(1f)
+                )
+                KpiStatCard(
+                    label = "En Proceso",
+                    count = procesoCount,
+                    icon = Icons.Default.HourglassTop,
+                    color = Color(0xFFEA580C), // Naranja
+                    modifier = Modifier.weight(1f)
+                )
+                KpiStatCard(
+                    label = "Fuera Serv.",
+                    count = inoperativasCount,
+                    icon = Icons.Default.Error,
+                    color = Color(0xFF991B1B), // Guinda
+                    modifier = Modifier.weight(1f)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 5. Lista de Incidencias
-        if (incidencias.isEmpty()) {
-            Box(
+        item {
+            // 3. Barra de Búsqueda
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { viewModel.updateIncidenciasSearchQuery(it) },
+                label = { Text("Buscar por Ticket, Asset, Serie, Marca o Falla") },
+                placeholder = { Text("Ej: WIN-001, 456, Touch...") },
+                leadingIcon = {
+                    Icon(imageVector = Icons.Default.Search, contentDescription = "Buscar")
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.updateIncidenciasSearchQuery("") }) {
+                            Icon(imageVector = Icons.Default.Clear, contentDescription = "Limpiar")
+                        }
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
+                    .testTag("incidencias_search_input"),
+                shape = RoundedCornerShape(14.dp),
+                singleLine = true
+            )
+        }
+
+        item {
+            // 4. Filtros Rápidos por Estado
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = "Sin incidencias",
-                        modifier = Modifier.size(54.dp),
-                        tint = Color(0xFF16A34A).copy(alpha = 0.6f)
+                val estados = listOf("TODOS", "ABIERTO", "EN PROCESO", "CERRADO")
+                estados.forEach { est ->
+                    val isSelected = selectedEstadoFilter.equals(est, ignoreCase = true)
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { viewModel.updateSelectedIncidenciaEstadoFilter(est) },
+                        label = { Text(est, fontWeight = FontWeight.Bold) },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = if (rawIncidencias.isEmpty()) {
-                            "No hay incidencias descargadas. Presiona actualizar."
-                        } else {
-                            "No hay incidencias que coincidan con los filtros en $activeSala."
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.outline
-                    )
+                }
+            }
+        }
+
+        // 5. Contenido / Lista de Incidencias
+        if (incidencias.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Sin incidencias",
+                            modifier = Modifier.size(54.dp),
+                            tint = Color(0xFF16A34A).copy(alpha = 0.6f)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = if (rawIncidencias.isEmpty()) {
+                                "No hay incidencias descargadas. Presiona actualizar."
+                            } else {
+                                "No hay incidencias que coincidan con los filtros en $activeSala."
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
                 }
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(
-                    items = incidencias,
-                    key = { it.idTicket + "_" + it.asset + "_" + it.fechaOrigen }
-                ) { incidencia ->
-                    IncidenciaTicketCard(incidencia = incidencia)
-                }
+            items(
+                items = incidencias,
+                key = { it.idTicket + "_" + it.asset + "_" + it.fechaOrigen }
+            ) { incidencia ->
+                IncidenciaTicketCard(incidencia = incidencia)
             }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(80.dp)) // Espacio final para que el último elemento no quede oculto bajo la barra inferior
         }
     }
 }
@@ -377,6 +376,10 @@ fun IncidenciaTicketCard(
         incidencia.estadoTicket.contains("PROCESO", ignoreCase = true) -> Color(0xFFEA580C)
         incidencia.estadoTicket.contains("CERRAD", ignoreCase = true) || incidencia.estadoTicket.contains("RESUELT", ignoreCase = true) -> Color(0xFF16A34A)
         else -> MaterialTheme.colorScheme.primary
+    }
+
+    val displayDate = remember(incidencia.fechaOrigen) {
+        formatExcelDate(incidencia.fechaOrigen)
     }
 
     Card(
@@ -495,7 +498,7 @@ fun IncidenciaTicketCard(
             }
 
             // Pie de tarjeta: Técnico y Fecha Origen
-            if (incidencia.tecnico.isNotBlank() || incidencia.fechaOrigen.isNotBlank()) {
+            if (incidencia.tecnico.isNotBlank() || displayDate.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -509,9 +512,9 @@ fun IncidenciaTicketCard(
                             color = MaterialTheme.colorScheme.outline
                         )
                     }
-                    if (incidencia.fechaOrigen.isNotBlank()) {
+                    if (displayDate.isNotBlank()) {
                         Text(
-                            text = incidencia.fechaOrigen,
+                            text = displayDate,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -520,4 +523,20 @@ fun IncidenciaTicketCard(
             }
         }
     }
+}
+
+// Convierte números seriales de fecha de Excel (ej: 46270.91099) o textos a formato dd/MM/yyyy HH:mm
+fun formatExcelDate(dateStr: String): String {
+    val trimmed = dateStr.trim()
+    if (trimmed.isBlank()) return ""
+    try {
+        val num = trimmed.toDoubleOrNull()
+        if (num != null && num > 30000 && num < 60000) {
+            // Número serial de fecha de Excel
+            val millis = ((num - 25569) * 86400 * 1000).toLong()
+            val sdf = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+            return sdf.format(java.util.Date(millis))
+        }
+    } catch (_: Exception) {}
+    return trimmed
 }
