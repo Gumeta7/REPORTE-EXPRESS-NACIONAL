@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,6 +61,7 @@ fun IncidenciasDashboardScreen(
     viewModel: ReportViewModel
 ) {
     val incidencias by viewModel.incidenciasList.collectAsState()
+    val salaIncidencias by viewModel.salaIncidenciasList.collectAsState()
     val rawIncidencias by viewModel.rawIncidencias.collectAsState()
     val searchQuery by viewModel.incidenciasSearchQuery.collectAsState()
     val selectedEstadoFilter by viewModel.selectedIncidenciaEstadoFilter.collectAsState()
@@ -74,19 +76,33 @@ fun IncidenciasDashboardScreen(
         currentUser?.sala?.ifBlank { "CORPORATIVO" } ?: "CORPORATIVO"
     }
 
-    // KPIs computados sobre la lista filtrada de la sala
-    val totalCount = incidencias.size
-    val abiertasCount = remember(incidencias) {
-        incidencias.count { it.estadoTicket.contains("ABIERTO", ignoreCase = true) || it.estadoTicket.contains("PENDIENTE", ignoreCase = true) }
+    // Helper functions idénticas a la web (KPIHeader.jsx & index.jsx)
+    fun isTicketPendiente(item: IncidenciaItem): Boolean {
+        val st = item.estadoTicket.uppercase()
+        return !st.contains("RESUELT") && !st.contains("CERRAD")
     }
-    val procesoCount = remember(incidencias) {
-        incidencias.count { it.estadoTicket.contains("PROCESO", ignoreCase = true) || it.estadoTicket.contains("ATENCION", ignoreCase = true) }
+
+    fun isTicketResuelto(item: IncidenciaItem): Boolean {
+        val st = item.estadoTicket.uppercase()
+        return st.contains("RESUELT") || st.contains("CERRAD")
     }
-    val cerradasCount = remember(incidencias) {
-        incidencias.count { it.estadoTicket.contains("CERRAD", ignoreCase = true) || it.estadoTicket.contains("RESUELT", ignoreCase = true) }
+
+    // 6 Métricas KPI computadas sobre la sala activa (idénticas a la web)
+    val totalCount = salaIncidencias.size
+    val noOperativas = remember(salaIncidencias) {
+        salaIncidencias.count { it.operativa.equals("NO", ignoreCase = true) && isTicketPendiente(it) }
     }
-    val inoperativasCount = remember(incidencias) {
-        incidencias.count { it.operativa.equals("NO", ignoreCase = true) }
+    val operativas = remember(salaIncidencias) {
+        salaIncidencias.count { it.operativa.equals("SI", ignoreCase = true) && isTicketPendiente(it) }
+    }
+    val pendientes = remember(salaIncidencias) {
+        salaIncidencias.count { isTicketPendiente(it) }
+    }
+    val resueltos = remember(salaIncidencias) {
+        salaIncidencias.count { isTicketResuelto(it) }
+    }
+    val criticas = remember(salaIncidencias) {
+        salaIncidencias.count { (it.prioridad.equals("CRITICA", true) || it.prioridad.equals("ALTA", true)) && isTicketPendiente(it) }
     }
 
     LazyColumn(
@@ -182,39 +198,68 @@ fun IncidenciasDashboardScreen(
         }
 
         item {
-            // 2. KPIs Dinámicos de la Sala
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                KpiStatCard(
-                    label = "Total",
-                    count = totalCount,
-                    icon = Icons.Default.Assessment,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.weight(1f)
-                )
-                KpiStatCard(
-                    label = "Abiertas",
-                    count = abiertasCount,
-                    icon = Icons.Default.Warning,
-                    color = Color(0xFFDC2626), // Rojo
-                    modifier = Modifier.weight(1f)
-                )
-                KpiStatCard(
-                    label = "En Proceso",
-                    count = procesoCount,
-                    icon = Icons.Default.HourglassTop,
-                    color = Color(0xFFEA580C), // Naranja
-                    modifier = Modifier.weight(1f)
-                )
-                KpiStatCard(
-                    label = "Fuera Serv.",
-                    count = inoperativasCount,
-                    icon = Icons.Default.Error,
-                    color = Color(0xFF991B1B), // Guinda
-                    modifier = Modifier.weight(1f)
-                )
+            // 2. Grid de 6 KPIs Dinámicos de la Sala (Estructura idéntica al KPIHeader web)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Fila 1: Total, Fuera de Servicio, En Servicio
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    KpiStatCard(
+                        label = "Total",
+                        count = totalCount,
+                        icon = Icons.Default.Assessment,
+                        color = Color(0xFF4F46E5), // Indigo
+                        modifier = Modifier.weight(1f),
+                        onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("TODOS") }
+                    )
+                    KpiStatCard(
+                        label = "Fuera Serv.",
+                        count = noOperativas,
+                        icon = Icons.Default.Error,
+                        color = Color(0xFFDC2626), // Rojo
+                        modifier = Modifier.weight(1f),
+                        onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("PENDIENTES") }
+                    )
+                    KpiStatCard(
+                        label = "En Servicio",
+                        count = operativas,
+                        icon = Icons.Default.CheckCircle,
+                        color = Color(0xFF16A34A), // Verde
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                // Fila 2: Pendientes, Resueltos, Críticas
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    KpiStatCard(
+                        label = "Pendientes",
+                        count = pendientes,
+                        icon = Icons.Default.HourglassTop,
+                        color = Color(0xFFEA580C), // Naranja/Ámbar
+                        modifier = Modifier.weight(1f),
+                        onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("PENDIENTES") }
+                    )
+                    KpiStatCard(
+                        label = "Resueltos",
+                        count = resueltos,
+                        icon = Icons.Default.CheckCircle,
+                        color = Color(0xFF0284C7), // Azul Cielo
+                        modifier = Modifier.weight(1f),
+                        onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("RESUELTOS") }
+                    )
+                    KpiStatCard(
+                        label = "Críticas",
+                        count = criticas,
+                        icon = Icons.Default.Warning,
+                        color = Color(0xFFB91C1C), // Guinda
+                        modifier = Modifier.weight(1f),
+                        onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("PENDIENTES") }
+                    )
+                }
             }
         }
 
@@ -244,27 +289,66 @@ fun IncidenciasDashboardScreen(
         }
 
         item {
-            // 4. Filtros Rápidos por Estado
+            // 4. Filtros Rápidos por Estado (Organización idéntica a la web: TODOS, PENDIENTES, RESUELTOS)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                val estados = listOf("TODOS", "ABIERTO", "EN PROCESO", "CERRADO")
-                estados.forEach { est ->
-                    val isSelected = selectedEstadoFilter.equals(est, ignoreCase = true)
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { viewModel.updateSelectedIncidenciaEstadoFilter(est) },
-                        label = { Text(est, fontWeight = FontWeight.Bold) },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                        )
+                // TODOS
+                val isTodos = selectedEstadoFilter.equals("TODOS", ignoreCase = true)
+                FilterChip(
+                    selected = isTodos,
+                    onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("TODOS") },
+                    label = { Text("TODOS ($totalCount)", fontWeight = FontWeight.Bold) },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                     )
-                }
+                )
+
+                // PENDIENTES (con indicador ámbar/naranja)
+                val isPendientes = selectedEstadoFilter.equals("PENDIENTES", ignoreCase = true) || selectedEstadoFilter.equals("PENDIENTE", ignoreCase = true)
+                FilterChip(
+                    selected = isPendientes,
+                    onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("PENDIENTES") },
+                    leadingIcon = {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(Color(0xFFF59E0B), CircleShape)
+                        )
+                    },
+                    label = { Text("PENDIENTES ($pendientes)", fontWeight = FontWeight.Bold) },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFFEA580C),
+                        selectedLabelColor = Color.White
+                    )
+                )
+
+                // RESUELTOS (con indicador verde)
+                val isResueltos = selectedEstadoFilter.equals("RESUELTOS", ignoreCase = true) || selectedEstadoFilter.equals("RESUELTO", ignoreCase = true)
+                FilterChip(
+                    selected = isResueltos,
+                    onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("RESUELTOS") },
+                    leadingIcon = {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(Color(0xFF22C55E), CircleShape)
+                        )
+                    },
+                    label = { Text("RESUELTOS ($resueltos)", fontWeight = FontWeight.Bold) },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF16A34A),
+                        selectedLabelColor = Color.White
+                    )
+                )
             }
         }
 
@@ -318,10 +402,12 @@ fun KpiStatCard(
     count: Int,
     icon: ImageVector,
     color: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
 ) {
+    val clickableModifier = if (onClick != null) modifier.clickable { onClick() } else modifier
     Surface(
-        modifier = modifier,
+        modifier = clickableModifier,
         shape = RoundedCornerShape(14.dp),
         color = color.copy(alpha = 0.12f),
         border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.25f))
@@ -359,16 +445,24 @@ fun KpiStatCard(
 fun IncidenciaTicketCard(
     incidencia: IncidenciaItem
 ) {
+    val isResuelto = incidencia.estadoTicket.contains("RESUELT", ignoreCase = true) || incidencia.estadoTicket.contains("CERRAD", ignoreCase = true)
     val isOperativaNo = incidencia.operativa.equals("NO", ignoreCase = true)
-    val estadoBadgeColor = when {
-        incidencia.estadoTicket.contains("ABIERTO", ignoreCase = true) || incidencia.estadoTicket.contains("PENDIENTE", ignoreCase = true) -> Color(0xFFDC2626)
-        incidencia.estadoTicket.contains("PROCESO", ignoreCase = true) -> Color(0xFFEA580C)
-        incidencia.estadoTicket.contains("CERRAD", ignoreCase = true) || incidencia.estadoTicket.contains("RESUELT", ignoreCase = true) -> Color(0xFF16A34A)
-        else -> MaterialTheme.colorScheme.primary
+
+    val estadoBadgeColor = if (isResuelto) Color(0xFF16A34A) else Color(0xFFEA580C)
+    val estadoBadgeText = if (isResuelto) {
+        "RESUELTO"
+    } else if (incidencia.estadoTicket.contains("PROCESO", ignoreCase = true)) {
+        "EN PROCESO"
+    } else {
+        "PENDIENTE"
     }
 
     val displayDate = remember(incidencia.fechaOrigen) {
         formatExcelDate(incidencia.fechaOrigen)
+    }
+
+    val displayFechaReparacion = remember(incidencia.fechaReparacion) {
+        formatExcelDate(incidencia.fechaReparacion)
     }
 
     Card(
@@ -377,9 +471,12 @@ fun IncidenciaTicketCard(
             .testTag("incidencia_card_${incidencia.idTicket}"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = if (isResuelto) Color(0xFF16A34A).copy(alpha = 0.04f) else MaterialTheme.colorScheme.surface
         ),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+        border = androidx.compose.foundation.BorderStroke(
+            width = if (isResuelto) 1.5.dp else 1.dp,
+            color = if (isResuelto) Color(0xFF16A34A).copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -418,13 +515,13 @@ fun IncidenciaTicketCard(
                     }
                 }
 
-                // Badge de Estado
+                // Badge de Estado (RESUELTO en verde, PENDIENTE en naranja/ámbar)
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = estadoBadgeColor
                 ) {
                     Text(
-                        text = incidencia.estadoTicket,
+                        text = estadoBadgeText,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
@@ -435,10 +532,11 @@ fun IncidenciaTicketCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Datos de la máquina
+            // Datos de la máquina y estatus operativo
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "${incidencia.marca} - ${incidencia.modelo}",
@@ -447,10 +545,16 @@ fun IncidenciaTicketCard(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = if (isOperativaNo) "🔴 Fuera de Servicio" else "🟢 Operativa",
+                    text = if (isResuelto) {
+                        "🟢 Atendido / Resuelto"
+                    } else if (isOperativaNo) {
+                        "🔴 Fuera de Servicio"
+                    } else {
+                        "🟢 Operativa"
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = if (isOperativaNo) Color(0xFFDC2626) else Color(0xFF16A34A)
+                    color = if (!isResuelto && isOperativaNo) Color(0xFFDC2626) else Color(0xFF16A34A)
                 )
             }
 
@@ -486,8 +590,34 @@ fun IncidenciaTicketCard(
                 }
             }
 
-            // Pie de tarjeta: Técnico y Fecha Origen
-            if (incidencia.tecnico.isNotBlank() || displayDate.isNotBlank()) {
+            // Solución o Resolución Aplicada (si existe)
+            if (incidencia.resolucion.isNotBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFF16A34A).copy(alpha = 0.1f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF16A34A).copy(alpha = 0.25f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Text(
+                            text = "Solución / Resolución Aplicada:",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF16A34A)
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = incidencia.resolucion,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+
+            // Pie de tarjeta: Técnico, Fecha Origen y Fecha Reparación
+            if (incidencia.tecnico.isNotBlank() || displayDate.isNotBlank() || displayFechaReparacion.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -501,9 +631,14 @@ fun IncidenciaTicketCard(
                             color = MaterialTheme.colorScheme.outline
                         )
                     }
-                    if (displayDate.isNotBlank()) {
+                    val dateText = when {
+                        isResuelto && displayFechaReparacion.isNotBlank() -> "Resuelto: $displayFechaReparacion"
+                        displayDate.isNotBlank() -> displayDate
+                        else -> ""
+                    }
+                    if (dateText.isNotBlank()) {
                         Text(
-                            text = displayDate,
+                            text = dateText,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.outline
                         )

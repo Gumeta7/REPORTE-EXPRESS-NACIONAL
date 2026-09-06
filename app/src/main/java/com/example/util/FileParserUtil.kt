@@ -271,7 +271,7 @@ object FileParserUtil {
                             val area = getVal("area")
                             val propietario = getVal("propietario").ifBlank { "WINPOT" }
                             val operativa = getVal("operativa").uppercase().ifBlank { "NO" }
-                            val estadoTicket = getVal("estado_ticket").uppercase().ifBlank { "ABIERTO" }
+                            val estadoTicket = getVal("estado_ticket").uppercase().ifBlank { "PENDIENTE" }
                             val fechaOrigen = getVal("fecha_origen")
                             val fechaReparacion = getVal("fecha_reparacion")
                             val falla = getVal("falla")
@@ -320,7 +320,8 @@ object FileParserUtil {
         rowCells.forEachIndexed { idx, cellStr ->
             val col = sanitizeHeader(cellStr)
             when {
-                col.contains("ID_TICKET") || col.contains("ID TICKET") || col.contains("TICKET") -> map.putIfAbsent("id_ticket", idx)
+                col.contains("ESTADO") || col.contains("STATUS") || col.contains("ESTATUS") -> map.putIfAbsent("estado_ticket", idx)
+                col.contains("ID_TICKET") || col.contains("ID TICKET") || (col.contains("TICKET") && !col.contains("ESTADO") && !col.contains("STATUS")) || col == "ID" -> map.putIfAbsent("id_ticket", idx)
                 col.contains("SALA") || col.contains("CASINO") -> map.putIfAbsent("sala", idx)
                 col.contains("MARCA") -> map.putIfAbsent("marca", idx)
                 col.contains("MODELO") -> map.putIfAbsent("modelo", idx)
@@ -329,13 +330,12 @@ object FileParserUtil {
                 col.contains("AREA") || col.contains("ZONA") -> map.putIfAbsent("area", idx)
                 col.contains("PROPIETARIO") || col.contains("OPERADOR") -> map.putIfAbsent("propietario", idx)
                 col.contains("OPERATIVA") -> map.putIfAbsent("operativa", idx)
-                col.contains("ESTADO") || col.contains("STATUS") -> map.putIfAbsent("estado_ticket", idx)
-                col.contains("ORIGEN") || col.contains("FECHA_ORIGEN") || col.contains("FECHA") -> map.putIfAbsent("fecha_origen", idx)
+                col.contains("ORIGEN") || col.contains("FECHA_ORIGEN") || (col.contains("FECHA") && !col.contains("REPARACION")) -> map.putIfAbsent("fecha_origen", idx)
                 col.contains("REPARACION") -> map.putIfAbsent("fecha_reparacion", idx)
                 col.contains("FALLA") || col.contains("DESCRIPCION") || col.contains("MOTIVO") -> map.putIfAbsent("falla", idx)
                 col.contains("PRIORIDAD") -> map.putIfAbsent("prioridad", idx)
                 col.contains("ID_TECNICO") || col.contains("ID TECNICO") -> map.putIfAbsent("id_tecnico", idx)
-                col == "TECNICO" || col.contains("TECNICO") -> map.putIfAbsent("tecnico", idx)
+                col == "TECNICO" || (col.contains("TECNICO") && !col.contains("ID")) -> map.putIfAbsent("tecnico", idx)
                 col.contains("RESOLUCION") || col.contains("SOLUCION") -> map.putIfAbsent("resolucion", idx)
             }
         }

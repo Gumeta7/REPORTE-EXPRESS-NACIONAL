@@ -28,6 +28,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import org.json.JSONArray
+import org.json.JSONObject
 
 data class EmailDraftState(
     val recipient: String = "",
@@ -203,6 +205,10 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             database.providerEmailDao(),
             database.technicianDao()
         )
+        val cachedIncidencias = loadCachedIncidencias()
+        if (cachedIncidencias.isNotEmpty()) {
+            _rawIncidencias.value = cachedIncidencias
+        }
         viewModelScope.launch {
             repository.checkAndInitializeDemoData()
             // Automatic initial sync from Google Drive spreadsheet on startup
@@ -448,15 +454,13 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         _selectedIncidenciaEstadoFilter.value = estado
     }
 
-    val incidenciasList: StateFlow<List<IncidenciaItem>> = combine(
+    // Stream de todas las incidencias de la sala activa (sin filtros de estado ni búsqueda, para KPIs estables)
+    val salaIncidenciasList: StateFlow<List<IncidenciaItem>> = combine(
         _rawIncidencias,
         _currentUser,
-        _adminSelectedSala,
-        _incidenciasSearchQuery,
-        _selectedIncidenciaEstadoFilter
-    ) { allInc, user, adminSala, query, estadoFilter ->
-        // 1. Filtrar por Sala (según usuario o admin)
-        val salaFiltered = if (user == null || user.isAdmin) {
+        _adminSelectedSala
+    ) { allInc, user, adminSala ->
+        if (user == null || user.isAdmin) {
             if (adminSala.isNotBlank() && !adminSala.equals("TODAS", ignoreCase = true) && !adminSala.equals("Todas las Salas", ignoreCase = true)) {
                 val filterSalaNorm = adminSala.trim().lowercase()
                 allInc.filter { inc ->
@@ -473,15 +477,36 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 userSalaNorm.isEmpty() || incSalaNorm == userSalaNorm || incSalaNorm.contains(userSalaNorm) || userSalaNorm.contains(incSalaNorm)
             }
         }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
-        // 2. Filtrar por Estado
-        val estadoFiltered = if (estadoFilter.isNotBlank() && !estadoFilter.equals("TODOS", ignoreCase = true)) {
-            salaFiltered.filter { it.estadoTicket.trim().equals(estadoFilter.trim(), ignoreCase = true) }
-        } else {
-            salaFiltered
+    // Stream de incidencias filtrado para la lista según estado seleccionado y búsqueda
+    val incidenciasList: StateFlow<List<IncidenciaItem>> = combine(
+        salaIncidenciasList,
+        _incidenciasSearchQuery,
+        _selectedIncidenciaEstadoFilter
+    ) { salaFiltered, query, estadoFilter ->
+        // 1. Filtrar por Estado (alineado con la web: TODOS, PENDIENTES, RESUELTOS)
+        val estadoFiltered = when (estadoFilter.trim().uppercase()) {
+            "PENDIENTES", "PENDIENTE", "ABIERTO", "EN PROCESO" -> salaFiltered.filter {
+                val st = it.estadoTicket.uppercase()
+                !st.contains("RESUELT") && !st.contains("CERRAD")
+            }
+            "RESUELTOS", "RESUELTO", "CERRADO" -> salaFiltered.filter {
+                val st = it.estadoTicket.uppercase()
+                st.contains("RESUELT") || st.contains("CERRAD")
+            }
+            "FUERA DE SERVICIO", "INOPERATIVO" -> salaFiltered.filter {
+                val st = it.estadoTicket.uppercase()
+                it.operativa.equals("NO", ignoreCase = true) && !st.contains("RESUELT") && !st.contains("CERRAD")
+            }
+            else -> salaFiltered
         }
 
-        // 3. Filtrar por Búsqueda de Texto
+        // 2. Filtrar por Búsqueda de Texto
         if (query.isBlank()) {
             estadoFiltered
         } else {
@@ -494,7 +519,8 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 inc.modelo.lowercase().contains(q) ||
                 inc.falla.lowercase().contains(q) ||
                 inc.area.lowercase().contains(q) ||
-                inc.tecnico.lowercase().contains(q)
+                inc.tecnico.lowercase().contains(q) ||
+                inc.sala.lowercase().contains(q)
             }
         }
     }.stateIn(
@@ -502,6 +528,69 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+
+    private fun saveCachedIncidencias(list: List<IncidenciaItem>) {
+        try {
+            val array = JSONArray()
+            for (item in list) {
+                val obj = JSONObject()
+                obj.put("idTicket", item.idTicket)
+                obj.put("sala", item.sala)
+                obj.put("marca", item.marca)
+                obj.put("modelo", item.modelo)
+                obj.put("serie", item.serie)
+                obj.put("asset", item.asset)
+                obj.put("area", item.area)
+                obj.put("propietario", item.propietario)
+                obj.put("operativa", item.operativa)
+                obj.put("estadoTicket", item.estadoTicket)
+                obj.put("fechaOrigen", item.fechaOrigen)
+                obj.put("fechaReparacion", item.fechaReparacion)
+                obj.put("falla", item.falla)
+                obj.put("prioridad", item.prioridad)
+                obj.put("idTecnico", item.idTecnico)
+                obj.put("tecnico", item.tecnico)
+                obj.put("resolucion", item.resolucion)
+                array.put(obj)
+            }
+            prefs.edit().putString("cached_incidencias_json", array.toString()).apply()
+        } catch (_: Exception) {}
+    }
+
+    private fun loadCachedIncidencias(): List<IncidenciaItem> {
+        val json = prefs.getString("cached_incidencias_json", null) ?: return emptyList()
+        return try {
+            val array = JSONArray(json)
+            val result = mutableListOf<IncidenciaItem>()
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                result.add(
+                    IncidenciaItem(
+                        idTicket = obj.optString("idTicket", ""),
+                        sala = obj.optString("sala", ""),
+                        marca = obj.optString("marca", ""),
+                        modelo = obj.optString("modelo", ""),
+                        serie = obj.optString("serie", ""),
+                        asset = obj.optString("asset", ""),
+                        area = obj.optString("area", ""),
+                        propietario = obj.optString("propietario", "WINPOT"),
+                        operativa = obj.optString("operativa", "NO"),
+                        estadoTicket = obj.optString("estadoTicket", "PENDIENTE"),
+                        fechaOrigen = obj.optString("fechaOrigen", ""),
+                        fechaReparacion = obj.optString("fechaReparacion", ""),
+                        falla = obj.optString("falla", ""),
+                        prioridad = obj.optString("prioridad", "MEDIA"),
+                        idTecnico = obj.optString("idTecnico", ""),
+                        tecnico = obj.optString("tecnico", ""),
+                        resolucion = obj.optString("resolucion", "")
+                    )
+                )
+            }
+            result
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
 
     // --- Dynamic Email History Stream (Filtered by Technician's Sala) ---
     val reportHistory: StateFlow<List<EmailReportEntity>> = combine(
@@ -585,6 +674,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
                     withContext(Dispatchers.Main) {
                         _rawIncidencias.value = parsedIncidencias
+                        saveCachedIncidencias(parsedIncidencias)
                     }
 
                     val hasLocalOverride = prefs.getBoolean("has_local_file_override", false)
@@ -675,6 +765,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
                         withContext(Dispatchers.Main) {
                             _rawIncidencias.value = parsedIncidencias
+                            saveCachedIncidencias(parsedIncidencias)
                         }
 
                         if (parsedMachines.isNotEmpty()) {
