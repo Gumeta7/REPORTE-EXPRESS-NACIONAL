@@ -269,15 +269,15 @@ fun EmailDraftPreviewDialog(
                                 Text(
                                     text = when (draftState.prioridad) {
                                         "CRITICA" -> "Atención Inmediata"
-                                        "MEDIA" -> "Estándar"
+                                        "MEDIA" -> "Media"
                                         else -> "Baja"
                                     },
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.SemiBold,
                                     color = when (draftState.prioridad) {
-                                        "CRITICA" -> MaterialTheme.colorScheme.error
-                                        "MEDIA" -> MaterialTheme.colorScheme.primary
-                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                        "CRITICA" -> Color(0xFFDC2626)
+                                        "MEDIA" -> Color(0xFFEA580C)
+                                        else -> Color(0xFFCA8A04)
                                     }
                                 )
                             }
@@ -293,10 +293,14 @@ fun EmailDraftPreviewDialog(
                                     onClick = { onDraftUpdated(draftState.copy(prioridad = "BAJA")) },
                                     label = {
                                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                            Text("Baja", fontWeight = FontWeight.SemiBold)
+                                            Text("Baja", fontWeight = FontWeight.Bold)
                                         }
                                     },
                                     modifier = Modifier.weight(1f),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = Color(0xFFEAB308),
+                                        selectedLabelColor = Color(0xFF1C1917)
+                                    ),
                                     shape = RoundedCornerShape(10.dp)
                                 )
                                 FilterChip(
@@ -309,8 +313,8 @@ fun EmailDraftPreviewDialog(
                                     },
                                     modifier = Modifier.weight(1f),
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        selectedContainerColor = Color(0xFFEA580C),
+                                        selectedLabelColor = Color.White
                                     ),
                                     shape = RoundedCornerShape(10.dp)
                                 )
@@ -324,8 +328,8 @@ fun EmailDraftPreviewDialog(
                                     },
                                     modifier = Modifier.weight(1f),
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MaterialTheme.colorScheme.error,
-                                        selectedLabelColor = MaterialTheme.colorScheme.onError
+                                        selectedContainerColor = Color(0xFFDC2626),
+                                        selectedLabelColor = Color.White
                                     ),
                                     shape = RoundedCornerShape(10.dp)
                                 )

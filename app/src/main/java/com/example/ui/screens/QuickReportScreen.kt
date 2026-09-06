@@ -487,15 +487,15 @@ fun QuickReportScreen(
                         Text(
                             text = when (selectedPrioridad) {
                                 "CRITICA" -> "Atención Inmediata"
-                                "MEDIA" -> "Estándar"
+                                "MEDIA" -> "Media"
                                 else -> "Baja"
                             },
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.SemiBold,
                             color = when (selectedPrioridad) {
-                                "CRITICA" -> MaterialTheme.colorScheme.error
-                                "MEDIA" -> MaterialTheme.colorScheme.primary
-                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                "CRITICA" -> androidx.compose.ui.graphics.Color(0xFFDC2626)
+                                "MEDIA" -> androidx.compose.ui.graphics.Color(0xFFEA580C)
+                                else -> androidx.compose.ui.graphics.Color(0xFFCA8A04)
                             }
                         )
                     }
@@ -511,10 +511,14 @@ fun QuickReportScreen(
                             onClick = { selectedPrioridad = "BAJA" },
                             label = {
                                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                    Text("Baja", fontWeight = FontWeight.SemiBold)
+                                    Text("Baja", fontWeight = FontWeight.Bold)
                                 }
                             },
                             modifier = Modifier.weight(1f),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = androidx.compose.ui.graphics.Color(0xFFEAB308),
+                                selectedLabelColor = androidx.compose.ui.graphics.Color(0xFF1C1917)
+                            ),
                             shape = RoundedCornerShape(10.dp)
                         )
                         FilterChip(
@@ -527,8 +531,8 @@ fun QuickReportScreen(
                             },
                             modifier = Modifier.weight(1f),
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                selectedContainerColor = androidx.compose.ui.graphics.Color(0xFFEA580C),
+                                selectedLabelColor = androidx.compose.ui.graphics.Color.White
                             ),
                             shape = RoundedCornerShape(10.dp)
                         )
@@ -542,8 +546,8 @@ fun QuickReportScreen(
                             },
                             modifier = Modifier.weight(1f),
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.error,
-                                selectedLabelColor = MaterialTheme.colorScheme.onError
+                                selectedContainerColor = androidx.compose.ui.graphics.Color(0xFFDC2626),
+                                selectedLabelColor = androidx.compose.ui.graphics.Color.White
                             ),
                             shape = RoundedCornerShape(10.dp)
                         )

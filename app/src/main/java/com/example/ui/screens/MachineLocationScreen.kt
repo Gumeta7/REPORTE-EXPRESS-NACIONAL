@@ -732,10 +732,14 @@ fun ReportMachineFailureDialog(
                                     onClick = { selectedPrioridad = "BAJA" },
                                     label = {
                                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                            Text("Baja")
+                                            Text("Baja", fontWeight = FontWeight.Bold)
                                         }
                                     },
                                     modifier = Modifier.weight(1f),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = Color(0xFFEAB308),
+                                        selectedLabelColor = Color(0xFF1C1917)
+                                    ),
                                     shape = RoundedCornerShape(8.dp)
                                 )
                                 FilterChip(
@@ -748,8 +752,8 @@ fun ReportMachineFailureDialog(
                                     },
                                     modifier = Modifier.weight(1f),
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        selectedContainerColor = Color(0xFFEA580C),
+                                        selectedLabelColor = Color.White
                                     ),
                                     shape = RoundedCornerShape(8.dp)
                                 )
@@ -763,8 +767,8 @@ fun ReportMachineFailureDialog(
                                     },
                                     modifier = Modifier.weight(1f),
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MaterialTheme.colorScheme.error,
-                                        selectedLabelColor = MaterialTheme.colorScheme.onError
+                                        selectedContainerColor = Color(0xFFDC2626),
+                                        selectedLabelColor = Color.White
                                     ),
                                     shape = RoundedCornerShape(8.dp)
                                 )
