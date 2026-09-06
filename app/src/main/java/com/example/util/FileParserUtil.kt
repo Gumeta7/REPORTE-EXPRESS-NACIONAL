@@ -2,6 +2,7 @@ package com.example.util
 
 import com.example.data.db.MachineEntity
 import com.example.data.db.TechnicianEntity
+import com.example.data.remote.IncidenciaItem
 import org.apache.poi.ss.usermodel.Cell
 import org.apache.poi.ss.usermodel.CellType
 import org.apache.poi.ss.usermodel.WorkbookFactory
@@ -205,6 +206,140 @@ object FileParserUtil {
         } catch (_: Throwable) {
             return emptyList()
         }
+    }
+
+    fun parseStreamToIncidencias(inputStream: InputStream): List<IncidenciaItem> {
+        val bytes = inputStream.readBytes()
+        if (bytes.isEmpty()) return emptyList()
+
+        try {
+            bytes.inputStream().use { stream ->
+                val workbook = WorkbookFactory.create(stream)
+                val allIncidencias = mutableListOf<IncidenciaItem>()
+
+                // Locate sheet named "incidencias" or "incidencia"
+                var targetSheetIndex = -1
+                for (sheetIndex in 0 until workbook.numberOfSheets) {
+                    val rawName = workbook.getSheetName(sheetIndex).trim().lowercase()
+                        .replace("á", "a")
+                        .replace("é", "e")
+                        .replace("í", "i")
+                        .replace("ó", "o")
+                        .replace("ú", "u")
+                    if (rawName == "incidencias" || rawName == "incidencia") {
+                        targetSheetIndex = sheetIndex
+                        break
+                    }
+                }
+
+                if (targetSheetIndex != -1) {
+                    val sheet = workbook.getSheetAt(targetSheetIndex)
+                    if (sheet != null && sheet.physicalNumberOfRows > 0) {
+                        var headerRowIndex = -1
+                        var colMap = emptyMap<String, Int>()
+
+                        for (r in 0..minOf(15, sheet.lastRowNum)) {
+                            val row = sheet.getRow(r) ?: continue
+                            val rowCells = (0 until row.lastCellNum).map { c ->
+                                getCellValueAsString(row.getCell(c))
+                            }
+                            val map = findIncidenciaHeaderIndices(rowCells)
+                            if (map.containsKey("id_ticket") || map.containsKey("falla") || map.containsKey("sala")) {
+                                headerRowIndex = r
+                                colMap = map
+                                break
+                            }
+                        }
+
+                        val startRow = if (headerRowIndex != -1) headerRowIndex + 1 else 1
+
+                        for (r in startRow..sheet.lastRowNum) {
+                            val row = sheet.getRow(r) ?: continue
+                            fun getVal(key: String): String {
+                                val idx = colMap[key] ?: return ""
+                                if (idx < 0) return ""
+                                val cell = row.getCell(idx) ?: return ""
+                                return getCellValueAsString(cell).trim()
+                            }
+
+                            val idTicket = getVal("id_ticket")
+                            val sala = getVal("sala")
+                            val marca = getVal("marca")
+                            val modelo = getVal("modelo")
+                            val serie = getVal("serie")
+                            val asset = getVal("asset")
+                            val area = getVal("area")
+                            val propietario = getVal("propietario").ifBlank { "WINPOT" }
+                            val operativa = getVal("operativa").uppercase().ifBlank { "NO" }
+                            val estadoTicket = getVal("estado_ticket").uppercase().ifBlank { "ABIERTO" }
+                            val fechaOrigen = getVal("fecha_origen")
+                            val fechaReparacion = getVal("fecha_reparacion")
+                            val falla = getVal("falla")
+                            val prioridad = getVal("prioridad").uppercase().ifBlank { "MEDIA" }
+                            val idTecnico = getVal("id_tecnico")
+                            val tecnico = getVal("tecnico")
+                            val resolucion = getVal("resolucion")
+
+                            if (idTicket.isNotBlank() || falla.isNotBlank() || asset.isNotBlank() || serie.isNotBlank()) {
+                                allIncidencias.add(
+                                    IncidenciaItem(
+                                        idTicket = idTicket.ifBlank { "INC-$r" },
+                                        sala = sala,
+                                        marca = marca,
+                                        modelo = modelo,
+                                        serie = serie,
+                                        asset = asset,
+                                        area = area,
+                                        propietario = propietario,
+                                        operativa = operativa,
+                                        estadoTicket = estadoTicket,
+                                        fechaOrigen = fechaOrigen,
+                                        fechaReparacion = fechaReparacion,
+                                        falla = falla,
+                                        prioridad = prioridad,
+                                        idTecnico = idTecnico,
+                                        tecnico = tecnico,
+                                        resolucion = resolucion
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+
+                workbook.close()
+                return allIncidencias
+            }
+        } catch (_: Throwable) {
+            return emptyList()
+        }
+    }
+
+    private fun findIncidenciaHeaderIndices(rowCells: List<String>): Map<String, Int> {
+        val map = mutableMapOf<String, Int>()
+        rowCells.forEachIndexed { idx, cellStr ->
+            val col = sanitizeHeader(cellStr)
+            when {
+                col.contains("ID_TICKET") || col.contains("ID TICKET") || col.contains("TICKET") -> map.putIfAbsent("id_ticket", idx)
+                col.contains("SALA") || col.contains("CASINO") -> map.putIfAbsent("sala", idx)
+                col.contains("MARCA") -> map.putIfAbsent("marca", idx)
+                col.contains("MODELO") -> map.putIfAbsent("modelo", idx)
+                col.contains("SERIE") || col.contains("SERIAL") -> map.putIfAbsent("serie", idx)
+                col.contains("ASSET") || col.contains("ACTIVO") -> map.putIfAbsent("asset", idx)
+                col.contains("AREA") || col.contains("ZONA") -> map.putIfAbsent("area", idx)
+                col.contains("PROPIETARIO") || col.contains("OPERADOR") -> map.putIfAbsent("propietario", idx)
+                col.contains("OPERATIVA") -> map.putIfAbsent("operativa", idx)
+                col.contains("ESTADO") || col.contains("STATUS") -> map.putIfAbsent("estado_ticket", idx)
+                col.contains("ORIGEN") || col.contains("FECHA_ORIGEN") || col.contains("FECHA") -> map.putIfAbsent("fecha_origen", idx)
+                col.contains("REPARACION") -> map.putIfAbsent("fecha_reparacion", idx)
+                col.contains("FALLA") || col.contains("DESCRIPCION") || col.contains("MOTIVO") -> map.putIfAbsent("falla", idx)
+                col.contains("PRIORIDAD") -> map.putIfAbsent("prioridad", idx)
+                col.contains("ID_TECNICO") || col.contains("ID TECNICO") -> map.putIfAbsent("id_tecnico", idx)
+                col == "TECNICO" || col.contains("TECNICO") -> map.putIfAbsent("tecnico", idx)
+                col.contains("RESOLUCION") || col.contains("SOLUCION") -> map.putIfAbsent("resolucion", idx)
+            }
+        }
+        return map
     }
 
     private fun findTechnicianHeaderIndices(rowCells: List<String>): Map<String, Int> {

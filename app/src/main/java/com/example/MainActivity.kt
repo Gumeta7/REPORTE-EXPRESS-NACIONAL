@@ -55,6 +55,7 @@ import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.withTimeout
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.AssignmentInd
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.CloudSync
@@ -98,9 +99,9 @@ import com.example.ui.components.EmailDraftPreviewDialog
 import com.example.ui.components.MissingProviderEmailDialog
 import com.example.ui.screens.ExtractFileScreen
 import com.example.ui.screens.HistoryScreen
+import com.example.ui.screens.IncidenciasDashboardScreen
 import com.example.ui.screens.LoginScreen
 import com.example.ui.screens.MachineLocationScreen
-import com.example.ui.screens.QuickReportScreen
 import com.example.ui.screens.ReportMachineFailureDialog
 import com.example.ui.screens.VisitsScreen
 import com.example.ui.theme.ReportesExpressTheme
@@ -327,7 +328,7 @@ fun MainAppScreen(viewModel: ReportViewModel) {
         bottomBar = {
             val navItems = remember {
                 listOf(
-                    com.example.ui.components.NavigationTabItem("Generar", Icons.Default.FlashOn, "tab_quick_report"),
+                    com.example.ui.components.NavigationTabItem("Dashboard", Icons.Default.Assessment, "tab_incidencias_dashboard"),
                     com.example.ui.components.NavigationTabItem("Actualizar", Icons.Default.CloudSync, "tab_extract_file"),
                     com.example.ui.components.NavigationTabItem("Máquinas", Icons.Default.Casino, "tab_machine_location"),
                     com.example.ui.components.NavigationTabItem("Visitas", Icons.Default.AssignmentInd, "tab_visits"),
@@ -358,7 +359,7 @@ fun MainAppScreen(viewModel: ReportViewModel) {
                 .padding(innerPadding)
         ) { page ->
             when (page) {
-                0 -> QuickReportScreen(viewModel = viewModel)
+                0 -> IncidenciasDashboardScreen(viewModel = viewModel)
                 1 -> ExtractFileScreen(viewModel = viewModel)
                 2 -> MachineLocationScreen(viewModel = viewModel)
                 3 -> VisitsScreen(viewModel = viewModel)
@@ -489,8 +490,11 @@ fun MainAppScreen(viewModel: ReportViewModel) {
                 onDraftUpdated = { updatedDraft ->
                     viewModel.updateCurrentDraft(updatedDraft)
                 },
+                onSendEmail = {
+                    viewModel.sendAndDispatchEmailReport()
+                },
                 onSaveToHistory = {
-                    viewModel.saveDraftToHistory()
+                    viewModel.saveDraftToHistory(dispatchToSheets = false)
                 }
             )
         }

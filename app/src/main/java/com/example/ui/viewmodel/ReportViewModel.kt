@@ -9,6 +9,7 @@ import com.example.data.db.EmailReportEntity
 import com.example.data.db.MachineEntity
 import com.example.data.db.TechnicianEntity
 import com.example.data.remote.DriveSyncService
+import com.example.data.remote.IncidenciaItem
 import com.example.data.repository.ReportRepository
 import com.example.util.FileParserUtil
 import kotlinx.coroutines.Dispatchers
@@ -429,6 +430,79 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         initialValue = listOf("TODAS")
     )
 
+    // --- Dynamic Incidencias Stream (From Google Sheets) ---
+    private val _rawIncidencias = MutableStateFlow<List<IncidenciaItem>>(emptyList())
+    val rawIncidencias: StateFlow<List<IncidenciaItem>> = _rawIncidencias.asStateFlow()
+
+    private val _incidenciasSearchQuery = MutableStateFlow("")
+    val incidenciasSearchQuery: StateFlow<String> = _incidenciasSearchQuery.asStateFlow()
+
+    fun updateIncidenciasSearchQuery(query: String) {
+        _incidenciasSearchQuery.value = query
+    }
+
+    private val _selectedIncidenciaEstadoFilter = MutableStateFlow("TODOS")
+    val selectedIncidenciaEstadoFilter: StateFlow<String> = _selectedIncidenciaEstadoFilter.asStateFlow()
+
+    fun updateSelectedIncidenciaEstadoFilter(estado: String) {
+        _selectedIncidenciaEstadoFilter.value = estado
+    }
+
+    val incidenciasList: StateFlow<List<IncidenciaItem>> = combine(
+        _rawIncidencias,
+        _currentUser,
+        _adminSelectedSala,
+        _incidenciasSearchQuery,
+        _selectedIncidenciaEstadoFilter
+    ) { allInc, user, adminSala, query, estadoFilter ->
+        // 1. Filtrar por Sala (según usuario o admin)
+        val salaFiltered = if (user == null || user.isAdmin) {
+            if (adminSala.isNotBlank() && !adminSala.equals("TODAS", ignoreCase = true) && !adminSala.equals("Todas las Salas", ignoreCase = true)) {
+                val filterSalaNorm = adminSala.trim().lowercase()
+                allInc.filter { inc ->
+                    val incSalaNorm = inc.sala.trim().lowercase()
+                    incSalaNorm == filterSalaNorm || incSalaNorm.contains(filterSalaNorm) || filterSalaNorm.contains(incSalaNorm)
+                }
+            } else {
+                allInc
+            }
+        } else {
+            val userSalaNorm = user.sala.trim().lowercase()
+            allInc.filter { inc ->
+                val incSalaNorm = inc.sala.trim().lowercase()
+                userSalaNorm.isEmpty() || incSalaNorm == userSalaNorm || incSalaNorm.contains(userSalaNorm) || userSalaNorm.contains(incSalaNorm)
+            }
+        }
+
+        // 2. Filtrar por Estado
+        val estadoFiltered = if (estadoFilter.isNotBlank() && !estadoFilter.equals("TODOS", ignoreCase = true)) {
+            salaFiltered.filter { it.estadoTicket.trim().equals(estadoFilter.trim(), ignoreCase = true) }
+        } else {
+            salaFiltered
+        }
+
+        // 3. Filtrar por Búsqueda de Texto
+        if (query.isBlank()) {
+            estadoFiltered
+        } else {
+            val q = query.trim().lowercase()
+            estadoFiltered.filter { inc ->
+                inc.idTicket.lowercase().contains(q) ||
+                inc.asset.lowercase().contains(q) ||
+                inc.serie.lowercase().contains(q) ||
+                inc.marca.lowercase().contains(q) ||
+                inc.modelo.lowercase().contains(q) ||
+                inc.falla.lowercase().contains(q) ||
+                inc.area.lowercase().contains(q) ||
+                inc.tecnico.lowercase().contains(q)
+            }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
     // --- Dynamic Email History Stream ---
     val reportHistory: StateFlow<List<EmailReportEntity>> = _historySearchQuery
         .flatMapLatest { query -> repository.searchReports(query) }
@@ -483,6 +557,11 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 if (bytes != null && bytes.isNotEmpty()) {
                     val parsedMachines = FileParserUtil.parseStreamToMachines(bytes.inputStream())
                     val parsedTechnicians = FileParserUtil.parseStreamToTechnicians(bytes.inputStream())
+                    val parsedIncidencias = FileParserUtil.parseStreamToIncidencias(bytes.inputStream())
+
+                    withContext(Dispatchers.Main) {
+                        _rawIncidencias.value = parsedIncidencias
+                    }
 
                     val hasLocalOverride = prefs.getBoolean("has_local_file_override", false)
                     val localMachineCount = repository.getMachineCount()
@@ -568,6 +647,11 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                     if (bytes.isNotEmpty()) {
                         val parsedMachines = FileParserUtil.parseStreamToMachines(bytes.inputStream(), defaultSala = userDefaultSala)
                         val parsedTechnicians = FileParserUtil.parseStreamToTechnicians(bytes.inputStream())
+                        val parsedIncidencias = FileParserUtil.parseStreamToIncidencias(bytes.inputStream())
+
+                        withContext(Dispatchers.Main) {
+                            _rawIncidencias.value = parsedIncidencias
+                        }
 
                         if (parsedMachines.isNotEmpty()) {
                             repository.mergeAndImportMachines(parsedMachines)
@@ -1033,13 +1117,16 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun saveDraftToHistory() {
+    fun saveDraftToHistory(dispatchToSheets: Boolean = false) {
         viewModelScope.launch {
             val draft = _currentDraft.value
             if (draft.body.isNotBlank()) {
                 val currentFingerprint = "${draft.ticketId ?: ""}_${draft.subject}_${draft.machineNumber}"
                 if (lastSavedDraftFingerprint == currentFingerprint) {
                     // Prevenir doble inserción en el historial si el usuario envía y luego guarda
+                    if (dispatchToSheets) {
+                        dispatchIncidenciaToDriveSheet(draft)
+                    }
                     return@launch
                 }
                 lastSavedDraftFingerprint = currentFingerprint
@@ -1055,15 +1142,21 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                     serialNumber = draft.serialNumber,
                     assetNumber = draft.assetNumber,
                     timestamp = System.currentTimeMillis(),
-                    status = "Enviado"
+                    status = if (dispatchToSheets) "Enviado" else "Borrador Local"
                 )
                 repository.saveReport(reportEntity)
                 _statusMessage.value = "Correo guardado en el historial de reportes."
 
-                // Si se generó un ID_Ticket oficial, registrar en Google Sheets automáticamente
-                dispatchIncidenciaToDriveSheet(draft)
+                // Solo si el usuario despachó por correo (dispatchToSheets = true), registrar en Google Sheets
+                if (dispatchToSheets) {
+                    dispatchIncidenciaToDriveSheet(draft)
+                }
             }
         }
+    }
+
+    fun sendAndDispatchEmailReport() {
+        saveDraftToHistory(dispatchToSheets = true)
     }
 
     fun saveVisitToHistory(

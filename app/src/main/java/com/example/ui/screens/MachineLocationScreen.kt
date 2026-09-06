@@ -76,8 +76,6 @@ fun MachineLocationScreen(
 
     val isAdmin = currentUser?.isAdmin == true
 
-    var selectedMachineForReport by remember { mutableStateOf<MachineEntity?>(null) }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -289,38 +287,16 @@ fun MachineLocationScreen(
                     key = { it.id },
                     contentType = { "machine_card" }
                 ) { machine ->
-                    MachineLocationCard(
-                        machine = machine,
-                        onReportClick = {
-                            selectedMachineForReport = machine
-                        }
-                    )
+                    MachineLocationCard(machine = machine)
                 }
             }
         }
-    }
-
-    if (selectedMachineForReport != null) {
-        ReportMachineFailureDialog(
-            machine = selectedMachineForReport!!,
-            onDismiss = { selectedMachineForReport = null },
-            onConfirm = { failureDescription, operativa, prioridad ->
-                viewModel.generateReportForMachine(
-                    machine = selectedMachineForReport!!,
-                    issueDescription = failureDescription,
-                    operativa = operativa,
-                    prioridad = prioridad
-                )
-                selectedMachineForReport = null
-            }
-        )
     }
 }
 
 @Composable
 fun MachineLocationCard(
-    machine: MachineEntity,
-    onReportClick: () -> Unit
+    machine: MachineEntity
 ) {
     val surfaceColor = MaterialTheme.colorScheme.surface
     val isDarkTheme = remember(surfaceColor) { surfaceColor.luminance() < 0.5f }
@@ -519,28 +495,6 @@ fun MachineLocationCard(
                         )
                     }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // 5. Action Button: Reportar Falla
-            Button(
-                onClick = onReportClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(44.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ReportProblem,
-                    contentDescription = "Reportar Falla",
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Reportar Falla de esta Máquina",
-                    fontWeight = FontWeight.Bold
-                )
             }
         }
     }

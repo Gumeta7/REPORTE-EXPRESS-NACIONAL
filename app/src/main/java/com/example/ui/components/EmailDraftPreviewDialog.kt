@@ -54,6 +54,7 @@ fun EmailDraftPreviewDialog(
     draftState: EmailDraftState,
     onDismiss: () -> Unit,
     onDraftUpdated: (EmailDraftState) -> Unit,
+    onSendEmail: () -> Unit,
     onSaveToHistory: () -> Unit
 ) {
     val context = LocalContext.current
@@ -352,7 +353,7 @@ fun EmailDraftPreviewDialog(
                 // Gmail Direct
                 Button(
                     onClick = {
-                        onSaveToHistory()
+                        onSendEmail()
                         EmailIntentUtil.sendViaGmail(
                             context,
                             draftState.recipient,
@@ -377,7 +378,7 @@ fun EmailDraftPreviewDialog(
                 // Outlook Direct
                 Button(
                     onClick = {
-                        onSaveToHistory()
+                        onSendEmail()
                         EmailIntentUtil.sendViaOutlook(
                             context,
                             draftState.recipient,
@@ -406,7 +407,7 @@ fun EmailDraftPreviewDialog(
                     // Standard Chooser
                     OutlinedButton(
                         onClick = {
-                            onSaveToHistory()
+                            onSendEmail()
                             EmailIntentUtil.sendViaStandardEmailChooser(
                                 context,
                                 draftState.recipient,
