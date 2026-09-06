@@ -412,70 +412,142 @@ fun QuickReportScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // 3. SELECCIÓN DE OPERATIVA Y PRIORIDAD
-        Row(
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+            ),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
         ) {
-            // Estatus Operativo
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "¿Operativa?",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    FilterChip(
-                        selected = selectedOperativa == "NO",
-                        onClick = { selectedOperativa = "NO" },
-                        label = { Text("NO", fontWeight = FontWeight.Bold) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.errorContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onErrorContainer
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Fila 1: ¿Operativa?
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "¿Máquina Operativa?",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
-                    )
-                    FilterChip(
-                        selected = selectedOperativa == "SI",
-                        onClick = { selectedOperativa = "SI" },
-                        label = { Text("SÍ", fontWeight = FontWeight.Bold) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        Text(
+                            text = if (selectedOperativa == "NO") "Fuera de servicio" else "En funcionamiento",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (selectedOperativa == "NO") MaterialTheme.colorScheme.error else androidx.compose.ui.graphics.Color(0xFF16A34A)
                         )
-                    )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = selectedOperativa == "NO",
+                            onClick = { selectedOperativa = "NO" },
+                            label = { Text("NO", fontWeight = FontWeight.Bold) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.error,
+                                selectedLabelColor = MaterialTheme.colorScheme.onError
+                            ),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        FilterChip(
+                            selected = selectedOperativa == "SI",
+                            onClick = { selectedOperativa = "SI" },
+                            label = { Text("SÍ", fontWeight = FontWeight.Bold) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = androidx.compose.ui.graphics.Color(0xFF16A34A),
+                                selectedLabelColor = androidx.compose.ui.graphics.Color.White
+                            ),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                    }
                 }
-            }
 
-            // Prioridad
-            Column(modifier = Modifier.weight(1.3f)) {
-                Text(
-                    text = "Prioridad:",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    FilterChip(
-                        selected = selectedPrioridad == "BAJA",
-                        onClick = { selectedPrioridad = "BAJA" },
-                        label = { Text("Baja", style = MaterialTheme.typography.labelSmall) }
-                    )
-                    FilterChip(
-                        selected = selectedPrioridad == "MEDIA",
-                        onClick = { selectedPrioridad = "MEDIA" },
-                        label = { Text("Media", style = MaterialTheme.typography.labelSmall) }
-                    )
-                    FilterChip(
-                        selected = selectedPrioridad == "CRITICA",
-                        onClick = { selectedPrioridad = "CRITICA" },
-                        label = { Text("Crítica", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.error,
-                            selectedLabelColor = MaterialTheme.colorScheme.onError
+                androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+
+                // Fila 2: Prioridad
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Nivel de Prioridad:",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
-                    )
+                        Text(
+                            text = when (selectedPrioridad) {
+                                "CRITICA" -> "Atención Inmediata"
+                                "MEDIA" -> "Estándar"
+                                else -> "Baja"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = when (selectedPrioridad) {
+                                "CRITICA" -> MaterialTheme.colorScheme.error
+                                "MEDIA" -> MaterialTheme.colorScheme.primary
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        FilterChip(
+                            selected = selectedPrioridad == "BAJA",
+                            onClick = { selectedPrioridad = "BAJA" },
+                            label = {
+                                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                    Text("Baja", fontWeight = FontWeight.SemiBold)
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        FilterChip(
+                            selected = selectedPrioridad == "MEDIA",
+                            onClick = { selectedPrioridad = "MEDIA" },
+                            label = {
+                                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                    Text("Media", fontWeight = FontWeight.Bold)
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            ),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        FilterChip(
+                            selected = selectedPrioridad == "CRITICA",
+                            onClick = { selectedPrioridad = "CRITICA" },
+                            label = {
+                                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                    Text("Crítica", fontWeight = FontWeight.ExtraBold)
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.error,
+                                selectedLabelColor = MaterialTheme.colorScheme.onError
+                            ),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                    }
                 }
             }
         }

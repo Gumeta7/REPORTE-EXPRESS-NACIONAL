@@ -25,6 +25,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -195,74 +197,138 @@ fun EmailDraftPreviewDialog(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
                     ),
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            text = "Estado del Reporte",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Fila 1: ¿Operativa?
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Operativa
                             Column {
-                                Text("¿Operativa?", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    FilterChip(
-                                        selected = draftState.operativa == "NO",
-                                        onClick = { onDraftUpdated(draftState.copy(operativa = "NO")) },
-                                        label = { Text("NO", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold) },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = MaterialTheme.colorScheme.errorContainer,
-                                            selectedLabelColor = MaterialTheme.colorScheme.onErrorContainer
-                                        )
-                                    )
-                                    FilterChip(
-                                        selected = draftState.operativa == "SI",
-                                        onClick = { onDraftUpdated(draftState.copy(operativa = "SI")) },
-                                        label = { Text("SÍ", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold) },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
-                                    )
-                                }
+                                Text(
+                                    text = "¿Máquina Operativa?",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = if (draftState.operativa == "NO") "Fuera de servicio" else "En funcionamiento",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (draftState.operativa == "NO") MaterialTheme.colorScheme.error else Color(0xFF16A34A)
+                                )
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilterChip(
+                                    selected = draftState.operativa == "NO",
+                                    onClick = { onDraftUpdated(draftState.copy(operativa = "NO")) },
+                                    label = { Text("NO", fontWeight = FontWeight.Bold) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.error,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onError
+                                    ),
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                FilterChip(
+                                    selected = draftState.operativa == "SI",
+                                    onClick = { onDraftUpdated(draftState.copy(operativa = "SI")) },
+                                    label = { Text("SÍ", fontWeight = FontWeight.Bold) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = Color(0xFF16A34A),
+                                        selectedLabelColor = Color.White
+                                    ),
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                            }
+                        }
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+
+                        // Fila 2: Prioridad
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Nivel de Prioridad:",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = when (draftState.prioridad) {
+                                        "CRITICA" -> "Atención Inmediata"
+                                        "MEDIA" -> "Estándar"
+                                        else -> "Baja"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = when (draftState.prioridad) {
+                                        "CRITICA" -> MaterialTheme.colorScheme.error
+                                        "MEDIA" -> MaterialTheme.colorScheme.primary
+                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                )
                             }
 
-                            // Prioridad
-                            Column {
-                                Text("Prioridad", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    FilterChip(
-                                        selected = draftState.prioridad == "BAJA",
-                                        onClick = { onDraftUpdated(draftState.copy(prioridad = "BAJA")) },
-                                        label = { Text("Baja", style = MaterialTheme.typography.labelSmall) }
-                                    )
-                                    FilterChip(
-                                        selected = draftState.prioridad == "MEDIA",
-                                        onClick = { onDraftUpdated(draftState.copy(prioridad = "MEDIA")) },
-                                        label = { Text("Media", style = MaterialTheme.typography.labelSmall) }
-                                    )
-                                    FilterChip(
-                                        selected = draftState.prioridad == "CRITICA",
-                                        onClick = { onDraftUpdated(draftState.copy(prioridad = "CRITICA")) },
-                                        label = { Text("Crítica", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold) },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = MaterialTheme.colorScheme.error,
-                                            selectedLabelColor = MaterialTheme.colorScheme.onError
-                                        )
-                                    )
-                                }
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                FilterChip(
+                                    selected = draftState.prioridad == "BAJA",
+                                    onClick = { onDraftUpdated(draftState.copy(prioridad = "BAJA")) },
+                                    label = {
+                                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                            Text("Baja", fontWeight = FontWeight.SemiBold)
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                FilterChip(
+                                    selected = draftState.prioridad == "MEDIA",
+                                    onClick = { onDraftUpdated(draftState.copy(prioridad = "MEDIA")) },
+                                    label = {
+                                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                            Text("Media", fontWeight = FontWeight.Bold)
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    ),
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                FilterChip(
+                                    selected = draftState.prioridad == "CRITICA",
+                                    onClick = { onDraftUpdated(draftState.copy(prioridad = "CRITICA")) },
+                                    label = {
+                                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                            Text("Crítica", fontWeight = FontWeight.ExtraBold)
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.error,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onError
+                                    ),
+                                    shape = RoundedCornerShape(10.dp)
+                                )
                             }
                         }
                     }
