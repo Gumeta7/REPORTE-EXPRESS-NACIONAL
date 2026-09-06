@@ -6,8 +6,10 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,13 +23,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.HourglassTop
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -38,6 +43,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -68,10 +74,15 @@ fun IncidenciasDashboardScreen(
     val currentUser by viewModel.currentUser.collectAsState()
     val isSyncing by viewModel.isSyncingDrive.collectAsState()
     val adminSelectedSala by viewModel.adminSelectedSala.collectAsState()
+    val availableSalas by viewModel.availableSalas.collectAsState()
 
     val isAdmin = currentUser?.isAdmin == true
-    val activeSala = if (isAdmin && adminSelectedSala.isNotBlank() && !adminSelectedSala.equals("TODAS", ignoreCase = true)) {
-        adminSelectedSala
+    val activeSalaDisplay = if (isAdmin) {
+        if (adminSelectedSala.isBlank() || adminSelectedSala.equals("TODAS", ignoreCase = true)) {
+            "Todas las Salas (Nacional)"
+        } else {
+            adminSelectedSala
+        }
     } else {
         currentUser?.sala?.ifBlank { "CORPORATIVO" } ?: "CORPORATIVO"
     }
@@ -156,10 +167,10 @@ fun IncidenciasDashboardScreen(
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
-                            Spacer(modifier = Modifier.height(3.dp))
+                            Spacer(modifier = Modifier.height(2.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = activeSala,
+                                    text = activeSalaDisplay,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Bold,
@@ -178,19 +189,87 @@ fun IncidenciasDashboardScreen(
                         IconButton(
                             onClick = { viewModel.syncFromDrive(showProgressMessage = true) },
                             modifier = Modifier
-                                .size(42.dp)
+                                .size(40.dp)
                                 .testTag("refresh_dashboard_button")
                         ) {
                             if (isSyncing) {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                             } else {
                                 Icon(
                                     imageVector = Icons.Default.Refresh,
                                     contentDescription = "Refrescar Incidencias",
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 1.5. Selector de Sala para Administradores
+        if (isAdmin && availableSalas.isNotEmpty()) {
+            item {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 2.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Storefront,
+                            contentDescription = "Filtro de Sala",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Filtrar por Sala:",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        availableSalas.forEach { sala ->
+                            val isSelected = if (sala.equals("TODAS", ignoreCase = true)) {
+                                adminSelectedSala.isBlank() || adminSelectedSala.equals("TODAS", ignoreCase = true)
+                            } else {
+                                adminSelectedSala.equals(sala, ignoreCase = true)
+                            }
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { viewModel.setAdminSelectedSala(sala) },
+                                label = {
+                                    Text(
+                                        text = sala,
+                                        fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Normal,
+                                        fontSize = 12.sp
+                                    )
+                                },
+                                leadingIcon = if (isSelected) {
+                                    {
+                                        Icon(
+                                            imageVector = Icons.Default.Place,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    }
+                                } else null,
+                                shape = RoundedCornerShape(10.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                    selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
+                                )
+                            )
                         }
                     }
                 }
@@ -264,27 +343,52 @@ fun IncidenciasDashboardScreen(
         }
 
         item {
-            // 3. Barra de Búsqueda
+            // 3. Barra de Búsqueda Compacta
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { viewModel.updateIncidenciasSearchQuery(it) },
-                label = { Text("Buscar por Ticket, Asset, Serie, Marca o Falla") },
-                placeholder = { Text("Ej: WIN-001, 456, Touch...") },
+                placeholder = {
+                    Text(
+                        text = "Buscar ticket, asset, serie, falla...",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                },
                 leadingIcon = {
-                    Icon(imageVector = Icons.Default.Search, contentDescription = "Buscar")
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Buscar",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
                 },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.updateIncidenciasSearchQuery("") }) {
-                            Icon(imageVector = Icons.Default.Clear, contentDescription = "Limpiar")
+                        IconButton(
+                            onClick = { viewModel.updateIncidenciasSearchQuery("") },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Limpiar",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("incidencias_search_input"),
-                shape = RoundedCornerShape(14.dp),
-                singleLine = true
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                )
             )
         }
 
@@ -302,7 +406,7 @@ fun IncidenciasDashboardScreen(
                 FilterChip(
                     selected = isTodos,
                     onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("TODOS") },
-                    label = { Text("TODOS ($totalCount)", fontWeight = FontWeight.Bold) },
+                    label = { Text("TODOS ($totalCount)", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                     shape = RoundedCornerShape(10.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -322,7 +426,7 @@ fun IncidenciasDashboardScreen(
                                 .background(Color(0xFFF59E0B), CircleShape)
                         )
                     },
-                    label = { Text("PENDIENTES ($pendientes)", fontWeight = FontWeight.Bold) },
+                    label = { Text("PENDIENTES ($pendientes)", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                     shape = RoundedCornerShape(10.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = Color(0xFFEA580C),
@@ -342,7 +446,7 @@ fun IncidenciasDashboardScreen(
                                 .background(Color(0xFF22C55E), CircleShape)
                         )
                     },
-                    label = { Text("RESUELTOS ($resueltos)", fontWeight = FontWeight.Bold) },
+                    label = { Text("RESUELTOS ($resueltos)", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                     shape = RoundedCornerShape(10.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = Color(0xFF16A34A),
@@ -373,7 +477,7 @@ fun IncidenciasDashboardScreen(
                             text = if (rawIncidencias.isEmpty()) {
                                 "No hay incidencias descargadas. Presiona actualizar."
                             } else {
-                                "No hay incidencias que coincidan con los filtros en $activeSala."
+                                "No hay incidencias que coincidan con los filtros en $activeSalaDisplay."
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.outline
@@ -447,20 +551,28 @@ fun IncidenciaTicketCard(
 ) {
     val isResuelto = incidencia.estadoTicket.contains("RESUELT", ignoreCase = true) || incidencia.estadoTicket.contains("CERRAD", ignoreCase = true)
     val isOperativaNo = incidencia.operativa.equals("NO", ignoreCase = true)
+    val isCritica = incidencia.prioridad.equals("CRITICA", ignoreCase = true) || incidencia.prioridad.equals("ALTA", ignoreCase = true)
 
-    val estadoBadgeColor = if (isResuelto) Color(0xFF16A34A) else Color(0xFFEA580C)
-    val estadoBadgeText = if (isResuelto) {
-        "RESUELTO"
-    } else if (incidencia.estadoTicket.contains("PROCESO", ignoreCase = true)) {
-        "EN PROCESO"
-    } else {
-        "PENDIENTE"
+    val estadoColor = when {
+        isResuelto -> Color(0xFF16A34A) // Verde esmeralda
+        incidencia.estadoTicket.contains("PROCESO", ignoreCase = true) -> Color(0xFF0284C7) // Azul
+        else -> Color(0xFFEA580C) // Naranja
+    }
+    val estadoBadgeText = when {
+        isResuelto -> "RESUELTO"
+        incidencia.estadoTicket.contains("PROCESO", ignoreCase = true) -> "EN PROCESO"
+        else -> "PENDIENTE"
+    }
+
+    val accentBorderColor = when {
+        isResuelto -> Color(0xFF16A34A)
+        isCritica -> Color(0xFFDC2626)
+        else -> Color(0xFFEA580C)
     }
 
     val displayDate = remember(incidencia.fechaOrigen) {
         formatExcelDate(incidencia.fechaOrigen)
     }
-
     val displayFechaReparacion = remember(incidencia.fechaReparacion) {
         formatExcelDate(incidencia.fechaReparacion)
     }
@@ -469,182 +581,282 @@ fun IncidenciaTicketCard(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("incidencia_card_${incidencia.idTicket}"),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isResuelto) Color(0xFF16A34A).copy(alpha = 0.04f) else MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         border = androidx.compose.foundation.BorderStroke(
-            width = if (isResuelto) 1.5.dp else 1.dp,
-            color = if (isResuelto) Color(0xFF16A34A).copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            width = 1.dp,
+            color = if (isResuelto) Color(0xFF86EFAC).copy(alpha = 0.7f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            // Fila superior: ID Ticket, Prioridad y Estado
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = incidencia.idTicket,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    if (incidencia.prioridad.isNotBlank()) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        val prioColor = when (incidencia.prioridad.uppercase()) {
-                            "CRITICA", "ALTA" -> Color(0xFFDC2626)
-                            "MEDIA" -> Color(0xFFEA580C)
-                            else -> Color(0xFFEAB308)
-                        }
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = prioColor.copy(alpha = 0.15f)
-                        ) {
-                            Text(
-                                text = incidencia.prioridad,
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                fontWeight = FontWeight.Bold,
-                                color = prioColor,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-                }
-
-                // Badge de Estado (RESUELTO en verde, PENDIENTE en naranja/ámbar)
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = estadoBadgeColor
-                ) {
-                    Text(
-                        text = estadoBadgeText,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Datos de la máquina y estatus operativo
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "${incidencia.marca} - ${incidencia.modelo}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = if (isResuelto) {
-                        "🟢 Atendido / Resuelto"
-                    } else if (isOperativaNo) {
-                        "🔴 Fuera de Servicio"
-                    } else {
-                        "🟢 Operativa"
-                    },
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = if (!isResuelto && isOperativaNo) Color(0xFFDC2626) else Color(0xFF16A34A)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "Asset: ${incidencia.asset}  |  Serie: ${incidencia.serie}  |  Área: ${incidencia.area.ifBlank { "Sala" }}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+        ) {
+            // Tira de acento lateral izquierda indicadora de estado
+            Box(
+                modifier = Modifier
+                    .width(5.dp)
+                    .fillMaxHeight()
+                    .background(accentBorderColor)
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Detalle de la Falla
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                modifier = Modifier.fillMaxWidth()
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(modifier = Modifier.padding(8.dp)) {
-                    Text(
-                        text = "Falla Reportada:",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = incidencia.falla.ifBlank { "Sin descripción detallada." },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-
-            // Solución o Resolución Aplicada (si existe)
-            if (incidencia.resolucion.isNotBlank()) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFF16A34A).copy(alpha = 0.1f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF16A34A).copy(alpha = 0.25f)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(8.dp)) {
-                        Text(
-                            text = "Solución / Resolución Aplicada:",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF16A34A)
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = incidencia.resolucion,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-            }
-
-            // Pie de tarjeta: Técnico, Fecha Origen y Fecha Reparación
-            if (incidencia.tecnico.isNotBlank() || displayDate.isNotBlank() || displayFechaReparacion.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
+                // 1. FILA SUPERIOR: ID de Ticket + Badge de Estado (Separados para que nunca se aplasten)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (incidencia.tecnico.isNotBlank()) {
+                    Text(
+                        text = "#${incidencia.idTicket}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = estadoColor
+                    ) {
                         Text(
-                            text = "Por: ${incidencia.tecnico}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    }
-                    val dateText = when {
-                        isResuelto && displayFechaReparacion.isNotBlank() -> "Resuelto: $displayFechaReparacion"
-                        displayDate.isNotBlank() -> displayDate
-                        else -> ""
-                    }
-                    if (dateText.isNotBlank()) {
-                        Text(
-                            text = dateText,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline
+                            text = estadoBadgeText,
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White,
+                            softWrap = false,
+                            maxLines = 1,
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
                         )
                     }
                 }
+
+                // 2. FILA DE INFORMACIÓN DEL EQUIPO Y ESTADO OPERATIVO
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "${incidencia.marca} • ${incidencia.modelo}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (incidencia.prioridad.isNotBlank()) {
+                            val prioColor = when (incidencia.prioridad.uppercase()) {
+                                "CRITICA", "ALTA" -> Color(0xFFDC2626)
+                                "MEDIA" -> Color(0xFFEA580C)
+                                else -> Color(0xFFEAB308)
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = prioColor.copy(alpha = 0.14f)
+                            ) {
+                                Text(
+                                    text = incidencia.prioridad.uppercase(),
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                    fontWeight = FontWeight.Bold,
+                                    color = prioColor,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+
+                        val opText = if (isResuelto) "🟢 Resuelto" else if (isOperativaNo) "🔴 Inoperativa" else "🟢 Operativa"
+                        val opColor = if (isResuelto) Color(0xFF16A34A) else if (isOperativaNo) Color(0xFFDC2626) else Color(0xFF16A34A)
+                        Text(
+                            text = opText,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = opColor,
+                            maxLines = 1
+                        )
+                    }
+                }
+
+                // 3. TAGS METADATA (Asset, Serie, Área, Sala)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    MetadataTag(label = "Asset", value = incidencia.asset)
+                    MetadataTag(label = "Serie", value = incidencia.serie)
+                    if (incidencia.area.isNotBlank()) {
+                        MetadataTag(label = "Área", value = incidencia.area)
+                    }
+                    if (incidencia.sala.isNotBlank()) {
+                        MetadataTag(label = "Sala", value = incidencia.sala)
+                    }
+                }
+
+                // 4. DETALLE DE LA FALLA
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text(
+                            text = "Falla Reportada:",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(3.dp))
+                        Text(
+                            text = incidencia.falla.ifBlank { "Sin descripción detallada." },
+                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                // 5. SOLUCIÓN / RESOLUCIÓN APLICADA (Si existe)
+                if (incidencia.resolucion.isNotBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFF0FDF4),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF86EFAC)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = Color(0xFF15803D),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Solución / Resolución Aplicada:",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF15803D)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = incidencia.resolucion,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                                color = Color(0xFF14532D)
+                            )
+                        }
+                    }
+                }
+
+                // 6. PIE DE TARJETA: Técnico y Fechas
+                if (incidencia.tecnico.isNotBlank() || displayDate.isNotBlank() || displayFechaReparacion.isNotBlank()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (incidencia.tecnico.isNotBlank()) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f, fill = false)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.outline,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = incidencia.tecnico,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        val (dateLabel, dateVal) = when {
+                            isResuelto && displayFechaReparacion.isNotBlank() -> Pair("Resuelto:", displayFechaReparacion)
+                            displayDate.isNotBlank() -> Pair("Reportado:", displayDate)
+                            else -> Pair("", "")
+                        }
+
+                        if (dateVal.isNotBlank()) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CalendarToday,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.outline,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "$dateLabel $dateVal",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                            }
+                        }
+                    }
+                }
             }
+        }
+    }
+}
+
+@Composable
+fun MetadataTag(label: String, value: String) {
+    if (value.isBlank()) return
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "$label: ",
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                fontWeight = FontWeight.Normal,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }

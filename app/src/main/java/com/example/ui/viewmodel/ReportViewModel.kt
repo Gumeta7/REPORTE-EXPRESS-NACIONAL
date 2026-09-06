@@ -436,6 +436,22 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     private val _rawIncidencias = MutableStateFlow<List<IncidenciaItem>>(loadCachedIncidencias())
     val rawIncidencias: StateFlow<List<IncidenciaItem>> = _rawIncidencias.asStateFlow()
 
+    // --- Available Salas for Admin (from Machines DB + Incidencias from Drive) ---
+    val availableSalas: StateFlow<List<String>> = combine(
+        repository.distinctSalas,
+        _rawIncidencias
+    ) { dbSalas, incs ->
+        val fromIncs = incs.map { it.sala.trim() }.filter { it.isNotBlank() }
+        val combined = (listOf("TODAS") + dbSalas.map { it.trim() } + fromIncs)
+            .filter { it.isNotBlank() }
+            .distinctBy { it.lowercase() }
+        combined
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = listOf("TODAS")
+    )
+
     private val _incidenciasSearchQuery = MutableStateFlow("")
     val incidenciasSearchQuery: StateFlow<String> = _incidenciasSearchQuery.asStateFlow()
 
