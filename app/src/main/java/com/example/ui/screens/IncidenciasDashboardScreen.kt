@@ -560,14 +560,23 @@ fun IncidenciaTicketCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val context = androidx.compose.ui.platform.LocalContext.current
                     Text(
-                        text = "#${incidencia.idTicket}",
+                        text = incidencia.idTicket,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .clickable {
+                                com.example.util.EmailIntentUtil.copyToClipboard(
+                                    context,
+                                    "Número de Reporte",
+                                    incidencia.idTicket
+                                )
+                            }
                     )
 
                     Spacer(modifier = Modifier.width(8.dp))

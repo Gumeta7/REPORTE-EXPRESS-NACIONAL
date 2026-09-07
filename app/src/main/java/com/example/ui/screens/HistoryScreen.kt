@@ -443,7 +443,14 @@ fun HistoryReportCard(
                     text = displayAsset,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.secondary
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.clickable {
+                        com.example.util.EmailIntentUtil.copyToClipboard(
+                            context,
+                            "Número de Reporte / Asset",
+                            displayAsset
+                        )
+                    }
                 )
             }
 
