@@ -902,6 +902,37 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    // --- Provider Brand Matching Helper (AGS / CADILLAC JACK Equivalence) ---
+    fun findProviderForBrand(
+        brandName: String,
+        registeredProviders: List<com.example.data.db.ProviderEmailEntity> = providerEmails.value
+    ): com.example.data.db.ProviderEmailEntity? {
+        val b = brandName.trim().lowercase()
+        if (b.isBlank()) return null
+
+        // AGS and CADILLAC JACK equivalence:
+        // Use CADILLAC JACK emails for both AGS and CADILLAC JACK (fallback to AGS if CADILLAC JACK isn't found)
+        val isAgsOrCadillac = b == "ags" || b.contains("ags") || b.contains("cadillac") || b.contains("cadillac jack")
+        if (isAgsOrCadillac) {
+            val cadillac = registeredProviders.find { p ->
+                val pName = p.providerName.trim().lowercase()
+                pName.contains("cadillac")
+            }
+            if (cadillac != null) return cadillac
+
+            val ags = registeredProviders.find { p ->
+                val pName = p.providerName.trim().lowercase()
+                pName == "ags" || pName.contains("ags")
+            }
+            if (ags != null) return ags
+        }
+
+        return registeredProviders.find { p ->
+            val pName = p.providerName.trim().lowercase()
+            pName.isNotBlank() && (b.contains(pName) || pName.contains(b))
+        }
+    }
+
     // --- Step 5: Quick Prompt Report Generator ---
     fun generateQuickReport(
         promptText: String,
@@ -914,9 +945,13 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val registeredProviders = providerEmails.value
 
             // 1. Detect provider mentioned in prompt
-            var matchedProvider = registeredProviders.find { p ->
-                val pName = p.providerName.lowercase().trim()
-                pName.length >= 2 && lower.contains(pName)
+            var matchedProvider = if (lower.contains("ags") || lower.contains("cadillac")) {
+                findProviderForBrand("CADILLAC JACK", registeredProviders)
+            } else {
+                registeredProviders.find { p ->
+                    val pName = p.providerName.lowercase().trim()
+                    pName.length >= 2 && lower.contains(pName)
+                }
             }
 
             if (matchedProvider == null) {
@@ -929,12 +964,11 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                     lower.contains("bally") -> "bally"
                     lower.contains("ainsworth") -> "ainsworth"
                     lower.contains("egt") -> "egt"
+                    lower.contains("ags") || lower.contains("cadillac") -> "cadillac jack"
                     else -> ""
                 }
                 if (brandKeyword.isNotBlank()) {
-                    matchedProvider = registeredProviders.find { p ->
-                        p.providerName.lowercase().contains(brandKeyword)
-                    }
+                    matchedProvider = findProviderForBrand(brandKeyword, registeredProviders)
                 }
             }
 
@@ -947,11 +981,10 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             // 3. Find machine in database catalog
             val foundMachine = repository.findMachine(numberMatch)
 
-            if (matchedProvider == null && foundMachine != null && foundMachine.brand.isNotBlank()) {
-                val fBrand = foundMachine.brand.lowercase().trim()
-                matchedProvider = registeredProviders.find { p ->
-                    val pName = p.providerName.lowercase().trim()
-                    pName.isNotBlank() && (fBrand.contains(pName) || pName.contains(fBrand))
+            if (foundMachine != null && foundMachine.brand.isNotBlank()) {
+                val brandProvider = findProviderForBrand(foundMachine.brand, registeredProviders)
+                if (brandProvider != null) {
+                    matchedProvider = brandProvider
                 }
             }
 
@@ -1093,11 +1126,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val matchedEmails = mutableListOf<String>()
             val matchedCcEmails = mutableListOf<String>()
             for (brand in uniqueBrands) {
-                val lowerBrand = brand.lowercase()
-                val provider = registeredProviders.find { p ->
-                    val pName = p.providerName.lowercase().trim()
-                    pName.isNotBlank() && (lowerBrand.contains(pName) || pName.contains(lowerBrand))
-                }
+                val provider = findProviderForBrand(brand, registeredProviders)
                 if (provider != null) {
                     if (provider.email.isNotBlank()) {
                         matchedEmails.add(provider.email.trim())
@@ -1202,7 +1231,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         if (!matchedProviderName.isNullOrBlank()) {
             text = text.replace(Regex("""\b""" + Regex.escape(matchedProviderName) + """\b""", RegexOption.IGNORE_CASE), "").trim()
         }
-        text = text.replace(Regex("""\b(?:zitro|igt|aristocrat|novomatic|konami|bally|ainsworth|egt)\b""", RegexOption.IGNORE_CASE), "").trim()
+        text = text.replace(Regex("""\b(?:zitro|igt|aristocrat|novomatic|konami|bally|ainsworth|egt|ags|cadillac|cadillac\s+jack)\b""", RegexOption.IGNORE_CASE), "").trim()
         text = text.replace(Regex("""^(?:la\s+)?(?:máquina|maquina|terminal|asset|equipo)\b\s*""", RegexOption.IGNORE_CASE), "").trim()
         text = text.replace(Regex("""^(?:a|por|para|de|con|en)\s+""", RegexOption.IGNORE_CASE), "").trim()
 
