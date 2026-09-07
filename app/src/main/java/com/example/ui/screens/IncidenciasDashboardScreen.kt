@@ -1085,21 +1085,12 @@ fun IncidenciaDetailDialog(
                                     .padding(14.dp),
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.Build,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Gestión de Estatus",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
+                                Text(
+                                    text = "Gestión de Estatus",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
 
                                 if (updateMsg != null) {
                                     Surface(
@@ -1399,12 +1390,6 @@ fun IncidenciaDetailDialog(
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text("Guardando en Base de Datos...", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                     } else {
-                                        Icon(
-                                            imageVector = Icons.Default.Save,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
                                         Text("Actualizar Estatus", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                     }
                                 }
