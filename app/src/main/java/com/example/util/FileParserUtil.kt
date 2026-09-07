@@ -182,6 +182,7 @@ object FileParserUtil {
                             val sala = getVal("sala")
                             val usuario = getVal("usuario")
                             val password = getVal("password")
+                            val estatus = getVal("estatus").ifBlank { "ACTIVO" }
                             val rawRol = getVal("rol")
                             val rawWeb = getVal("web")
                             val rol = when {
