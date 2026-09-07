@@ -182,8 +182,15 @@ object FileParserUtil {
                             val sala = getVal("sala")
                             val usuario = getVal("usuario")
                             val password = getVal("password")
-                            val estatus = getVal("estatus").ifBlank { "ACTIVO" }
-                            val rol = getVal("rol").ifBlank { "TECNICO" }
+                            val rawRol = getVal("rol")
+                            val rawWeb = getVal("web")
+                            val rol = when {
+                                rawRol.trim().uppercase() in listOf("SUPERUSER", "SUPERUSUARIO") -> "SUPERUSER"
+                                rawWeb.trim().uppercase() in listOf("SUPERUSER", "SUPERUSUARIO") -> "SUPERUSER"
+                                rawRol.isNotBlank() -> rawRol
+                                rawWeb.trim().uppercase() in listOf("ADMIN", "DIRECTOR") -> rawWeb
+                                else -> "TECNICO"
+                            }
 
                             if (usuario.isNotBlank() || nombre.isNotBlank()) {
                                 allTechnicians.add(
@@ -448,6 +455,7 @@ object FileParserUtil {
                 col.contains("USUARIO") || col.contains("USER") || col.contains("LOGIN") -> map.putIfAbsent("usuario", idx)
                 col.contains("CONTRASE") || col.contains("PASSWORD") || col.contains("CLAVE") || col.contains("PASS") -> map.putIfAbsent("password", idx)
                 col.contains("ESTATUS") || col.contains("STATUS") || col.contains("ESTADO") -> map.putIfAbsent("estatus", idx)
+                col == "WEB" || col.contains("ROL_WEB") || col.contains("ROL WEB") -> map.putIfAbsent("web", idx)
                 col.contains("ROL") || col.contains("ROLE") || col.contains("PERFIL") || col.contains("NIVEL") -> map.putIfAbsent("rol", idx)
             }
         }

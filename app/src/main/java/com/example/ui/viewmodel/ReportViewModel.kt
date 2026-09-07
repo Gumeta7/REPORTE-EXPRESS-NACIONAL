@@ -593,6 +593,33 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         } catch (_: Exception) {}
     }
 
+    private fun parseIncidenciaDateToMillis(dateStr: String): Long {
+        if (dateStr.isBlank()) return 0L
+        val formats = listOf(
+            "d/M/yyyy H:m:s",
+            "d/M/yyyy HH:mm:ss",
+            "dd/MM/yyyy HH:mm:ss",
+            "d/M/yyyy",
+            "dd/MM/yyyy",
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy-MM-dd"
+        )
+        for (fmt in formats) {
+            try {
+                val sdf = SimpleDateFormat(fmt, Locale.getDefault())
+                val d = sdf.parse(dateStr.trim())
+                if (d != null) return d.time
+            } catch (_: Exception) {}
+        }
+        return 0L
+    }
+
+    private fun sortIncidenciasByMostRecent(list: List<IncidenciaItem>): List<IncidenciaItem> {
+        return list.asReversed().sortedWith(
+            compareByDescending { parseIncidenciaDateToMillis(it.fechaOrigen) }
+        )
+    }
+
     private fun loadCachedIncidencias(): List<IncidenciaItem> {
         val json = prefs.getString("cached_incidencias_json", null) ?: return emptyList()
         return try {
@@ -622,9 +649,60 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                     )
                 )
             }
-            result
+            sortIncidenciasByMostRecent(result)
         } catch (_: Exception) {
             emptyList()
+        }
+    }
+
+    fun updateIncidenciaStatus(
+        idTicket: String,
+        nuevoEstado: String,
+        operativa: String,
+        resolucion: String,
+        fechaReparacion: String,
+        onComplete: (Boolean, String) -> Unit
+    ) {
+        val user = _currentUser.value
+        if (user == null || (!user.isSuperUser && !user.isAdmin)) {
+            onComplete(false, "Permisos insuficientes. Se requiere rol de Superusuario.")
+            return
+        }
+
+        viewModelScope.launch {
+            val result = com.example.data.remote.GoogleSheetsUpdateService.updateIncidenciaStatus(
+                idTicket = idTicket,
+                nuevoEstado = nuevoEstado,
+                operativa = operativa,
+                resolucion = resolucion,
+                fechaReparacion = fechaReparacion
+            )
+
+            result.fold(
+                onSuccess = { msg ->
+                    val currentList = _rawIncidencias.value.toMutableList()
+                    val idx = currentList.indexOfFirst { it.idTicket.equals(idTicket.trim(), ignoreCase = true) }
+                    if (idx != -1) {
+                        val old = currentList[idx]
+                        currentList[idx] = old.copy(
+                            estadoTicket = nuevoEstado,
+                            operativa = operativa,
+                            resolucion = resolucion,
+                            fechaReparacion = if (nuevoEstado.contains("RESUELT", true)) fechaReparacion.ifBlank { old.fechaReparacion } else ""
+                        )
+                        _rawIncidencias.value = sortIncidenciasByMostRecent(currentList)
+                        saveCachedIncidencias(_rawIncidencias.value)
+                    }
+                    _statusMessage.value = msg
+                    onComplete(true, msg)
+                    syncFromDrive(showProgressMessage = false)
+                },
+                onFailure = { err ->
+                    val errMsg = err.message ?: "Error desconocido al actualizar en Google Sheets"
+                    _statusMessage.value = errMsg
+                    onComplete(false, errMsg)
+                }
+            )
         }
     }
 
@@ -713,8 +791,9 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                     }
 
                     withContext(Dispatchers.Main) {
-                        _rawIncidencias.value = parsedIncidencias
-                        saveCachedIncidencias(parsedIncidencias)
+                        val sortedIncidencias = sortIncidenciasByMostRecent(parsedIncidencias)
+                        _rawIncidencias.value = sortedIncidencias
+                        saveCachedIncidencias(sortedIncidencias)
                     }
 
                     val hasLocalOverride = prefs.getBoolean("has_local_file_override", false)
@@ -797,8 +876,9 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                         }
 
                         withContext(Dispatchers.Main) {
-                            _rawIncidencias.value = parsedIncidencias
-                            saveCachedIncidencias(parsedIncidencias)
+                            val sortedIncidencias = sortIncidenciasByMostRecent(parsedIncidencias)
+                            _rawIncidencias.value = sortedIncidencias
+                            saveCachedIncidencias(sortedIncidencias)
                         }
 
                         if (parsedMachines.isNotEmpty()) {

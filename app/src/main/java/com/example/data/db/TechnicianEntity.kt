@@ -16,17 +16,24 @@ data class TechnicianEntity(
     val estatus: String = "ACTIVO",// e.g. "ACTIVO", "INACTIVO"
     val rol: String = "TECNICO"    // e.g. "TECNICO", "ADMIN", "ADMINISTRADOR", "DIRECTOR"
 ) {
+    val isSuperUser: Boolean
+        get() {
+            val r = rol.trim().uppercase()
+            return r == "SUPERUSER" || r == "SUPERUSUARIO"
+        }
+
     val isDirector: Boolean
         get() = rol.trim().uppercase() == "DIRECTOR" || rol.trim().uppercase() == "DIRECTORA"
 
     val isAdmin: Boolean
         get() {
             val r = rol.trim().uppercase()
-            return r == "ADMIN" || r == "ADMINISTRADOR" || r == "ADMINISTRADORA" || isDirector
+            return r == "ADMIN" || r == "ADMINISTRADOR" || r == "ADMINISTRADORA" || isDirector || isSuperUser
         }
 
     val rolDisplay: String
         get() = when {
+            isSuperUser -> "Superusuario"
             isDirector -> "Director Corporativo"
             isAdmin -> "Administrador Corporativo"
             else -> "Técnico"

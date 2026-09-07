@@ -3,6 +3,7 @@ package com.example.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,20 +24,28 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.HourglassTop
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -47,18 +56,28 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.data.remote.IncidenciaItem
 import com.example.ui.viewmodel.ReportViewModel
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun IncidenciasDashboardScreen(
@@ -75,6 +94,8 @@ fun IncidenciasDashboardScreen(
     val availableSalas by viewModel.availableSalas.collectAsState()
 
     val isAdmin = currentUser?.isAdmin == true
+    val isSuperUser = currentUser?.isSuperUser == true
+    var selectedTicketForDetail by remember { mutableStateOf<IncidenciaItem?>(null) }
     val activeSalaDisplay = if (isAdmin) {
         if (adminSelectedSala.isBlank() || adminSelectedSala.equals("TODAS", ignoreCase = true)) {
             "Todas las Salas (Nacional)"
@@ -434,13 +455,35 @@ fun IncidenciasDashboardScreen(
                 items = incidencias,
                 key = { it.idTicket + "_" + it.asset + "_" + it.fechaOrigen }
             ) { incidencia ->
-                IncidenciaTicketCard(incidencia = incidencia)
+                IncidenciaTicketCard(
+                    incidencia = incidencia,
+                    onClick = { selectedTicketForDetail = incidencia }
+                )
             }
         }
 
         item {
             Spacer(modifier = Modifier.height(80.dp)) // Espacio final para que el último elemento no quede oculto bajo la barra inferior
         }
+    }
+
+    // Modal de Detalle y Gestión de Estatus
+    selectedTicketForDetail?.let { ticket ->
+        IncidenciaDetailDialog(
+            incidencia = ticket,
+            isSuperUser = isSuperUser,
+            onDismiss = { selectedTicketForDetail = null },
+            onUpdateStatus = { idTicket, nuevoEstado, operativa, resolucion, fechaReparacion, onComplete ->
+                viewModel.updateIncidenciaStatus(
+                    idTicket = idTicket,
+                    nuevoEstado = nuevoEstado,
+                    operativa = operativa,
+                    resolucion = resolucion,
+                    fechaReparacion = fechaReparacion,
+                    onComplete = onComplete
+                )
+            }
+        )
     }
 }
 
@@ -491,7 +534,8 @@ fun KpiStatCard(
 
 @Composable
 fun IncidenciaTicketCard(
-    incidencia: IncidenciaItem
+    incidencia: IncidenciaItem,
+    onClick: () -> Unit = {}
 ) {
     val isResuelto = incidencia.estadoTicket.contains("RESUELT", ignoreCase = true) || incidencia.estadoTicket.contains("CERRAD", ignoreCase = true)
     val isOperativaNo = incidencia.operativa.equals("NO", ignoreCase = true)
@@ -524,6 +568,7 @@ fun IncidenciaTicketCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onClick() }
             .testTag("incidencia_card_${incidencia.idTicket}"),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
@@ -831,3 +876,640 @@ fun formatExcelDate(dateStr: String): String {
     } catch (_: Exception) {}
     return trimmed
 }
+
+@Composable
+fun IncidenciaDetailDialog(
+    incidencia: IncidenciaItem,
+    isSuperUser: Boolean,
+    onDismiss: () -> Unit,
+    onUpdateStatus: (String, String, String, String, String, (Boolean, String) -> Unit) -> Unit
+) {
+    var currentTicket by remember(incidencia) { mutableStateOf(incidencia) }
+
+    val initialStatus = if (currentTicket.estadoTicket.contains("RESUELT", true) || currentTicket.estadoTicket.contains("CERRAD", true)) "RESUELTO" else "PENDIENTE"
+    var editStatus by remember(currentTicket) { mutableStateOf(initialStatus) }
+    var editOperativa by remember(currentTicket) {
+        mutableStateOf(currentTicket.operativa.ifBlank { if (initialStatus == "RESUELTO") "SI" else "NO" })
+    }
+    var editResolucion by remember(currentTicket) { mutableStateOf(currentTicket.resolucion) }
+
+    val defaultToday = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()) }
+    var editFechaReparacion by remember(currentTicket) {
+        val f = currentTicket.fechaReparacion.trim()
+        val parsed = if (f.isNotBlank()) formatExcelDate(f).split(" ")[0] else if (initialStatus == "RESUELTO") defaultToday else ""
+        mutableStateOf(parsed)
+    }
+
+    var isUpdating by remember { mutableStateOf(false) }
+    var updateMsg by remember { mutableStateOf<String?>(null) }
+    var isUpdateSuccess by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+
+    Dialog(
+        onDismissRequest = { if (!isUpdating) onDismiss() },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.92f),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Modal Header
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Detalle del Reporte",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = currentTicket.idTicket,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                IconButton(
+                                    onClick = {
+                                        com.example.util.EmailIntentUtil.copyToClipboard(
+                                            context,
+                                            "Número de Reporte",
+                                            currentTicket.idTicket
+                                        )
+                                    },
+                                    modifier = Modifier.size(20.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ContentCopy,
+                                        contentDescription = "Copiar Ticket",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Estado badge
+                        val isCurrResuelto = currentTicket.estadoTicket.contains("RESUELT", true) || currentTicket.estadoTicket.contains("CERRAD", true)
+                        val currBadgeColor = if (isCurrResuelto) Color(0xFF16A34A) else Color(0xFFEA580C)
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = currBadgeColor
+                        ) {
+                            Text(
+                                text = if (isCurrResuelto) "RESUELTO" else "PENDIENTE",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Cerrar",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                // Scrollable Body
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    // Sección 1: Información del Equipo
+                    DetailSectionCard(title = "Información del Equipo", icon = Icons.Default.Info) {
+                        DetailRowItem(label = "Sala", value = currentTicket.sala)
+                        DetailRowItem(label = "Área", value = currentTicket.area)
+                        DetailRowItem(label = "Marca", value = currentTicket.marca)
+                        DetailRowItem(label = "Modelo", value = currentTicket.modelo)
+                        DetailRowItem(label = "Número de Serie", value = currentTicket.serie)
+                        DetailRowItem(label = "Asset Number", value = currentTicket.asset)
+                        DetailRowItem(label = "Propietario", value = currentTicket.propietario.ifBlank { "WINPOT" })
+                    }
+
+                    // Sección 2: Datos del Registro
+                    DetailSectionCard(title = "Datos del Registro", icon = Icons.Default.Person) {
+                        DetailRowItem(label = "Técnico Responsable", value = currentTicket.tecnico)
+                        DetailRowItem(label = "ID Técnico", value = currentTicket.idTecnico)
+                        DetailRowItem(label = "Fecha de Reporte", value = formatExcelDate(currentTicket.fechaOrigen))
+                        DetailRowItem(
+                            label = "Fecha Reparación",
+                            value = if (currentTicket.fechaReparacion.isNotBlank()) formatExcelDate(currentTicket.fechaReparacion) else "Pendiente"
+                        )
+                    }
+
+                    // Sección 3: Falla Reportada
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = Color(0xFFDC2626),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Falla Reportada:",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = currentTicket.falla.ifBlank { "Sin descripción detallada." },
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+
+                    // Sección 4: Gestión para SUPERUSER o Resolución solo lectura
+                    if (isSuperUser) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.5.dp,
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Build,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Gestión de Estatus",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+
+                                if (updateMsg != null) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isUpdateSuccess) Color(0xFFDCFCE7) else Color(0xFFFEE2E2),
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            1.dp,
+                                            if (isUpdateSuccess) Color(0xFF86EFAC) else Color(0xFFFCA5A5)
+                                        ),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = if (isUpdateSuccess) Icons.Default.CheckCircle else Icons.Default.Error,
+                                                contentDescription = null,
+                                                tint = if (isUpdateSuccess) Color(0xFF16A34A) else Color(0xFFDC2626),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = updateMsg ?: "",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isUpdateSuccess) Color(0xFF14532D) else Color(0xFF991B1B)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Selector Estado: PENDIENTE / RESUELTO
+                                Text(
+                                    text = "Estado del Ticket:",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    val isPendienteSelected = editStatus == "PENDIENTE"
+                                    Surface(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable(enabled = !isUpdating) {
+                                                editStatus = "PENDIENTE"
+                                                editOperativa = "NO"
+                                                editFechaReparacion = ""
+                                            },
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isPendienteSelected) Color(0xFFEA580C) else MaterialTheme.colorScheme.surface,
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            1.dp,
+                                            if (isPendienteSelected) Color(0xFFEA580C) else MaterialTheme.colorScheme.outlineVariant
+                                        )
+                                    ) {
+                                        Text(
+                                            text = "PENDIENTE",
+                                            modifier = Modifier.padding(vertical = 10.dp),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = if (isPendienteSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+
+                                    val isResueltoSelected = editStatus == "RESUELTO"
+                                    Surface(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable(enabled = !isUpdating) {
+                                                editStatus = "RESUELTO"
+                                                editOperativa = "SI"
+                                                if (editFechaReparacion.isBlank()) {
+                                                    editFechaReparacion = defaultToday
+                                                }
+                                            },
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isResueltoSelected) Color(0xFF16A34A) else MaterialTheme.colorScheme.surface,
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            1.dp,
+                                            if (isResueltoSelected) Color(0xFF16A34A) else MaterialTheme.colorScheme.outlineVariant
+                                        )
+                                    ) {
+                                        Text(
+                                            text = "RESUELTO",
+                                            modifier = Modifier.padding(vertical = 10.dp),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = if (isResueltoSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                }
+
+                                // Selector ¿Máquina Operativa?: SI / NO
+                                Text(
+                                    text = "¿Máquina Operativa?:",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    val isOpSi = editOperativa.equals("SI", true)
+                                    Surface(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable(enabled = !isUpdating) {
+                                                editOperativa = "SI"
+                                            },
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isOpSi) Color(0xFF16A34A).copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface,
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            1.dp,
+                                            if (isOpSi) Color(0xFF16A34A) else MaterialTheme.colorScheme.outlineVariant
+                                        )
+                                    ) {
+                                        Text(
+                                            text = "SÍ (Operativa)",
+                                            modifier = Modifier.padding(vertical = 8.dp),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = if (isOpSi) FontWeight.ExtraBold else FontWeight.Medium,
+                                            color = if (isOpSi) Color(0xFF16A34A) else MaterialTheme.colorScheme.onSurface,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+
+                                    val isOpNo = editOperativa.equals("NO", true)
+                                    Surface(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable(enabled = !isUpdating) {
+                                                editOperativa = "NO"
+                                            },
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isOpNo) Color(0xFFDC2626).copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface,
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            1.dp,
+                                            if (isOpNo) Color(0xFFDC2626) else MaterialTheme.colorScheme.outlineVariant
+                                        )
+                                    ) {
+                                        Text(
+                                            text = "NO (Inoperativa)",
+                                            modifier = Modifier.padding(vertical = 8.dp),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = if (isOpNo) FontWeight.ExtraBold else FontWeight.Medium,
+                                            color = if (isOpNo) Color(0xFFDC2626) else MaterialTheme.colorScheme.onSurface,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                }
+
+                                // Fecha de Reparación + Botón HOY
+                                Text(
+                                    text = "Fecha de Reparación:",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    val isDateEnabled = editStatus == "RESUELTO" && !isUpdating
+
+                                    Surface(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable(enabled = isDateEnabled) {
+                                                val cal = Calendar.getInstance()
+                                                val parts = editFechaReparacion.split("/")
+                                                val initYear = if (parts.size == 3) parts[2].toIntOrNull() ?: cal.get(Calendar.YEAR) else cal.get(Calendar.YEAR)
+                                                val initMonth = if (parts.size == 3) (parts[1].toIntOrNull()?.minus(1)) ?: cal.get(Calendar.MONTH) else cal.get(Calendar.MONTH)
+                                                val initDay = if (parts.size == 3) parts[0].toIntOrNull() ?: cal.get(Calendar.DAY_OF_MONTH) else cal.get(Calendar.DAY_OF_MONTH)
+
+                                                android.app.DatePickerDialog(
+                                                    context,
+                                                    { _, y, m, d ->
+                                                        editFechaReparacion = String.format(Locale.getDefault(), "%02d/%02d/%04d", d, m + 1, y)
+                                                    },
+                                                    initYear,
+                                                    initMonth,
+                                                    initDay
+                                                ).show()
+                                            },
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isDateEnabled) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.CalendarToday,
+                                                contentDescription = "Calendario",
+                                                tint = if (isDateEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = if (editFechaReparacion.isNotBlank()) editFechaReparacion else "Seleccionar fecha...",
+                                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                                                color = if (editFechaReparacion.isNotBlank()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline
+                                            )
+                                        }
+                                    }
+
+                                    Button(
+                                        onClick = { editFechaReparacion = defaultToday },
+                                        enabled = isDateEnabled,
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    ) {
+                                        Text("HOY", fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                                    }
+                                }
+
+                                // Resolución / Notas Técnicas
+                                Text(
+                                    text = "Resolución / Notas Técnicas:",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                OutlinedTextField(
+                                    value = editResolucion,
+                                    onValueChange = { editResolucion = it },
+                                    enabled = !isUpdating,
+                                    placeholder = {
+                                        Text(
+                                            "Describa la solución aplicada o notas de seguimiento...",
+                                            fontSize = 12.sp
+                                        )
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(90.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                                    )
+                                )
+
+                                // Botón Actualizar
+                                Button(
+                                    onClick = {
+                                        isUpdating = true
+                                        updateMsg = null
+                                        onUpdateStatus(
+                                            currentTicket.idTicket,
+                                            editStatus,
+                                            editOperativa,
+                                            editResolucion,
+                                            if (editStatus == "RESUELTO") editFechaReparacion else ""
+                                        ) { success, msg ->
+                                            isUpdating = false
+                                            isUpdateSuccess = success
+                                            updateMsg = msg
+                                            if (success) {
+                                                currentTicket = currentTicket.copy(
+                                                    estadoTicket = editStatus,
+                                                    operativa = editOperativa,
+                                                    resolucion = editResolucion,
+                                                    fechaReparacion = if (editStatus == "RESUELTO") editFechaReparacion else ""
+                                                )
+                                            }
+                                        }
+                                    },
+                                    enabled = !isUpdating,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    )
+                                ) {
+                                    if (isUpdating) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                            strokeWidth = 2.dp
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Guardando en Base de Datos...", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.Save,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Actualizar Estatus", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    }
+                                }
+                            }
+                        }
+                    } else if (currentTicket.resolucion.isNotBlank()) {
+                        // Resolución solo lectura para rol Técnico / Admin no-superuser
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFF0FDF4),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF86EFAC)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = Color(0xFF15803D),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Resolución Aplicada:",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF15803D)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = currentTicket.resolucion,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                                    color = Color(0xFF14532D)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailSectionCard(
+    title: String,
+    icon: ImageVector,
+    content: @Composable () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 4.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
+            content()
+        }
+    }
+}
+
+@Composable
+private fun DetailRowItem(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value.ifBlank { "N/A" },
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
