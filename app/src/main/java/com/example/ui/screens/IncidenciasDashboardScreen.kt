@@ -256,66 +256,60 @@ fun IncidenciasDashboardScreen(
         }
 
         item {
-            // 2. Grid de 6 KPIs Dinámicos de la Sala (Estructura idéntica al KPIHeader web)
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Fila 1: Total, Fuera de Servicio, En Servicio
+            // 2. Grid de 6 KPIs Dinámicos de la Sala (Compacto y sin iconos)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                // Fila 1: Fuera de servicio, Pendientes, En servicio
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     KpiStatCard(
-                        label = "Total",
-                        count = totalCount,
-                        icon = Icons.Default.Assessment,
-                        color = Color(0xFF4F46E5), // Indigo
+                        label = "Fuera Servicio",
+                        count = noOperativas,
+                        color = Color(0xFFDC2626), // Rojo
                         modifier = Modifier.weight(1f),
-                        onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("TODOS") }
+                        onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("PENDIENTES") }
                     )
                     KpiStatCard(
-                        label = "Fuera Serv.",
-                        count = noOperativas,
-                        icon = Icons.Default.Error,
-                        color = Color(0xFFDC2626), // Rojo
+                        label = "Pendientes",
+                        count = pendientes,
+                        color = Color(0xFFEA580C), // Naranja/Ámbar
                         modifier = Modifier.weight(1f),
                         onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("PENDIENTES") }
                     )
                     KpiStatCard(
                         label = "En Servicio",
                         count = operativas,
-                        icon = Icons.Default.CheckCircle,
                         color = Color(0xFF16A34A), // Verde
                         modifier = Modifier.weight(1f)
                     )
                 }
 
-                // Fila 2: Pendientes, Resueltos, Críticas
+                // Fila 2: Críticas, Resueltos, Total
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     KpiStatCard(
-                        label = "Pendientes",
-                        count = pendientes,
-                        icon = Icons.Default.HourglassTop,
-                        color = Color(0xFFEA580C), // Naranja/Ámbar
+                        label = "Críticas",
+                        count = criticas,
+                        color = Color(0xFFB91C1C), // Guinda / Rojo oscuro
                         modifier = Modifier.weight(1f),
                         onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("PENDIENTES") }
                     )
                     KpiStatCard(
                         label = "Resueltos",
                         count = resueltos,
-                        icon = Icons.Default.CheckCircle,
                         color = Color(0xFF0284C7), // Azul Cielo
                         modifier = Modifier.weight(1f),
                         onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("RESUELTOS") }
                     )
                     KpiStatCard(
-                        label = "Críticas",
-                        count = criticas,
-                        icon = Icons.Default.Warning,
-                        color = Color(0xFFB91C1C), // Guinda
+                        label = "Total",
+                        count = totalCount,
+                        color = Color(0xFF4F46E5), // Indigo
                         modifier = Modifier.weight(1f),
-                        onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("PENDIENTES") }
+                        onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("TODOS") }
                     )
                 }
             }
@@ -491,7 +485,6 @@ fun IncidenciasDashboardScreen(
 fun KpiStatCard(
     label: String,
     count: Int,
-    icon: ImageVector,
     color: Color,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
@@ -499,30 +492,31 @@ fun KpiStatCard(
     val clickableModifier = if (onClick != null) modifier.clickable { onClick() } else modifier
     Surface(
         modifier = clickableModifier,
-        shape = RoundedCornerShape(14.dp),
-        color = color.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(12.dp),
+        color = color.copy(alpha = 0.10f),
         border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.25f))
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier.padding(vertical = 7.dp, horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = color,
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.height(3.dp))
             Text(
                 text = count.toString(),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontSize = 18.sp,
+                    lineHeight = 20.sp
+                ),
                 fontWeight = FontWeight.ExtraBold,
                 color = color
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                    lineHeight = 12.sp
+                ),
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
