@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -21,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDone
@@ -59,14 +61,13 @@ fun ExtractFileScreen(
     val isSyncing by viewModel.isSyncingDrive.collectAsState()
     val lastSyncDate by viewModel.lastSyncTimestampFormatted.collectAsState()
     val statusMessage by viewModel.statusMessage.collectAsState()
-    val catalogMachines by viewModel.allMachines.collectAsState()
-    val userMachines by viewModel.machineCatalog.collectAsState()
+    val unfilteredMachines by viewModel.unfilteredUserMachines.collectAsState()
     val distinctSalas by viewModel.distinctSalas.collectAsState()
     val providerEmailsList by viewModel.providerEmails.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
 
     val isAdmin = currentUser?.isAdmin == true
-    val displayedCount = if (isAdmin) catalogMachines.size else userMachines.size
+    val displayedCount = unfilteredMachines.size
 
     // File picker launcher for local Excel spreadsheet (.xlsx, .xls)
     val excelFilePickerLauncher = rememberLauncherForActivityResult(
@@ -124,11 +125,7 @@ fun ExtractFileScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = if (isAdmin) {
-                            "Sincroniza en automático desde Google Drive o sube directamente tu archivo Excel (.xlsx)."
-                        } else {
-                            "Sincroniza el catálogo de tu sala desde Google Drive o carga tu archivo Excel local."
-                        },
+                        text = "Sincroniza el catalogo con la base de datos y carga tu archivo excel local para obtener la informacion del Titulo.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f)
                     )
@@ -136,67 +133,82 @@ fun ExtractFileScreen(
             }
         }
 
-        // Action Button: Actualizar Información desde Drive
-        Button(
-            onClick = { viewModel.syncFromDrive(showProgressMessage = true, forceSyncMachines = true) },
-            enabled = !isSyncing,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .testTag("sync_drive_button"),
-            shape = RoundedCornerShape(16.dp)
+        // Action Buttons: Sincronizar y Cargar Excel lado a lado
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            if (isSyncing) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    strokeWidth = 2.5.dp
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Procesando catálogo...",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-            } else {
+            // Botón Sincronizar
+            Button(
+                onClick = { viewModel.syncFromDrive(showProgressMessage = true, forceSyncMachines = true) },
+                enabled = !isSyncing,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(50.dp)
+                    .testTag("sync_drive_button"),
+                shape = RoundedCornerShape(16.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+            ) {
+                if (isSyncing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Sincronizando...",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.CloudSync,
+                        contentDescription = "Sincronizar",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Sincronizar",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            // Botón Cargar (.xlsx)
+            OutlinedButton(
+                onClick = {
+                    excelFilePickerLauncher.launch("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                },
+                enabled = !isSyncing,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(50.dp)
+                    .testTag("upload_excel_button"),
+                shape = RoundedCornerShape(16.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+            ) {
                 Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "Actualizar desde Drive",
-                    modifier = Modifier.size(22.dp)
+                    imageVector = Icons.Default.UploadFile,
+                    contentDescription = "Cargar Excel",
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "Sincronizar desde Google Drive",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    text = "Cargar (.xlsx)",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-        }
-
-        // Action Button: Cargar Archivo Excel Localmente
-        OutlinedButton(
-            onClick = {
-                excelFilePickerLauncher.launch("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            },
-            enabled = !isSyncing,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(54.dp)
-                .testTag("upload_excel_button"),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.UploadFile,
-                contentDescription = "Subir Excel",
-                modifier = Modifier.size(22.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(
-                text = "Cargar Archivo Excel (.xlsx)",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
         }
 
         // Status Message Banner
@@ -272,7 +284,7 @@ fun ExtractFileScreen(
                         color = MaterialTheme.colorScheme.primaryContainer
                     ) {
                         Text(
-                            text = "$displayedCount registros",
+                            text = "$displayedCount maquinas",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,

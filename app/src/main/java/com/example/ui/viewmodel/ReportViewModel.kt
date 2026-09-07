@@ -423,6 +423,27 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         initialValue = emptyList()
     )
 
+    val unfilteredUserMachines: StateFlow<List<MachineEntity>> = combine(
+        allMachines,
+        _currentUser
+    ) { machines, user ->
+        if (user == null || user.isAdmin) {
+            machines
+        } else {
+            val userSalaNormalized = user.sala.trim().lowercase()
+            machines.filter { m ->
+                val machineSalaNormalized = m.sala.trim().lowercase()
+                machineSalaNormalized == userSalaNormalized ||
+                    (userSalaNormalized.isNotEmpty() && machineSalaNormalized.contains(userSalaNormalized)) ||
+                    (machineSalaNormalized.isNotEmpty() && userSalaNormalized.contains(machineSalaNormalized))
+            }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
     private fun userSalaNormalized(filter: String, target: String): Boolean {
         return target.contains(filter)
     }
@@ -738,14 +759,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                         prefs.edit().putString("last_sync_formatted", nowFormatted).apply()
                         _lastSyncTimestampFormatted.value = nowFormatted
 
-                        val current = _currentUser.value
-                        val activeMachineCount = repository.getMachineCount()
-                        if (current != null && !current.isAdmin) {
-                            val userMachines = repository.findMachine("") // or count
-                            _statusMessage.value = "Datos actualizados exitosamente ($activeMachineCount máquinas disponibles)."
-                        } else {
-                            _statusMessage.value = "Datos actualizados exitosamente ($activeMachineCount máquinas, ${parsedTechnicians.size} técnicos)."
-                        }
+                        _statusMessage.value = "Datos actualizados exitosamente"
                     } else {
                         if (showProgressMessage) {
                             _statusMessage.value = "No se pudieron extraer registros válidos de la hoja de cálculo."
@@ -822,19 +836,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                             prefs.edit().putString("last_sync_formatted", nowFormatted).apply()
                             _lastSyncTimestampFormatted.value = nowFormatted
 
-                            val current = _currentUser.value
-                            if (current != null && !current.isAdmin) {
-                                val userSalaNormalized = current.sala.trim().lowercase()
-                                val userMachinesCount = parsedMachines.count { m ->
-                                    val machineSalaNormalized = m.sala.trim().lowercase()
-                                    machineSalaNormalized == userSalaNormalized ||
-                                        (userSalaNormalized.isNotEmpty() && machineSalaNormalized.contains(userSalaNormalized)) ||
-                                        (machineSalaNormalized.isNotEmpty() && userSalaNormalized.contains(machineSalaNormalized))
-                                }
-                                _statusMessage.value = "Archivo local cargado exitosamente ($userMachinesCount máquinas de tu sala)."
-                            } else {
-                                _statusMessage.value = "Archivo local cargado exitosamente (${parsedMachines.size} máquinas, ${parsedTechnicians.size} técnicos)."
-                            }
+                            _statusMessage.value = "Datos actualizados exitosamente"
                         } else {
                             _statusMessage.value = "No se pudieron extraer registros válidos del archivo Excel seleccionado."
                         }
