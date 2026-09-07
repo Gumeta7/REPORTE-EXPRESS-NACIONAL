@@ -53,6 +53,12 @@ interface MachineDao {
     @Query("DELETE FROM machines")
     suspend fun clearAllMachines()
 
+    @androidx.room.Transaction
+    suspend fun replaceAllMachines(machines: List<MachineEntity>) {
+        clearAllMachines()
+        insertAllMachines(machines)
+    }
+
     @Query("SELECT * FROM machines")
     suspend fun getAllMachinesList(): List<MachineEntity>
 

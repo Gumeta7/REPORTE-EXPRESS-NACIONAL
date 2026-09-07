@@ -62,7 +62,9 @@ class ReportRepository(
         machineDao.insertAllMachines(machines)
     }
 
-    suspend fun mergeAndImportMachines(incomingMachines: List<MachineEntity>) {
+    suspend fun mergeAndImportMachines(incomingMachines: List<MachineEntity>, replaceOld: Boolean = true) {
+        if (incomingMachines.isEmpty()) return
+
         val existingList = machineDao.getAllMachinesList()
         if (existingList.isEmpty()) {
             machineDao.insertAllMachines(incomingMachines)
@@ -94,9 +96,9 @@ class ReportRepository(
                 ?: (if (n.isNotBlank()) existingByNum[n] else null)
 
             if (existing != null) {
-                // Complementamos los datos sin sobreescribir con valores vacíos
+                // Complementamos los datos sin sobreescribir con valores vacíos (como island si falta en el catálogo)
                 val merged = MachineEntity(
-                    id = existing.id,
+                    id = if (replaceOld) 0 else existing.id,
                     machineNumber = inc.machineNumber.ifBlank { existing.machineNumber },
                     brand = inc.brand.ifBlank { existing.brand },
                     model = inc.model.ifBlank { existing.model },
@@ -107,15 +109,19 @@ class ReportRepository(
                     island = inc.island.ifBlank { existing.island },
                     sala = inc.sala.ifBlank { existing.sala },
                     qrId = inc.qrId.ifBlank { existing.qrId },
-                    propietario = inc.propietario.ifBlank { existing.propietario }
+                    propietario = inc.propietario
                 )
                 mergedResults.add(merged)
             } else {
-                mergedResults.add(inc)
+                mergedResults.add(if (replaceOld) inc.copy(id = 0) else inc)
             }
         }
 
-        machineDao.insertAllMachines(mergedResults)
+        if (replaceOld) {
+            machineDao.replaceAllMachines(mergedResults)
+        } else {
+            machineDao.insertAllMachines(mergedResults)
+        }
     }
 
     suspend fun clearAllMachines() {
