@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -28,15 +29,15 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Store
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
@@ -151,10 +152,12 @@ fun VisitsScreen(
     val currentUser by viewModel.currentUser.collectAsState()
     val providerEmailsList by viewModel.providerEmails.collectAsState()
     val allMachinesList by viewModel.allMachines.collectAsState()
+    val distinctSalas by viewModel.distinctSalas.collectAsState()
+    val adminSelectedSala by viewModel.adminSelectedSala.collectAsState()
 
-    val activeSala = remember(currentUser) {
-        if (currentUser?.isAdmin == true) {
-            "CORPORATIVO"
+    val activeSala = remember(currentUser, adminSelectedSala) {
+        if (currentUser?.isAdmin == true && adminSelectedSala.isNotBlank() && !adminSelectedSala.equals("TODAS", ignoreCase = true)) {
+            adminSelectedSala
         } else {
             currentUser?.sala?.trim()?.ifBlank { "CORPORATIVO" } ?: "CORPORATIVO"
         }
@@ -273,6 +276,37 @@ fun VisitsScreen(
                     venueName = activeSala,
                     compact = false
                 )
+            }
+        }
+
+        if (currentUser?.isAdmin == true && distinctSalas.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "Seleccionar Sala:",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                distinctSalas.forEach { sName ->
+                    val isSelected = activeSala.trim().equals(sName.trim(), ignoreCase = true)
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { viewModel.setAdminSelectedSala(sName) },
+                        label = { Text(sName, style = MaterialTheme.typography.labelMedium) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                }
             }
         }
 
@@ -563,12 +597,6 @@ fun VisitsScreen(
                     .testTag("select_islands_grid_button"),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Place,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
                 Text("Seleccionar Isla(s)", style = MaterialTheme.typography.labelMedium)
             }
         }
@@ -604,7 +632,6 @@ fun VisitsScreen(
                 onValueChange = { viewModel.updateVisitIslaInput(it) },
                 label = { Text("Isla(s)", maxLines = 1, softWrap = false) },
                 placeholder = { Text("Ej: P, AM", maxLines = 1, softWrap = false) },
-                leadingIcon = { Icon(Icons.Default.Place, contentDescription = null) },
                 trailingIcon = {
                     IconButton(onClick = { showIslaGridDialog = true }) {
                         Icon(Icons.Default.Search, contentDescription = "Buscar Islas")
@@ -1250,19 +1277,11 @@ fun IslaSelectionGridDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Place,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Seleccionar Isla(s)",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    Text(
+                        text = "Seleccionar Isla(s)",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
 
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, contentDescription = "Cerrar")

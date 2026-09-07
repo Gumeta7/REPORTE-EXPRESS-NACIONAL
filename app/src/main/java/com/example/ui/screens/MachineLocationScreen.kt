@@ -142,13 +142,6 @@ fun MachineLocationScreen(
                     selected = isAllSelected,
                     onClick = { viewModel.setAdminSelectedSala("TODAS") },
                     label = { Text("Todas las Salas", style = MaterialTheme.typography.labelMedium) },
-                    leadingIcon = {
-                        if (isAllSelected) {
-                            Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp))
-                        } else {
-                            Icon(imageVector = Icons.Default.Storefront, contentDescription = null, modifier = Modifier.size(14.dp))
-                        }
-                    },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary,
                         selectedLabelColor = MaterialTheme.colorScheme.onPrimary
@@ -162,13 +155,6 @@ fun MachineLocationScreen(
                         selected = isSelected,
                         onClick = { viewModel.setAdminSelectedSala(sName) },
                         label = { Text(sName, style = MaterialTheme.typography.labelMedium) },
-                        leadingIcon = {
-                            if (isSelected) {
-                                Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp))
-                            } else {
-                                Icon(imageVector = Icons.Default.Place, contentDescription = null, modifier = Modifier.size(14.dp))
-                            }
-                        },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primary,
                             selectedLabelColor = MaterialTheme.colorScheme.onPrimary
