@@ -121,7 +121,7 @@ fun LoginScreen(
             )
 
             Text(
-                text = "Acceso para Técnicos y Administradores",
+                text = "Acceso para Técnicos, Directores y Administradores",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

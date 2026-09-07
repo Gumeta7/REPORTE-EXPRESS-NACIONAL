@@ -32,7 +32,7 @@ La versión **1.0.2** introduce una renovación estética y funcional de nivel c
 
 ### 👤 3. Cabecera Ejecutiva y Perfiles de Usuario
 - **Avatar Monograma:** Generación de iniciales con iluminación Cobalt para el técnico activo (`TechnicianMonogramAvatar`).
-- **Rol Simplificado:** Ajuste de etiqueta a **`Técnico`** (o *`Administrador Corporativo`* para perfiles de administración).
+- **Rol Simplificado:** Ajuste de etiqueta a **`Técnico`**, *`Administrador Corporativo`* o *`Director Corporativo`* según el perfil configurado.
 - **Insignia Dinámica:** Muestra automáticamente el logotipo de la sala asignada en la esquina superior derecha.
 
 ---

@@ -125,7 +125,7 @@ fun MachineLocationScreen(
         if (isAdmin && distinctSalas.isNotEmpty()) {
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "Seleccionar Sala (Vista Administrador):",
+                text = "Seleccionar Sala (${if (currentUser?.isDirector == true) "Vista Director" else "Vista Administrador"}):",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary

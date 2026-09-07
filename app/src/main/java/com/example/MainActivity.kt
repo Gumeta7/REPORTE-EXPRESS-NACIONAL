@@ -226,7 +226,7 @@ fun MainAppScreen(viewModel: ReportViewModel) {
                                         overflow = TextOverflow.Ellipsis
                                     )
                                     Text(
-                                        text = if (user.isAdmin) "Administrador Corporativo" else "Técnico",
+                                        text = user.rolDisplay,
                                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
                                         color = MaterialTheme.colorScheme.primary,
                                         fontWeight = FontWeight.SemiBold,

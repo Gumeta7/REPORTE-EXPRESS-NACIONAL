@@ -254,7 +254,7 @@ fun VisitsScreen(
             ) {
                 Column(modifier = Modifier.weight(1f, fill = false)) {
                     Text(
-                        text = if (currentUser?.isAdmin == true) "Ubicación (Administrador):" else "Sala / Casino Activo:",
+                        text = if (currentUser?.isAdmin == true) "Ubicación (${if (currentUser?.isDirector == true) "Director" else "Administrador"}):" else "Sala / Casino Activo:",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
