@@ -1,6 +1,7 @@
 package com.example.util
 
 import com.example.data.db.MachineEntity
+import com.example.data.db.ProviderEmailEntity
 import com.example.data.db.TechnicianEntity
 import com.example.data.remote.IncidenciaItem
 import org.apache.poi.ss.usermodel.Cell
@@ -309,6 +310,97 @@ object FileParserUtil {
 
                 workbook.close()
                 return allIncidencias
+            }
+        } catch (_: Throwable) {
+            return emptyList()
+        }
+    }
+
+    fun parseStreamToProviderEmails(inputStream: InputStream): List<ProviderEmailEntity> {
+        val bytes = inputStream.readBytes()
+        if (bytes.isEmpty()) return emptyList()
+
+        try {
+            bytes.inputStream().use { stream ->
+                val workbook = WorkbookFactory.create(stream)
+                val allProviders = mutableListOf<ProviderEmailEntity>()
+
+                // Locate sheet named "propietario", "propietarios", "proveedor", "proveedores"
+                var targetSheetIndex = -1
+                for (sheetIndex in 0 until workbook.numberOfSheets) {
+                    val rawName = workbook.getSheetName(sheetIndex).trim().lowercase()
+                        .replace("á", "a")
+                        .replace("é", "e")
+                        .replace("í", "i")
+                        .replace("ó", "o")
+                        .replace("ú", "u")
+                    if (rawName == "propietario" || rawName == "propietarios" || rawName == "proveedor" || rawName == "proveedores") {
+                        targetSheetIndex = sheetIndex
+                        break
+                    }
+                }
+
+                if (targetSheetIndex != -1) {
+                    val sheet = workbook.getSheetAt(targetSheetIndex)
+                    if (sheet != null && sheet.physicalNumberOfRows > 0) {
+                        var headerRowIndex = -1
+                        var proveedorCol = -1
+                        var correo1Col = -1
+                        val ccCols = mutableListOf<Int>()
+
+                        for (r in 0..minOf(15, sheet.lastRowNum)) {
+                            val row = sheet.getRow(r) ?: continue
+                            for (c in 0 until row.lastCellNum) {
+                                val rawHeader = getCellValueAsString(row.getCell(c))
+                                val col = sanitizeHeader(rawHeader)
+                                val colNoSpaces = col.replace(" ", "")
+
+                                if (col.contains("PROVEEDOR") || col.contains("MARCA") || col == "PROPIETARIO") {
+                                    proveedorCol = c
+                                } else if (colNoSpaces == "CORREO1" || colNoSpaces == "EMAIL1" || col == "CORREO 1" || col == "EMAIL 1" || (col == "CORREO" && correo1Col == -1)) {
+                                    correo1Col = c
+                                } else if (Regex("""^(?:CORREO|EMAIL)\s*([2-9]|\d{2,}).*$""").matches(col) || col.contains("CC") || col.contains("COPIA")) {
+                                    ccCols.add(c)
+                                }
+                            }
+                            if (proveedorCol != -1 && (correo1Col != -1 || ccCols.isNotEmpty())) {
+                                headerRowIndex = r
+                                break
+                            }
+                        }
+
+                        val startRow = if (headerRowIndex != -1) headerRowIndex + 1 else 0
+                        for (r in startRow..sheet.lastRowNum) {
+                            val row = sheet.getRow(r) ?: continue
+                            val providerName = if (proveedorCol != -1) getCellValueAsString(row.getCell(proveedorCol)).trim() else ""
+                            if (providerName.isBlank()) continue
+
+                            val email1 = if (correo1Col != -1) getCellValueAsString(row.getCell(correo1Col)).trim() else ""
+                            val ccList = mutableListOf<String>()
+                            for (col in ccCols) {
+                                val ccVal = getCellValueAsString(row.getCell(col)).trim()
+                                if (ccVal.isNotBlank()) {
+                                    // In case cell has multiple emails separated by comma or semicolon
+                                    val parts = ccVal.split(',', ';').map { it.trim() }.filter { it.isNotBlank() }
+                                    ccList.addAll(parts)
+                                }
+                            }
+
+                            if (email1.isNotBlank() || ccList.isNotEmpty()) {
+                                allProviders.add(
+                                    ProviderEmailEntity(
+                                        providerName = providerName,
+                                        email = email1,
+                                        ccEmails = ccList.distinct().joinToString(", ")
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+
+                workbook.close()
+                return allProviders
             }
         } catch (_: Throwable) {
             return emptyList()

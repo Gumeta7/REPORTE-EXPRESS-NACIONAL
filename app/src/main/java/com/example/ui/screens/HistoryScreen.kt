@@ -228,6 +228,7 @@ fun HistoryScreen(
                             viewModel.openDraftDialog(
                                 EmailDraftState(
                                     recipient = report.recipient,
+                                    cc = report.cc,
                                     subject = report.subject,
                                     body = report.body,
                                     machineNumber = report.machineNumber,
@@ -247,10 +248,17 @@ fun HistoryScreen(
                                     report.body
                                 )
                             } else {
+                                val clipboardContent = buildString {
+                                    appendLine("Para: ${report.recipient}")
+                                    if (report.cc.isNotBlank()) appendLine("CC: ${report.cc}")
+                                    appendLine("Asunto: ${report.subject}")
+                                    appendLine()
+                                    append(report.body)
+                                }
                                 EmailIntentUtil.copyToClipboard(
                                     context,
                                     "Reporte de Correo",
-                                    "Asunto: ${report.subject}\n\n${report.body}"
+                                    clipboardContent
                                 )
                             }
                         },
@@ -260,7 +268,8 @@ fun HistoryScreen(
                                 context,
                                 report.recipient,
                                 report.subject,
-                                report.body
+                                report.body,
+                                report.cc
                             )
                         },
                         onSendOutlook = {
@@ -268,7 +277,8 @@ fun HistoryScreen(
                                 context,
                                 report.recipient,
                                 report.subject,
-                                report.body
+                                report.body,
+                                report.cc
                             )
                         },
                         onSendWhatsApp = {
@@ -388,15 +398,25 @@ fun HistoryReportCard(
                         modifier = Modifier.weight(1f, fill = false)
                     )
                 } else {
-                    Text(
-                        text = "Para: ${report.recipient}",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
+                    Column(modifier = Modifier.weight(1f, fill = false)) {
+                        Text(
+                            text = "Para: ${report.recipient}",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (report.cc.isNotBlank()) {
+                            Text(
+                                text = "CC: ${report.cc}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(

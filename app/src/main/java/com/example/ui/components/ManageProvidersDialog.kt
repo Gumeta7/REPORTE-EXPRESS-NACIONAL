@@ -44,13 +44,14 @@ import com.example.data.db.ProviderEmailEntity
 fun ManageProvidersDialog(
     providersList: List<ProviderEmailEntity>,
     onDismiss: () -> Unit,
-    onSaveProvider: (id: Int, name: String, email: String) -> Unit,
+    onSaveProvider: (id: Int, name: String, email: String, ccEmails: String) -> Unit,
     onDeleteProvider: (Int) -> Unit,
     onRestoreDefaults: () -> Unit
 ) {
     var editingProviderId by remember { mutableStateOf<Int?>(null) }
     var providerNameInput by remember { mutableStateOf("") }
     var emailInput by remember { mutableStateOf("") }
+    var ccInput by remember { mutableStateOf("") }
 
     var providerToDelete by remember { mutableStateOf<ProviderEmailEntity?>(null) }
     var showRestoreConfirmDialog by remember { mutableStateOf(false) }
@@ -96,11 +97,22 @@ fun ManageProvidersDialog(
                 OutlinedTextField(
                     value = emailInput,
                     onValueChange = { emailInput = it },
-                    label = { Text("Correo Electrónico (Opcional)") },
+                    label = { Text("Correo Principal / Para (Opcional)") },
                     singleLine = true,
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("add_provider_email_input"),
+                    shape = RoundedCornerShape(10.dp)
+                )
+
+                OutlinedTextField(
+                    value = ccInput,
+                    onValueChange = { ccInput = it },
+                    label = { Text("Correos en Copia / CC (Opcional, comas)") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("add_provider_cc_input"),
                     shape = RoundedCornerShape(10.dp)
                 )
 
@@ -114,10 +126,12 @@ fun ManageProvidersDialog(
                                 onSaveProvider(
                                     editingProviderId ?: 0,
                                     providerNameInput,
-                                    emailInput
+                                    emailInput,
+                                    ccInput
                                 )
                                 providerNameInput = ""
                                 emailInput = ""
+                                ccInput = ""
                                 editingProviderId = null
                             }
                         },
@@ -141,6 +155,7 @@ fun ManageProvidersDialog(
                                 editingProviderId = null
                                 providerNameInput = ""
                                 emailInput = ""
+                                ccInput = ""
                             }
                         ) {
                             Text("Cancelar")
@@ -195,10 +210,19 @@ fun ManageProvidersDialog(
                                             fontWeight = FontWeight.Bold
                                         )
                                         Text(
-                                            text = provider.email.ifBlank { "Sin correo configurado" },
+                                            text = "Para: ${provider.email.ifBlank { "Sin correo" }}",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = if (provider.email.isNotBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
                                         )
+                                        if (provider.ccEmails.isNotBlank()) {
+                                            Text(
+                                                text = "CC: ${provider.ccEmails}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                maxLines = 1,
+                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                            )
+                                        }
                                     }
 
                                     Row {
@@ -207,6 +231,7 @@ fun ManageProvidersDialog(
                                                 editingProviderId = provider.id
                                                 providerNameInput = provider.providerName
                                                 emailInput = provider.email
+                                                ccInput = provider.ccEmails
                                             },
                                             modifier = Modifier.testTag("edit_provider_${provider.id}")
                                         ) {

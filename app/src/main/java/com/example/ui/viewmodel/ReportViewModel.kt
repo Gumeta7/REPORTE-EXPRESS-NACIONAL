@@ -33,6 +33,7 @@ import org.json.JSONObject
 
 data class EmailDraftState(
     val recipient: String = "",
+    val cc: String = "",
     val subject: String = "",
     val body: String = "",
     val machineNumber: String = "",
@@ -683,6 +684,10 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                     val parsedMachines = FileParserUtil.parseStreamToMachines(bytes.inputStream())
                     val parsedTechnicians = FileParserUtil.parseStreamToTechnicians(bytes.inputStream())
                     val parsedIncidencias = FileParserUtil.parseStreamToIncidencias(bytes.inputStream())
+                    val parsedProviders = FileParserUtil.parseStreamToProviderEmails(bytes.inputStream())
+                    if (parsedProviders.isNotEmpty()) {
+                        repository.importProviderEmails(parsedProviders)
+                    }
 
                     withContext(Dispatchers.Main) {
                         _rawIncidencias.value = parsedIncidencias
@@ -774,6 +779,10 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                         val parsedMachines = FileParserUtil.parseStreamToMachines(bytes.inputStream(), defaultSala = userDefaultSala)
                         val parsedTechnicians = FileParserUtil.parseStreamToTechnicians(bytes.inputStream())
                         val parsedIncidencias = FileParserUtil.parseStreamToIncidencias(bytes.inputStream())
+                        val parsedProviders = FileParserUtil.parseStreamToProviderEmails(bytes.inputStream())
+                        if (parsedProviders.isNotEmpty()) {
+                            repository.importProviderEmails(parsedProviders)
+                        }
 
                         withContext(Dispatchers.Main) {
                             _rawIncidencias.value = parsedIncidencias
@@ -929,12 +938,6 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
 
-            val finalRecipient = when {
-                matchedProvider != null -> matchedProvider.email
-                customRecipient.isNotBlank() -> customRecipient
-                else -> "soporte@zitro.com"
-            }
-
             // 2. Extract machine number if mentioned
             val machineNumRegex = Regex("""(?:máquina|maquina|asset|terminal|mâquina)\s*#?\s*([a-zA-Z0-9\-]+)""", RegexOption.IGNORE_CASE)
             val numberMatch = machineNumRegex.find(promptText)?.groupValues?.get(1)
@@ -943,6 +946,21 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
             // 3. Find machine in database catalog
             val foundMachine = repository.findMachine(numberMatch)
+
+            if (matchedProvider == null && foundMachine != null && foundMachine.brand.isNotBlank()) {
+                val fBrand = foundMachine.brand.lowercase().trim()
+                matchedProvider = registeredProviders.find { p ->
+                    val pName = p.providerName.lowercase().trim()
+                    pName.isNotBlank() && (fBrand.contains(pName) || pName.contains(fBrand))
+                }
+            }
+
+            val finalRecipient = when {
+                matchedProvider != null && matchedProvider.email.isNotBlank() -> matchedProvider.email
+                customRecipient.isNotBlank() -> customRecipient
+                else -> "soporte@zitro.com"
+            }
+            val finalCc = matchedProvider?.ccEmails ?: ""
 
             // 4. Extract issue description cleanly
             val cleanedIssue = cleanIssueDescription(promptText, numberMatch, matchedProvider?.providerName)
@@ -983,6 +1001,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
             val draft = EmailDraftState(
                 recipient = finalRecipient,
+                cc = finalCc,
                 subject = subjectLine,
                 body = formattedBody,
                 machineNumber = numberMatch,
@@ -1072,14 +1091,21 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
             // 7. Resolve Recipient Emails
             val matchedEmails = mutableListOf<String>()
+            val matchedCcEmails = mutableListOf<String>()
             for (brand in uniqueBrands) {
                 val lowerBrand = brand.lowercase()
                 val provider = registeredProviders.find { p ->
                     val pName = p.providerName.lowercase().trim()
                     pName.isNotBlank() && (lowerBrand.contains(pName) || pName.contains(lowerBrand))
                 }
-                if (provider != null && provider.email.isNotBlank()) {
-                    matchedEmails.add(provider.email.trim())
+                if (provider != null) {
+                    if (provider.email.isNotBlank()) {
+                        matchedEmails.add(provider.email.trim())
+                    }
+                    if (provider.ccEmails.isNotBlank()) {
+                        val ccs = provider.ccEmails.split(',', ';').map { it.trim() }.filter { it.isNotBlank() }
+                        matchedCcEmails.addAll(ccs)
+                    }
                 }
             }
 
@@ -1088,6 +1114,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 matchedEmails.isNotEmpty() -> matchedEmails.distinct().joinToString(", ")
                 else -> ""
             }
+            val finalCc = matchedCcEmails.distinct().joinToString(", ")
 
             val greeting = getTimeOfDayGreeting()
             val cleanedIssue = issueDescription.trim().ifBlank { "Falla reportada en terminales" }
@@ -1127,6 +1154,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
             val draft = EmailDraftState(
                 recipient = finalRecipient,
+                cc = finalCc,
                 subject = subjectLine,
                 body = formattedBody,
                 machineNumber = finalAsset,
@@ -1260,6 +1288,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
                 val reportEntity = EmailReportEntity(
                     recipient = draft.recipient,
+                    cc = draft.cc,
                     subject = draft.subject,
                     body = draft.body,
                     machineNumber = draft.machineNumber,
@@ -1349,14 +1378,15 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     // --- Provider Email Management ---
-    fun saveProviderEmail(id: Int = 0, providerName: String, email: String) {
+    fun saveProviderEmail(id: Int = 0, providerName: String, email: String, ccEmails: String = "") {
         viewModelScope.launch {
             if (providerName.isNotBlank()) {
                 repository.insertProviderEmail(
                     com.example.data.db.ProviderEmailEntity(
                         id = id,
                         providerName = providerName.trim(),
-                        email = email.trim()
+                        email = email.trim(),
+                        ccEmails = ccEmails.trim()
                     )
                 )
                 val emailInfo = if (email.isNotBlank()) " (${email.trim()})" else ""
@@ -1369,8 +1399,8 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun addProviderEmail(providerName: String, email: String) {
-        saveProviderEmail(0, providerName, email)
+    fun addProviderEmail(providerName: String, email: String, ccEmails: String = "") {
+        saveProviderEmail(0, providerName, email, ccEmails)
     }
 
     fun deleteProviderEmail(id: Int) {

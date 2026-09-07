@@ -25,4 +25,10 @@ interface ProviderEmailDao {
 
     @Query("SELECT COUNT(*) FROM provider_emails")
     suspend fun getProviderEmailCount(): Int
+
+    @Query("SELECT * FROM provider_emails")
+    suspend fun getAllProviderEmailsList(): List<ProviderEmailEntity>
+
+    @Query("SELECT * FROM provider_emails WHERE LOWER(TRIM(providerName)) = LOWER(TRIM(:name)) LIMIT 1")
+    suspend fun getProviderByName(name: String): ProviderEmailEntity?
 }

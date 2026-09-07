@@ -8,6 +8,7 @@ data class EmailReportEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
     val recipient: String,
+    val cc: String = "",
     val subject: String,
     val body: String,
     val machineNumber: String,

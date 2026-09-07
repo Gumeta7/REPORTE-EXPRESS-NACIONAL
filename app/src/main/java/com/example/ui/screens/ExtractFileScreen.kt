@@ -62,6 +62,7 @@ fun ExtractFileScreen(
     val catalogMachines by viewModel.allMachines.collectAsState()
     val userMachines by viewModel.machineCatalog.collectAsState()
     val distinctSalas by viewModel.distinctSalas.collectAsState()
+    val providerEmailsList by viewModel.providerEmails.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
 
     val isAdmin = currentUser?.isAdmin == true
@@ -336,6 +337,42 @@ fun ExtractFileScreen(
                                 ) {
                                     Text(
                                         text = salaName,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Proveedores Configurados Chips - VISIBLE ONLY FOR ADMIN
+                if (isAdmin && providerEmailsList.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Proveedores / Destinatarios detectados (${providerEmailsList.size}):",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        providerEmailsList.forEach { p ->
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = p.providerName + if (p.email.isNotBlank()) " · ${p.email}" else "",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.SemiBold,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant

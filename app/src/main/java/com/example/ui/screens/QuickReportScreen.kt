@@ -789,8 +789,8 @@ fun QuickReportScreen(
         ManageProvidersDialog(
             providersList = providerEmailsList,
             onDismiss = { showManageProvidersDialog = false },
-            onSaveProvider = { id, name, email ->
-                viewModel.saveProviderEmail(id, name, email)
+            onSaveProvider = { id, name, email, cc ->
+                viewModel.saveProviderEmail(id, name, email, cc)
             },
             onDeleteProvider = { id ->
                 viewModel.deleteProviderEmail(id)

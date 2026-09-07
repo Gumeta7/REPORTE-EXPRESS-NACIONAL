@@ -161,6 +161,20 @@ class ReportRepository(
         providerEmailDao.insertAllProviderEmails(DemoData.sampleProviderEmails)
     }
 
+    suspend fun importProviderEmails(newProviders: List<ProviderEmailEntity>) {
+        if (newProviders.isEmpty()) return
+        val existing = providerEmailDao.getAllProviderEmailsList()
+        val toInsert = newProviders.map { newP ->
+            val match = existing.find { it.providerName.trim().equals(newP.providerName.trim(), ignoreCase = true) }
+            if (match != null) {
+                newP.copy(id = match.id)
+            } else {
+                newP
+            }
+        }
+        providerEmailDao.insertAllProviderEmails(toInsert)
+    }
+
     // --- Reports ---
     fun searchReports(query: String): Flow<List<EmailReportEntity>> {
         return if (query.isBlank()) {

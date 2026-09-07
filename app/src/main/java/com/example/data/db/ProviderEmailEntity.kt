@@ -8,5 +8,6 @@ data class ProviderEmailEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
     val providerName: String,
-    val email: String
+    val email: String,
+    val ccEmails: String = ""
 )

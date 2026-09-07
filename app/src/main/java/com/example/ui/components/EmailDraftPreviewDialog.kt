@@ -124,14 +124,31 @@ fun EmailDraftPreviewDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Recipient
+                // Recipient (Read-Only)
                 OutlinedTextField(
-                    value = draftState.recipient,
-                    onValueChange = { onDraftUpdated(draftState.copy(recipient = it)) },
-                    label = { Text("Para (Destinatario)") },
+                    value = draftState.recipient.ifBlank { "Sin destinatario principal" },
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Para (Destinatario Principal)") },
+                    supportingText = { Text("Asignado automáticamente por catálogo de proveedor", style = MaterialTheme.typography.labelSmall) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("email_recipient_input"),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // CC (Read-Only)
+                OutlinedTextField(
+                    value = draftState.cc.ifBlank { "Ninguno" },
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("CC (Con Copia)") },
+                    supportingText = { Text("Copia asignada automáticamente por proveedor", style = MaterialTheme.typography.labelSmall) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("email_cc_input"),
                     singleLine = true
                 )
 
@@ -358,7 +375,8 @@ fun EmailDraftPreviewDialog(
                             context,
                             draftState.recipient,
                             draftState.subject,
-                            draftState.body
+                            draftState.body,
+                            draftState.cc
                         )
                         onDismiss()
                     },
@@ -383,7 +401,8 @@ fun EmailDraftPreviewDialog(
                             context,
                             draftState.recipient,
                             draftState.subject,
-                            draftState.body
+                            draftState.body,
+                            draftState.cc
                         )
                         onDismiss()
                     },
@@ -412,7 +431,8 @@ fun EmailDraftPreviewDialog(
                                 context,
                                 draftState.recipient,
                                 draftState.subject,
-                                draftState.body
+                                draftState.body,
+                                draftState.cc
                             )
                             onDismiss()
                         },
@@ -429,10 +449,17 @@ fun EmailDraftPreviewDialog(
                     // Copy to Clipboard
                     OutlinedButton(
                         onClick = {
+                            val clipboardContent = buildString {
+                                appendLine("Para: ${draftState.recipient}")
+                                if (draftState.cc.isNotBlank()) appendLine("CC: ${draftState.cc}")
+                                appendLine("Asunto: ${draftState.subject}")
+                                appendLine()
+                                append(draftState.body)
+                            }
                             EmailIntentUtil.copyToClipboard(
                                 context,
                                 "Correo de Reporte",
-                                "Asunto: ${draftState.subject}\n\n${draftState.body}"
+                                clipboardContent
                             )
                         },
                         modifier = Modifier
