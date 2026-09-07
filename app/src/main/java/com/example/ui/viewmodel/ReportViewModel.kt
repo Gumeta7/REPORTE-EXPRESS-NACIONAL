@@ -223,6 +223,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         return TechnicianEntity(
             technicianId = prefs.getString("user_technician_id", "") ?: "",
             nombre = prefs.getString("user_nombre", "") ?: "",
+            idSala = prefs.getString("user_id_sala", "") ?: "",
             sala = prefs.getString("user_sala", "") ?: "",
             usuario = userUsuario,
             password = "",
@@ -278,6 +279,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                         .putBoolean("is_logged_in", true)
                         .putString("user_technician_id", technician.technicianId)
                         .putString("user_nombre", technician.nombre)
+                        .putString("user_id_sala", technician.idSala)
                         .putString("user_sala", technician.sala)
                         .putString("user_usuario", technician.usuario)
                         .putString("user_estatus", technician.estatus)

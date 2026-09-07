@@ -9,6 +9,7 @@ data class TechnicianEntity(
     val id: Int = 0,
     val technicianId: String = "", // e.g. "MAJ-12", "ADMIN01"
     val nombre: String = "",       // e.g. "Carlos Avalos", "Antonio Parra"
+    val idSala: String = "",       // e.g. "CGDL", "DOPE", "CIRC", "METR"
     val sala: String = "",         // e.g. "Winpot Metrocentro", "Corporativo GDL"
     val usuario: String = "",      // e.g. "cavalos", "aparra"
     val password: String = "",     // e.g. "cavalos$2026"

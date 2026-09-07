@@ -178,6 +178,7 @@ object FileParserUtil {
 
                             val idTecnico = getVal("id_tecnico")
                             val nombre = getVal("nombre")
+                            val idSala = getVal("id_sala")
                             val sala = getVal("sala")
                             val usuario = getVal("usuario")
                             val password = getVal("password")
@@ -189,6 +190,7 @@ object FileParserUtil {
                                     TechnicianEntity(
                                         technicianId = idTecnico,
                                         nombre = nombre,
+                                        idSala = idSala,
                                         sala = sala,
                                         usuario = usuario,
                                         password = password,
@@ -439,9 +441,10 @@ object FileParserUtil {
         rowCells.forEachIndexed { idx, cellStr ->
             val col = sanitizeHeader(cellStr)
             when {
-                col.contains("ID_TECNICO") || col.contains("ID TECNICO") || col == "ID" -> map.putIfAbsent("id_tecnico", idx)
+                col.contains("ID_SALA") || col.contains("ID SALA") || col == "IDSALA" -> map.putIfAbsent("id_sala", idx)
+                col.contains("ID_TECNICO") || col.contains("ID TECNICO") || (col == "ID" && !map.containsKey("id_tecnico")) -> map.putIfAbsent("id_tecnico", idx)
                 col.contains("NOMBRE") || col.contains("TECNICO") || col.contains("NAME") -> map.putIfAbsent("nombre", idx)
-                col.contains("SALA") || col.contains("CASINO") || col.contains("UBICACION") -> map.putIfAbsent("sala", idx)
+                (col.contains("SALA") || col.contains("CASINO") || col.contains("UBICACION")) && !col.contains("ID_SALA") && !col.contains("ID SALA") && col != "IDSALA" -> map.putIfAbsent("sala", idx)
                 col.contains("USUARIO") || col.contains("USER") || col.contains("LOGIN") -> map.putIfAbsent("usuario", idx)
                 col.contains("CONTRASE") || col.contains("PASSWORD") || col.contains("CLAVE") || col.contains("PASS") -> map.putIfAbsent("password", idx)
                 col.contains("ESTATUS") || col.contains("STATUS") || col.contains("ESTADO") -> map.putIfAbsent("estatus", idx)

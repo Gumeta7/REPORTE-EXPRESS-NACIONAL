@@ -24,32 +24,32 @@ object TicketIdGenerator {
             .replace("Ú", "U")
 
         return when {
-            // Salas oficiales con códigos de tres letras definidos
-            normalized.contains("METROCENTRO") || normalized.contains("MAJ") -> "MAJ"
-            normalized.contains("PUERTA DE HIERRO") || normalized.contains("PDH") -> "PDH"
-            normalized.contains("CIRCUNVALACION") || normalized.contains("CIR") -> "CIR"
-            normalized.contains("SATELITE") || (normalized.contains("CAPRI") && normalized.contains("SAT")) -> "SAT"
-            normalized.contains("DIAMONDS") || normalized.contains("DIAMOND") || normalized.contains("CORDILLERAS") || normalized.contains("DMS") -> "DMS"
-            normalized.contains("VENETO") || normalized.contains("INTERLOMAS") || normalized.contains("VNT") -> "VNT"
-            normalized.contains("TUXTLA") || normalized.contains("TUX") -> "TUX"
-            normalized.contains("BOCA DEL RIO") || normalized.contains("BOCA") -> "BOC"
-            normalized.contains("CARRANZA") -> "CAR"
-            normalized.contains("GUAYMAS") -> "GYM"
-            normalized.contains("MANDARIN") -> "MAN"
-            normalized.contains("MERIDA") -> "MER"
-            normalized.contains("METEPEC") -> "MET"
-            normalized.contains("PACHUCA") -> "PAC"
-            normalized.contains("PLAYA") -> "PLA"
-            normalized.contains("POZA RICA") -> "PZR"
-            normalized.contains("PUEBLA") -> "PUE"
-            normalized.contains("PUNTO SUR") -> "PTS"
-            normalized.contains("TONALA") -> "TON"
-            normalized.contains("CORPORATIVO") -> "COR"
+            // Códigos oficiales ID_Sala definidos en el archivo:
+            normalized == "CGDL" || normalized.contains("CORPORATIVO") -> "CGDL"
+            normalized == "DOPE" || normalized.contains("DIRECTOR DE OPERACIONES") -> "DOPE"
+            normalized == "PACH" || normalized.contains("PACHUCA") -> "PACH"
+            normalized == "MERI" || normalized.contains("MERIDA") -> "MERI"
+            normalized == "PLAY" || normalized.contains("PLAYA") -> "PLAY"
+            normalized == "PUEB" || normalized.contains("PUEBLA") -> "PUEB"
+            normalized == "CARR" || normalized.contains("CARRANZA") -> "CARR"
+            normalized == "POZA" || normalized.contains("POZA RICA") -> "POZA"
+            normalized == "TONA" || normalized.contains("TONALA") -> "TONA"
+            normalized == "CORD" || normalized.contains("CORDILLERAS") || normalized.contains("DIAMOND") -> "CORD"
+            normalized == "CIRC" || normalized.contains("CIRCUNVALACION") -> "CIRC"
+            normalized == "METR" || normalized.contains("METROCENTRO") || normalized.contains("MAJ") -> "METR"
+            normalized == "METE" || normalized.contains("METEPEC") -> "METE"
+            normalized == "INTE" || normalized.contains("INTERLOMAS") || normalized.contains("VENETO") -> "INTE"
+            normalized == "MAND" || normalized.contains("MANDARIN") -> "MAND"
+            normalized == "SATE" || normalized.contains("SATELITE") -> "SATE"
+            normalized == "GUAY" || normalized.contains("GUAYMAS") -> "GUAY"
+            normalized == "BOCA" || normalized.contains("BOCA DEL RIO") -> "BOCA"
+            normalized == "TUXT" || normalized.contains("TUXTLA") -> "TUXT"
+            normalized == "PSUR" || normalized.contains("PUNTO SUR") -> "PSUR"
+            normalized == "PHIE" || normalized.contains("PUERTA DE HIERRO") || normalized.contains("PDH") -> "PHIE"
             else -> {
                 // Generador dinámico para cualquier sala no catalogada previamente:
-                // Toma las 3 primeras letras alfabéticas o "WIN" por defecto
                 val lettersOnly = normalized.filter { it.isLetter() }
-                if (lettersOnly.length >= 3) lettersOnly.take(3) else "WIN"
+                if (lettersOnly.length >= 4) lettersOnly.take(4) else if (lettersOnly.length >= 3) lettersOnly.take(3) else "SALA"
             }
         }
     }
