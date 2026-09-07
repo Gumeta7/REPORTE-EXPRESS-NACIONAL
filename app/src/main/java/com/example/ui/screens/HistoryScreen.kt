@@ -1,6 +1,8 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -370,6 +372,7 @@ fun HistoryReportCard(
     val isVisit = report.subject.contains("Visita", ignoreCase = true) || report.status.contains("WhatsApp", ignoreCase = true)
     val displayAsset = report.assetNumber.ifBlank { report.machineNumber.ifBlank { "N/A" } }
     val displayIssue = report.issueDescription.ifBlank { if (isVisit) "Visita técnica" else "Falla sin especificar" }
+    val context = LocalContext.current
 
     Card(
         modifier = Modifier
