@@ -61,7 +61,7 @@ fun rememberVenueBrandStyle(venueName: String): VenueBrandStyle {
     return remember(venueName) {
         val upper = venueName.trim().uppercase()
         when {
-            upper.contains("WINPOT") -> VenueBrandStyle(
+            upper.contains("WINPOT") || upper.contains("CORPORATIVO") || upper.contains("CORP") || upper.contains("GDL") -> VenueBrandStyle(
                 brandName = "WINPOT",
                 shortCode = "WP",
                 icon = Icons.Default.Stars,
@@ -106,15 +106,15 @@ fun rememberVenueBrandStyle(venueName: String): VenueBrandStyle {
                 logoDrawableLight = R.drawable.logo_veneto
             )
             else -> VenueBrandStyle(
-                brandName = if (upper.isNotBlank()) upper else "CORPORATIVO",
-                shortCode = if (upper.length >= 2) upper.take(2) else "CORP",
-                icon = Icons.Default.Storefront,
-                badgeGradient = Brush.horizontalGradient(listOf(Color(0xFF1E293B), Color(0xFF334155))),
-                borderColor = Color(0xFF64748B),
+                brandName = if (upper.isNotBlank()) upper else "WINPOT",
+                shortCode = if (upper.length >= 2) upper.take(2) else "WP",
+                icon = Icons.Default.Stars,
+                badgeGradient = Brush.horizontalGradient(listOf(Color(0xFF0F172A), Color(0xFF1E293B))),
+                borderColor = Color(0xFFE11D48),
                 textColor = Color(0xFFF8FAFC),
-                iconTint = Color(0xFF94A3B8),
-                logoDrawableDark = R.drawable.logo_corporativo,
-                logoDrawableLight = R.drawable.logo_corporativo
+                iconTint = Color(0xFFE11D48),
+                logoDrawableDark = R.drawable.logo_winpot_dark,
+                logoDrawableLight = R.drawable.logo_winpot_light
             )
         }
     }
