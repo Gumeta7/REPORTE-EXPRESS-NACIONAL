@@ -1264,7 +1264,11 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun dispatchIncidenciaToDriveSheet(draft: EmailDraftState = _currentDraft.value) {
-        val ticketId = draft.ticketId ?: return
+        val finalSala = draft.sala.ifBlank { venueName.value.ifBlank { "Sala Principal" } }
+        val finalSerial = draft.serialNumber.ifBlank { "SN-${draft.machineNumber.ifBlank { "PENDIENTE" }}" }
+        val ticketId = draft.ticketId?.ifBlank { null }
+            ?: com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial)
+
         if (dispatchedTicketIds.contains(ticketId)) {
             // Prevenir duplicidad en Google Sheets si ya fue despachado
             return
@@ -1275,10 +1279,10 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val user = _currentUser.value
             val payload = com.example.data.remote.IncidenciaTicketPayload(
                 idTicket = ticketId,
-                sala = draft.sala,
+                sala = finalSala,
                 marca = draft.brand,
                 modelo = draft.model,
-                serie = draft.serialNumber,
+                serie = finalSerial,
                 asset = draft.assetNumber,
                 area = draft.area,
                 propietario = draft.propietario.ifBlank { "WINPOT" },
@@ -1295,6 +1299,8 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val success = com.example.data.remote.DriveSyncService.postIncidenciaToDriveSheet(payload)
             if (success) {
                 _statusMessage.value = "Incidencia registrada en Google Sheets ($ticketId)."
+                // Sincronizar automáticamente para reflejar la nueva incidencia en la app y KPIs de inmediato
+                syncFromDrive(showProgressMessage = false)
             } else {
                 _statusMessage.value = "Ticket $ticketId guardado localmente."
             }

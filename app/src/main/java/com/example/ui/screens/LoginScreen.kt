@@ -95,21 +95,15 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // App Logo Badge
-            Box(
+            // Winpot Logo (Modo Claro)
+            Image(
+                painter = painterResource(id = R.drawable.logo_winpot_light),
+                contentDescription = "Winpot Logo",
+                contentScale = ContentScale.Fit,
                 modifier = Modifier
-                    .size(72.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "G",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
+                    .height(60.dp)
+                    .fillMaxWidth(0.65f)
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -120,13 +114,7 @@ fun LoginScreen(
                 color = MaterialTheme.colorScheme.onBackground
             )
 
-            Text(
-                text = "Acceso para Técnicos, Directores y Administradores",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Login Card
             Card(
@@ -302,7 +290,7 @@ fun LoginScreen(
                         strokeWidth = 2.dp
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Sincronizando con Drive...", style = MaterialTheme.typography.bodySmall)
+                    Text("Sincronizando Usuarios...", style = MaterialTheme.typography.bodySmall)
                 } else {
                     Icon(
                         imageVector = Icons.Default.CloudSync,
@@ -311,7 +299,7 @@ fun LoginScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Sincronizar Usuarios desde Drive",
+                        text = "Sincronizar Usuarios",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold
                     )

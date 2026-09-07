@@ -125,7 +125,7 @@ class MainActivity : ComponentActivity() {
             val activeDarkTheme = isDarkThemePref ?: systemInDark
             val currentUser by viewModel.currentUser.collectAsState()
 
-            ReportesExpressTheme(darkTheme = activeDarkTheme) {
+            ReportesExpressTheme(darkTheme = if (currentUser != null) activeDarkTheme else false) {
                 AnimatedContent(targetState = currentUser != null, label = "AuthTransition") { isLoggedIn ->
                     if (isLoggedIn) {
                         MainAppScreen(viewModel = viewModel)
