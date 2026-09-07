@@ -108,12 +108,11 @@ fun QuickReportScreen(
         }
     }
 
-    // Auto-detect provider email from selected machines' brands
+    // Auto-detect provider email from selected machines (Priority 1: Propietario, Priority 2: Brand)
     val autoDetectedProviderEmail = remember(selectedMachines.toList(), providerEmailsList) {
         if (selectedMachines.isEmpty()) return@remember ""
-        val uniqueBrands = selectedMachines.map { it.brand.trim() }.distinct()
-        for (b in uniqueBrands) {
-            val p = viewModel.findProviderForBrand(b, providerEmailsList)
+        for (machine in selectedMachines) {
+            val p = viewModel.findProviderForMachine(machine, providerEmailsList)
             if (p != null && p.email.isNotBlank()) {
                 return@remember p.email.trim()
             }

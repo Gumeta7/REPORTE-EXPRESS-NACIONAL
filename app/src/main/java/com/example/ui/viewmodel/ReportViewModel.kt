@@ -937,6 +937,27 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    // --- Provider Machine Matching Helper (Priority 1: Propietario, Priority 2: Brand) ---
+    fun findProviderForMachine(
+        machine: MachineEntity,
+        registeredProviders: List<com.example.data.db.ProviderEmailEntity> = providerEmails.value
+    ): com.example.data.db.ProviderEmailEntity? {
+        // Priority 1: Match by machine's propietario (e.g. ZITRO, WINPOT, AGS)
+        if (machine.propietario.isNotBlank()) {
+            val byPropietario = findProviderForBrand(machine.propietario, registeredProviders)
+            if (byPropietario != null && byPropietario.email.isNotBlank()) {
+                return byPropietario
+            }
+        }
+
+        // Priority 2: Fallback to machine's brand (e.g. Zitro, IGT, Cadillac Jack)
+        if (machine.brand.isNotBlank()) {
+            return findProviderForBrand(machine.brand, registeredProviders)
+        }
+
+        return null
+    }
+
     // --- Step 5: Quick Prompt Report Generator ---
     fun generateQuickReport(
         promptText: String,
@@ -985,10 +1006,10 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             // 3. Find machine in database catalog
             val foundMachine = repository.findMachine(numberMatch)
 
-            if (foundMachine != null && foundMachine.brand.isNotBlank()) {
-                val brandProvider = findProviderForBrand(foundMachine.brand, registeredProviders)
-                if (brandProvider != null) {
-                    matchedProvider = brandProvider
+            if (foundMachine != null) {
+                val machineProvider = findProviderForMachine(foundMachine, registeredProviders)
+                if (machineProvider != null) {
+                    matchedProvider = machineProvider
                 }
             }
 
@@ -1126,11 +1147,11 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val uniqueAreas = machines.map { it.area.trim() }.filter { it.isNotBlank() }.distinct()
             val finalArea = if (uniqueAreas.isNotEmpty()) uniqueAreas.joinToString(", ") else "General"
 
-            // 7. Resolve Recipient Emails
+            // 7. Resolve Recipient Emails (Priority 1: Propietario, Priority 2: Brand)
             val matchedEmails = mutableListOf<String>()
             val matchedCcEmails = mutableListOf<String>()
-            for (brand in uniqueBrands) {
-                val provider = findProviderForBrand(brand, registeredProviders)
+            for (machine in machines) {
+                val provider = findProviderForMachine(machine, registeredProviders)
                 if (provider != null) {
                     if (provider.email.isNotBlank()) {
                         matchedEmails.add(provider.email.trim())
