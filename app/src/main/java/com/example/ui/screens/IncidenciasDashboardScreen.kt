@@ -29,10 +29,8 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -140,44 +138,25 @@ fun IncidenciasDashboardScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                    Column(
                         modifier = Modifier.weight(1f)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    MaterialTheme.colorScheme.primary,
-                                    RoundedCornerShape(14.dp)
-                                )
-                                .padding(12.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Assessment,
-                                contentDescription = "Dashboard de Sala",
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(26.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(14.dp))
-                        Column {
+                        Text(
+                            text = "Incidencias de Sala",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "Incidencias de Sala",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                text = activeSalaDisplay,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = activeSalaDisplay,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
                         }
                     }
 
@@ -212,24 +191,13 @@ fun IncidenciasDashboardScreen(
         if (isAdmin && availableSalas.isNotEmpty()) {
             item {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                    Text(
+                        text = "Filtrar por Sala:",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 2.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Storefront,
-                            contentDescription = "Filtro de Sala",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(15.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Filtrar por Sala:",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    )
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(
                         modifier = Modifier
@@ -254,20 +222,10 @@ fun IncidenciasDashboardScreen(
                                         fontSize = 12.sp
                                     )
                                 },
-                                leadingIcon = if (isSelected) {
-                                    {
-                                        Icon(
-                                            imageVector = Icons.Default.Place,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                    }
-                                } else null,
                                 shape = RoundedCornerShape(10.dp),
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                                    selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                                 )
                             )
                         }
@@ -414,18 +372,11 @@ fun IncidenciasDashboardScreen(
                     )
                 )
 
-                // PENDIENTES (con indicador ámbar/naranja)
+                // PENDIENTES
                 val isPendientes = selectedEstadoFilter.equals("PENDIENTES", ignoreCase = true) || selectedEstadoFilter.equals("PENDIENTE", ignoreCase = true)
                 FilterChip(
                     selected = isPendientes,
                     onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("PENDIENTES") },
-                    leadingIcon = {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(Color(0xFFF59E0B), CircleShape)
-                        )
-                    },
                     label = { Text("PENDIENTES ($pendientes)", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                     shape = RoundedCornerShape(10.dp),
                     colors = FilterChipDefaults.filterChipColors(
@@ -434,18 +385,11 @@ fun IncidenciasDashboardScreen(
                     )
                 )
 
-                // RESUELTOS (con indicador verde)
+                // RESUELTOS
                 val isResueltos = selectedEstadoFilter.equals("RESUELTOS", ignoreCase = true) || selectedEstadoFilter.equals("RESUELTO", ignoreCase = true)
                 FilterChip(
                     selected = isResueltos,
                     onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("RESUELTOS") },
-                    leadingIcon = {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(Color(0xFF22C55E), CircleShape)
-                        )
-                    },
                     label = { Text("RESUELTOS ($resueltos)", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                     shape = RoundedCornerShape(10.dp),
                     colors = FilterChipDefaults.filterChipColors(
@@ -686,15 +630,17 @@ fun IncidenciaTicketCard(
                             }
                         }
 
-                        val opText = if (isResuelto) "🟢 Resuelto" else if (isOperativaNo) "🔴 Inoperativa" else "🟢 Operativa"
-                        val opColor = if (isResuelto) Color(0xFF16A34A) else if (isOperativaNo) Color(0xFFDC2626) else Color(0xFF16A34A)
-                        Text(
-                            text = opText,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = opColor,
-                            maxLines = 1
-                        )
+                        if (!isResuelto) {
+                            val opText = if (isOperativaNo) "Inoperativa" else "Operativa"
+                            val opColor = if (isOperativaNo) Color(0xFFDC2626) else Color(0xFF16A34A)
+                            Text(
+                                text = opText,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = opColor,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
 
