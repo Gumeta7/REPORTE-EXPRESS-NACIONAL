@@ -1274,9 +1274,9 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             }
             val finalCc = when {
                 matchedCcEmails.isNotEmpty() -> matchedCcEmails.distinct().joinToString(", ")
-                finalPropietario.trim().equals("ZITRO", ignoreCase = true) || finalBrand.trim().equals("ZITRO", ignoreCase = true) -> "guillermol@operacionesdelnorte.com, atorres@winpot.com.mx"
-                finalPropietario.trim().equals("WINPOT", ignoreCase = true) -> "aparra@winpot.com.mx, mrivera@winpot.com.mx"
-                finalPropietario.trim().contains("CADILLAC", ignoreCase = true) || finalBrand.trim().contains("CADILLAC", ignoreCase = true) -> "atorres@winpot.com.mx, aparra@winpot.com.mx"
+                finalPropietario.trim().equals("ZITRO", ignoreCase = true) || finalBrand.trim().equals("ZITRO", ignoreCase = true) -> "guillermol@operacionesdelnorte.com, atorres@winpot.com.mx, aparra@winpot.com.mx, mrivera@winpot.com.mx, fcruz@winpot.com.mx"
+                finalPropietario.trim().equals("WINPOT", ignoreCase = true) -> "aparra@winpot.com.mx, mrivera@winpot.com.mx, fcruz@winpot.com.mx"
+                finalPropietario.trim().contains("CADILLAC", ignoreCase = true) || finalBrand.trim().contains("CADILLAC", ignoreCase = true) -> "atorres@winpot.com.mx, aparra@winpot.com.mx, mrivera@winpot.com.mx, fcruz@winpot.com.mx"
                 else -> ""
             }
 

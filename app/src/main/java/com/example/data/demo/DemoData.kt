@@ -5,12 +5,12 @@ import com.example.data.db.ProviderEmailEntity
 
 object DemoData {
     val sampleProviderEmails = listOf(
-        ProviderEmailEntity(providerName = "WINPOT", email = "atorres@winpot.com.mx", ccEmails = "aparra@winpot.com.mx, mrivera@winpot.com.mx"),
-        ProviderEmailEntity(providerName = "ZITRO", email = "contactcenter@operacionesdelnorte.com", ccEmails = "guillermol@operacionesdelnorte.com, atorres@winpot.com.mx"),
-        ProviderEmailEntity(providerName = "DREIDEL", email = "helpdesk@dreidel.mx", ccEmails = "slevy@dreidel.mx, atorres@winpot.com.mx"),
-        ProviderEmailEntity(providerName = "CADILLAC JACK", email = "soporteags@playags.com", ccEmails = "atorres@winpot.com.mx, aparra@winpot.com.mx"),
-        ProviderEmailEntity(providerName = "CADILLAC", email = "soporteags@playags.com", ccEmails = "atorres@winpot.com.mx, aparra@winpot.com.mx"),
-        ProviderEmailEntity(providerName = "AGS", email = "soporteags@playags.com", ccEmails = "atorres@winpot.com.mx, aparra@winpot.com.mx"),
+        ProviderEmailEntity(providerName = "WINPOT", email = "atorres@winpot.com.mx", ccEmails = "aparra@winpot.com.mx, mrivera@winpot.com.mx, fcruz@winpot.com.mx"),
+        ProviderEmailEntity(providerName = "ZITRO", email = "contactcenter@operacionesdelnorte.com", ccEmails = "guillermol@operacionesdelnorte.com, atorres@winpot.com.mx, aparra@winpot.com.mx, mrivera@winpot.com.mx, fcruz@winpot.com.mx"),
+        ProviderEmailEntity(providerName = "DREIDEL", email = "helpdesk@dreidel.mx", ccEmails = "slevy@dreidel.mx, atorres@winpot.com.mx, aparra@winpot.com.mx, mrivera@winpot.com.mx, fcruz@winpot.com.mx"),
+        ProviderEmailEntity(providerName = "CADILLAC JACK", email = "soporteags@playags.com", ccEmails = "atorres@winpot.com.mx, aparra@winpot.com.mx, mrivera@winpot.com.mx, fcruz@winpot.com.mx"),
+        ProviderEmailEntity(providerName = "CADILLAC", email = "soporteags@playags.com", ccEmails = "atorres@winpot.com.mx, aparra@winpot.com.mx, mrivera@winpot.com.mx, fcruz@winpot.com.mx"),
+        ProviderEmailEntity(providerName = "AGS", email = "soporteags@playags.com", ccEmails = "atorres@winpot.com.mx, aparra@winpot.com.mx, mrivera@winpot.com.mx, fcruz@winpot.com.mx"),
         ProviderEmailEntity(providerName = "EGT", email = "support-mexico@egt.com", ccEmails = "juan.montoya@egt.com, alex.pena@egt.com"),
         ProviderEmailEntity(providerName = "IGT", email = "lacsupport@igt.com", ccEmails = "atorres@winpot.com.mx, aparra@winpot.com.mx"),
         ProviderEmailEntity(providerName = "AURIFY", email = "esandoval@aurifygaming.com", ccEmails = "cmiranda@aurifygaming.com, elgonzalez@aurifygaming.com"),

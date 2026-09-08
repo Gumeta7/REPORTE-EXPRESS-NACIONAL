@@ -369,7 +369,7 @@ object FileParserUtil {
                                     proveedorCol = c
                                 } else if (colNoSpaces == "CORREO1" || colNoSpaces == "EMAIL1" || col == "CORREO 1" || col == "EMAIL 1" || (col == "CORREO" && correo1Col == -1)) {
                                     correo1Col = c
-                                } else if (Regex("""^(?:CORREO|EMAIL)\s*([2-9]|\d{2,}).*$""").matches(col) || col.contains("CC") || col.contains("COPIA")) {
+                                } else if (col.contains("CORREO") || col.contains("EMAIL") || col.contains("CC") || col.contains("COPIA")) {
                                     ccCols.add(c)
                                 }
                             }
