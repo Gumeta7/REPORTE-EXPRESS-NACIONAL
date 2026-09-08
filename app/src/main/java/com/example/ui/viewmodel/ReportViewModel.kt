@@ -1245,7 +1245,10 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val uniqueAreas = machines.map { it.area.trim() }.filter { it.isNotBlank() }.distinct()
             val finalArea = if (uniqueAreas.isNotEmpty()) uniqueAreas.joinToString(", ") else "General"
 
-            // 7. Resolve Recipient Emails (Priority 1: Propietario, Priority 2: Brand)
+            // 7. Unify Propietario
+            val finalPropietario = machines.map { it.propietario.trim() }.firstOrNull { it.isNotBlank() } ?: "WINPOT"
+
+            // 8. Resolve Recipient Emails (Priority 1: Propietario, Priority 2: Brand)
             val matchedEmails = mutableListOf<String>()
             val matchedCcEmails = mutableListOf<String>()
             for (machine in machines) {
@@ -1280,7 +1283,6 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val greeting = getTimeOfDayGreeting()
             val cleanedIssue = issueDescription.trim().ifBlank { "Falla reportada en terminales" }
             val isSingle = machines.size == 1
-            val finalPropietario = machines.map { it.propietario.trim() }.firstOrNull { it.isNotBlank() } ?: "WINPOT"
             val ticketId = if (isSingle) com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial) else null
 
             val introLine = if (isSingle) {
