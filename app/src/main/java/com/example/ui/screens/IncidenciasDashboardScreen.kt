@@ -74,6 +74,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.data.remote.IncidenciaItem
+import com.example.ui.theme.ElectricIndigoLight
+import com.example.ui.theme.ElectricIndigoPrimary
+import com.example.ui.theme.StatusFueraServicio
+import com.example.ui.theme.StatusOperativa
+import com.example.ui.theme.StatusPendiente
+import com.example.ui.theme.StatusTotal
 import com.example.ui.viewmodel.ReportViewModel
 import java.text.SimpleDateFormat
 import java.util.Calendar
