@@ -97,7 +97,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.components.EmailDraftPreviewDialog
 import com.example.ui.components.MissingProviderEmailDialog
-import com.example.ui.screens.ExtractFileScreen
 import com.example.ui.screens.HistoryScreen
 import com.example.ui.screens.IncidenciasDashboardScreen
 import com.example.ui.screens.LoginScreen
@@ -329,7 +328,6 @@ fun MainAppScreen(viewModel: ReportViewModel) {
             val navItems = remember {
                 listOf(
                     com.example.ui.components.NavigationTabItem("Dashboard", Icons.Default.Assessment, "tab_incidencias_dashboard"),
-                    com.example.ui.components.NavigationTabItem("Actualizar", Icons.Default.CloudSync, "tab_extract_file"),
                     com.example.ui.components.NavigationTabItem("Máquinas", Icons.Default.Casino, "tab_machine_location"),
                     com.example.ui.components.NavigationTabItem("Visitas", Icons.Default.AssignmentInd, "tab_visits"),
                     com.example.ui.components.NavigationTabItem("Historial", Icons.Default.History, "tab_history")
@@ -360,10 +358,9 @@ fun MainAppScreen(viewModel: ReportViewModel) {
         ) { page ->
             when (page) {
                 0 -> IncidenciasDashboardScreen(viewModel = viewModel)
-                1 -> ExtractFileScreen(viewModel = viewModel)
-                2 -> MachineLocationScreen(viewModel = viewModel)
-                3 -> VisitsScreen(viewModel = viewModel)
-                4 -> HistoryScreen(viewModel = viewModel)
+                1 -> MachineLocationScreen(viewModel = viewModel)
+                2 -> VisitsScreen(viewModel = viewModel)
+                3 -> HistoryScreen(viewModel = viewModel)
             }
         }
 

@@ -24,10 +24,7 @@ class ReportRepository(
     val allTechnicians: Flow<List<TechnicianEntity>> = technicianDao.getAllTechnicians()
 
     suspend fun checkAndInitializeDemoData() {
-        val emailCount = providerEmailDao.getProviderEmailCount()
-        if (emailCount == 0) {
-            providerEmailDao.insertAllProviderEmails(DemoData.sampleProviderEmails)
-        }
+        importProviderEmails(DemoData.sampleProviderEmails)
     }
 
     suspend fun getMachineCount(): Int {

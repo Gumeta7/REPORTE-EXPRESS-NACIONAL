@@ -181,15 +181,11 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                         }
 
                         _deepLinkMachine.value = found
-                        _locationSearchQuery.value = found.serialNumber.ifBlank { found.assetNumber }
                         if (_currentUser.value?.isAdmin == true && found.sala.isNotBlank()) {
                             _adminSelectedSala.value = found.sala
                         }
-                        _targetTabFromDeepLink.value = 2 // Switch to Tab 'Máquinas'
                     } else {
-                        _locationSearchQuery.value = paramKey
-                        _targetTabFromDeepLink.value = 2
-                        _statusMessage.value = "Máquina con identificador '$paramKey' cargada en la búsqueda."
+                        _statusMessage.value = "Máquina con identificador '$paramKey' no encontrada en el catálogo."
                     }
                 }
             } catch (_: Exception) {
@@ -1016,9 +1012,11 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             if (ags != null) return ags
         }
 
+        val cleanB = b.replace(Regex("""[^a-z0-9]"""), "")
         return registeredProviders.find { p ->
             val pName = p.providerName.trim().lowercase()
-            pName.isNotBlank() && (b.contains(pName) || pName.contains(b))
+            val cleanP = pName.replace(Regex("""[^a-z0-9]"""), "")
+            pName.isNotBlank() && (b == pName || cleanB == cleanP || b.contains(pName) || pName.contains(b))
         }
     }
 
