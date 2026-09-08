@@ -187,7 +187,7 @@ fun IncidenciasDashboardScreen(
                         modifier = Modifier.padding(start = 8.dp)
                     ) {
                         IconButton(
-                            onClick = { viewModel.syncFromDrive(showProgressMessage = true) },
+                            onClick = { viewModel.syncFromDrive(showProgressMessage = true, forceSyncMachines = true) },
                             modifier = Modifier
                                 .size(40.dp)
                                 .testTag("refresh_dashboard_button")
@@ -197,7 +197,7 @@ fun IncidenciasDashboardScreen(
                             } else {
                                 Icon(
                                     imageVector = Icons.Default.Refresh,
-                                    contentDescription = "Refrescar Incidencias",
+                                    contentDescription = "Actualizar máquinas y reportes",
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(18.dp)
                                 )
