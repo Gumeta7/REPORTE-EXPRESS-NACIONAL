@@ -263,25 +263,50 @@ fun IncidenciasDashboardScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    val isFueraSelected = selectedEstadoFilter.equals("FUERA_SERVICIO", ignoreCase = true) || selectedEstadoFilter.equals("FUERA SERVICIO", ignoreCase = true)
                     KpiStatCard(
                         label = "Fuera Servicio",
                         count = noOperativas,
                         color = Color(0xFFDC2626), // Rojo
+                        isSelected = isFueraSelected,
                         modifier = Modifier.weight(1f),
-                        onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("PENDIENTES") }
+                        onClick = {
+                            if (isFueraSelected) {
+                                viewModel.updateSelectedIncidenciaEstadoFilter("TODOS")
+                            } else {
+                                viewModel.updateSelectedIncidenciaEstadoFilter("FUERA_SERVICIO")
+                            }
+                        }
                     )
+                    val isPendientesSelected = selectedEstadoFilter.equals("PENDIENTES", ignoreCase = true) || selectedEstadoFilter.equals("PENDIENTE", ignoreCase = true)
                     KpiStatCard(
                         label = "Pendientes",
                         count = pendientes,
                         color = Color(0xFFEA580C), // Naranja/Ámbar
+                        isSelected = isPendientesSelected,
                         modifier = Modifier.weight(1f),
-                        onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("PENDIENTES") }
+                        onClick = {
+                            if (isPendientesSelected) {
+                                viewModel.updateSelectedIncidenciaEstadoFilter("TODOS")
+                            } else {
+                                viewModel.updateSelectedIncidenciaEstadoFilter("PENDIENTES")
+                            }
+                        }
                     )
+                    val isEnServicioSelected = selectedEstadoFilter.equals("EN_SERVICIO", ignoreCase = true) || selectedEstadoFilter.equals("EN SERVICIO", ignoreCase = true)
                     KpiStatCard(
                         label = "En Servicio",
                         count = operativas,
                         color = Color(0xFF16A34A), // Verde
-                        modifier = Modifier.weight(1f)
+                        isSelected = isEnServicioSelected,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (isEnServicioSelected) {
+                                viewModel.updateSelectedIncidenciaEstadoFilter("TODOS")
+                            } else {
+                                viewModel.updateSelectedIncidenciaEstadoFilter("EN_SERVICIO")
+                            }
+                        }
                     )
                 }
 
@@ -290,24 +315,42 @@ fun IncidenciasDashboardScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    val isCriticasSelected = selectedEstadoFilter.equals("CRITICAS", ignoreCase = true) || selectedEstadoFilter.equals("CRÍTICAS", ignoreCase = true)
                     KpiStatCard(
                         label = "Críticas",
                         count = criticas,
                         color = Color(0xFFB91C1C), // Guinda / Rojo oscuro
+                        isSelected = isCriticasSelected,
                         modifier = Modifier.weight(1f),
-                        onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("PENDIENTES") }
+                        onClick = {
+                            if (isCriticasSelected) {
+                                viewModel.updateSelectedIncidenciaEstadoFilter("TODOS")
+                            } else {
+                                viewModel.updateSelectedIncidenciaEstadoFilter("CRITICAS")
+                            }
+                        }
                     )
+                    val isResueltosSelected = selectedEstadoFilter.equals("RESUELTOS", ignoreCase = true) || selectedEstadoFilter.equals("RESUELTO", ignoreCase = true)
                     KpiStatCard(
                         label = "Resueltos",
                         count = resueltos,
                         color = Color(0xFF0284C7), // Azul Cielo
+                        isSelected = isResueltosSelected,
                         modifier = Modifier.weight(1f),
-                        onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("RESUELTOS") }
+                        onClick = {
+                            if (isResueltosSelected) {
+                                viewModel.updateSelectedIncidenciaEstadoFilter("TODOS")
+                            } else {
+                                viewModel.updateSelectedIncidenciaEstadoFilter("RESUELTOS")
+                            }
+                        }
                     )
+                    val isTotalSelected = selectedEstadoFilter.equals("TODOS", ignoreCase = true) || selectedEstadoFilter.equals("TOTAL", ignoreCase = true)
                     KpiStatCard(
                         label = "Total",
                         count = totalCount,
                         color = Color(0xFF4F46E5), // Indigo
+                        isSelected = isTotalSelected,
                         modifier = Modifier.weight(1f),
                         onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("TODOS") }
                     )
@@ -375,7 +418,7 @@ fun IncidenciasDashboardScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // TODOS
-                val isTodos = selectedEstadoFilter.equals("TODOS", ignoreCase = true)
+                val isTodos = selectedEstadoFilter.equals("TODOS", ignoreCase = true) || selectedEstadoFilter.equals("TOTAL", ignoreCase = true)
                 FilterChip(
                     selected = isTodos,
                     onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("TODOS") },
@@ -387,11 +430,24 @@ fun IncidenciasDashboardScreen(
                     )
                 )
 
+                // FUERA DE SERVICIO
+                val isFuera = selectedEstadoFilter.equals("FUERA_SERVICIO", ignoreCase = true) || selectedEstadoFilter.equals("FUERA SERVICIO", ignoreCase = true)
+                FilterChip(
+                    selected = isFuera,
+                    onClick = { viewModel.updateSelectedIncidenciaEstadoFilter(if (isFuera) "TODOS" else "FUERA_SERVICIO") },
+                    label = { Text("FUERA SERVICIO ($noOperativas)", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFFDC2626),
+                        selectedLabelColor = Color.White
+                    )
+                )
+
                 // PENDIENTES
                 val isPendientes = selectedEstadoFilter.equals("PENDIENTES", ignoreCase = true) || selectedEstadoFilter.equals("PENDIENTE", ignoreCase = true)
                 FilterChip(
                     selected = isPendientes,
-                    onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("PENDIENTES") },
+                    onClick = { viewModel.updateSelectedIncidenciaEstadoFilter(if (isPendientes) "TODOS" else "PENDIENTES") },
                     label = { Text("PENDIENTES ($pendientes)", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                     shape = RoundedCornerShape(10.dp),
                     colors = FilterChipDefaults.filterChipColors(
@@ -400,15 +456,41 @@ fun IncidenciasDashboardScreen(
                     )
                 )
 
+                // EN SERVICIO
+                val isEnServicio = selectedEstadoFilter.equals("EN_SERVICIO", ignoreCase = true) || selectedEstadoFilter.equals("EN SERVICIO", ignoreCase = true)
+                FilterChip(
+                    selected = isEnServicio,
+                    onClick = { viewModel.updateSelectedIncidenciaEstadoFilter(if (isEnServicio) "TODOS" else "EN_SERVICIO") },
+                    label = { Text("EN SERVICIO ($operativas)", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF16A34A),
+                        selectedLabelColor = Color.White
+                    )
+                )
+
+                // CRÍTICAS
+                val isCriticas = selectedEstadoFilter.equals("CRITICAS", ignoreCase = true) || selectedEstadoFilter.equals("CRÍTICAS", ignoreCase = true)
+                FilterChip(
+                    selected = isCriticas,
+                    onClick = { viewModel.updateSelectedIncidenciaEstadoFilter(if (isCriticas) "TODOS" else "CRITICAS") },
+                    label = { Text("CRÍTICAS ($criticas)", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFFB91C1C),
+                        selectedLabelColor = Color.White
+                    )
+                )
+
                 // RESUELTOS
                 val isResueltos = selectedEstadoFilter.equals("RESUELTOS", ignoreCase = true) || selectedEstadoFilter.equals("RESUELTO", ignoreCase = true)
                 FilterChip(
                     selected = isResueltos,
-                    onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("RESUELTOS") },
+                    onClick = { viewModel.updateSelectedIncidenciaEstadoFilter(if (isResueltos) "TODOS" else "RESUELTOS") },
                     label = { Text("RESUELTOS ($resueltos)", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                     shape = RoundedCornerShape(10.dp),
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Color(0xFF16A34A),
+                        selectedContainerColor = Color(0xFF0284C7),
                         selectedLabelColor = Color.White
                     )
                 )
@@ -487,14 +569,18 @@ fun KpiStatCard(
     count: Int,
     color: Color,
     modifier: Modifier = Modifier,
+    isSelected: Boolean = false,
     onClick: (() -> Unit)? = null
 ) {
     val clickableModifier = if (onClick != null) modifier.clickable { onClick() } else modifier
     Surface(
         modifier = clickableModifier,
         shape = RoundedCornerShape(12.dp),
-        color = color.copy(alpha = 0.10f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.25f))
+        color = if (isSelected) color.copy(alpha = 0.22f) else color.copy(alpha = 0.10f),
+        border = androidx.compose.foundation.BorderStroke(
+            width = if (isSelected) 2.dp else 1.dp,
+            color = if (isSelected) color else color.copy(alpha = 0.25f)
+        )
     ) {
         Column(
             modifier = Modifier.padding(vertical = 7.dp, horizontal = 4.dp),
@@ -517,8 +603,8 @@ fun KpiStatCard(
                     fontSize = 10.sp,
                     lineHeight = 12.sp
                 ),
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
+                color = if (isSelected) color else MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

@@ -501,7 +501,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 val filterSalaNorm = adminSala.trim().lowercase()
                 allInc.filter { inc ->
                     val incSalaNorm = inc.sala.trim().lowercase()
-                    incSalaNorm == filterSalaNorm || incSalaNorm.contains(filterSalaNorm) || filterSalaNorm.contains(incSalaNorm)
+                    incSalaNorm == filterSalaNorm || incSalaNorm.replace(" ", "") == filterSalaNorm.replace(" ", "")
                 }
             } else {
                 allInc
@@ -510,7 +510,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val userSalaNorm = user.sala.trim().lowercase()
             allInc.filter { inc ->
                 val incSalaNorm = inc.sala.trim().lowercase()
-                userSalaNorm.isEmpty() || incSalaNorm == userSalaNorm || incSalaNorm.contains(userSalaNorm) || userSalaNorm.contains(incSalaNorm)
+                userSalaNorm.isEmpty() || incSalaNorm == userSalaNorm || incSalaNorm.replace(" ", "") == userSalaNorm.replace(" ", "")
             }
         }
     }.stateIn(
@@ -525,20 +525,29 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         _incidenciasSearchQuery,
         _selectedIncidenciaEstadoFilter
     ) { salaFiltered, query, estadoFilter ->
-        // 1. Filtrar por Estado (alineado con la web: TODOS, PENDIENTES, RESUELTOS)
+        // 1. Filtrar por Estado / KPI seleccionado
         val estadoFiltered = when (estadoFilter.trim().uppercase()) {
+            "FUERA_SERVICIO", "FUERA SERVICIO", "FUERA DE SERVICIO", "INOPERATIVO", "INOPERATIVA" -> salaFiltered.filter {
+                val st = it.estadoTicket.uppercase()
+                it.operativa.equals("NO", ignoreCase = true) && !st.contains("RESUELT") && !st.contains("CERRAD")
+            }
             "PENDIENTES", "PENDIENTE", "ABIERTO", "EN PROCESO" -> salaFiltered.filter {
                 val st = it.estadoTicket.uppercase()
                 !st.contains("RESUELT") && !st.contains("CERRAD")
             }
-            "RESUELTOS", "RESUELTO", "CERRADO" -> salaFiltered.filter {
+            "EN_SERVICIO", "EN SERVICIO", "OPERATIVO", "OPERATIVA", "OPERATIVAS" -> salaFiltered.filter {
+                val st = it.estadoTicket.uppercase()
+                it.operativa.equals("SI", ignoreCase = true) && !st.contains("RESUELT") && !st.contains("CERRAD")
+            }
+            "CRITICAS", "CRÍTICAS", "CRITICA", "CRÍTICA", "ALTA", "ALTAS" -> salaFiltered.filter {
+                val st = it.estadoTicket.uppercase()
+                (it.prioridad.equals("CRITICA", true) || it.prioridad.equals("ALTA", true)) && !st.contains("RESUELT") && !st.contains("CERRAD")
+            }
+            "RESUELTOS", "RESUELTO", "CERRADO", "CERRADOS" -> salaFiltered.filter {
                 val st = it.estadoTicket.uppercase()
                 st.contains("RESUELT") || st.contains("CERRAD")
             }
-            "FUERA DE SERVICIO", "INOPERATIVO" -> salaFiltered.filter {
-                val st = it.estadoTicket.uppercase()
-                it.operativa.equals("NO", ignoreCase = true) && !st.contains("RESUELT") && !st.contains("CERRAD")
-            }
+            "TODOS", "TOTAL" -> salaFiltered
             else -> salaFiltered
         }
 
