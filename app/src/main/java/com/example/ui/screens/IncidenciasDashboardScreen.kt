@@ -141,6 +141,7 @@ fun IncidenciasDashboardScreen(
     val criticas = remember(salaIncidencias) {
         salaIncidencias.count { (it.prioridad.equals("CRITICA", true) || it.prioridad.equals("ALTA", true)) && isTicketPendiente(it) }
     }
+    val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
 
     LazyColumn(
         modifier = Modifier
@@ -152,7 +153,6 @@ fun IncidenciasDashboardScreen(
         item {
             Spacer(modifier = Modifier.height(6.dp))
             // 1. Header Informativo de la Sala
-            val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
             val headerBg = if (isDarkTheme) Color(0xFF13131A) else MaterialTheme.colorScheme.primaryContainer
             val headerBorder = if (isDarkTheme) Color(0xFF262636) else Color.Transparent
 
