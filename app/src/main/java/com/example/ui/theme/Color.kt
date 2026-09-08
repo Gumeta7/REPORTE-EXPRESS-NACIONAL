@@ -57,11 +57,12 @@ val OutlookBlue = Color(0xFF0078D4)
 val SuccessGreen = Color(0xFF10B981)
 val WarningAmber = Color(0xFFF59E0B)
 
-// Acentos Funcionales Consistentes (Sin iconos, bordes y badges limpios)
-val StatusFueraServicio = Color(0xFFF43F5E)     // Rojo Coral para Fuera de Servicio / Crítica
-val StatusPendiente     = Color(0xFFFB923C)     // Ámbar Naranja para Pendiente
-val StatusOperativa     = Color(0xFF10B981)     // Verde Esmeralda para En Servicio / Resuelto
-val StatusTotal         = Color(0xFF5E5BF7)     // Índigo Eléctrico para Total / General
+// Acentos Funcionales Consistentes (Calibrados para contraste perfecto en Claro y Oscuro)
+val StatusFueraServicio = Color(0xFFE11D48)     // Carmesí Intenso (Fuera de Servicio / Crítica)
+val StatusPendiente     = Color(0xFFEA580C)     // Ámbar Naranja Cálido (Pendiente)
+val StatusOperativa     = Color(0xFF16A34A)     // Verde Esmeralda (En Servicio / Resuelto)
+val StatusTotal         = Color(0xFF4F46E5)     // Índigo Eléctrico (Total / Destacado)
+val StatusEnProceso     = Color(0xFF0284C7)     // Azul Zafiro (En Proceso)
 
 // Badges (Propia / Proveedor)
 val PropiaGreenBgLight = Color(0xFFDCFCE7)

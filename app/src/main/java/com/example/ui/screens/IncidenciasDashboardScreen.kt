@@ -451,7 +451,7 @@ fun IncidenciasDashboardScreen(
                     label = { Text("FUERA SERVICIO ($noOperativas)", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                     shape = RoundedCornerShape(10.dp),
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Color(0xFFDC2626),
+                        selectedContainerColor = StatusFueraServicio,
                         selectedLabelColor = Color.White
                     )
                 )
@@ -464,7 +464,7 @@ fun IncidenciasDashboardScreen(
                     label = { Text("PENDIENTES ($pendientes)", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                     shape = RoundedCornerShape(10.dp),
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Color(0xFFEA580C),
+                        selectedContainerColor = StatusPendiente,
                         selectedLabelColor = Color.White
                     )
                 )
@@ -477,7 +477,7 @@ fun IncidenciasDashboardScreen(
                     label = { Text("EN SERVICIO ($operativas)", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                     shape = RoundedCornerShape(10.dp),
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Color(0xFF16A34A),
+                        selectedContainerColor = StatusOperativa,
                         selectedLabelColor = Color.White
                     )
                 )
@@ -490,7 +490,7 @@ fun IncidenciasDashboardScreen(
                     label = { Text("CRÍTICAS ($criticas)", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                     shape = RoundedCornerShape(10.dp),
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Color(0xFFB91C1C),
+                        selectedContainerColor = StatusFueraServicio,
                         selectedLabelColor = Color.White
                     )
                 )
@@ -586,15 +586,27 @@ fun KpiStatCard(
     onClick: (() -> Unit)? = null
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+
+    // Fondo calibrado: en claro usa tintado suave al 12% o superficie blanca nítida
     val cardBg = when {
-        isSelected -> if (isDarkTheme) Color(0xFF1E1E2B) else color.copy(alpha = 0.15f)
+        isSelected -> if (isDarkTheme) Color(0xFF1E1E2B) else color.copy(alpha = 0.12f)
         isDarkTheme -> Color(0xFF13131A)
-        else -> MaterialTheme.colorScheme.surface
+        else -> Color.White
     }
+
+    // Borde: 2dp en el color activo al estar seleccionado, o neutral sutil
     val cardBorder = when {
         isSelected -> color
         isDarkTheme -> Color(0xFF262636)
         else -> Color(0xFFE2E8F0)
+    }
+
+    // Color del texto de la etiqueta: en claro seleccionado toma el color del estado para no desaparecer
+    val labelTextColor = when {
+        isSelected && isDarkTheme -> Color.White
+        isSelected && !isDarkTheme -> color
+        isDarkTheme -> Color(0xFF9090A6)
+        else -> Color(0xFF64748B)
     }
 
     val clickableModifier = if (onClick != null) modifier.clickable { onClick() } else modifier
@@ -603,10 +615,10 @@ fun KpiStatCard(
         shape = RoundedCornerShape(16.dp),
         color = cardBg,
         border = androidx.compose.foundation.BorderStroke(
-            width = if (isSelected) 1.5.dp else 1.dp,
+            width = if (isSelected) 2.dp else 1.dp,
             color = cardBorder
         ),
-        shadowElevation = if (isSelected) 4.dp else 0.dp
+        shadowElevation = if (isSelected && !isDarkTheme) 2.dp else 0.dp
     ) {
         Column(
             modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
@@ -629,8 +641,8 @@ fun KpiStatCard(
                     fontSize = 11.sp,
                     lineHeight = 13.sp
                 ),
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) Color.White else (if (isDarkTheme) Color(0xFF9090A6) else Color(0xFF64748B)),
+                fontWeight = if (isSelected) FontWeight.Black else FontWeight.SemiBold,
+                color = labelTextColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
