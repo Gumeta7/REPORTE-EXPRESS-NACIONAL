@@ -15,7 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -27,6 +26,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,7 +41,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.ui.theme.GmailRed
-import com.example.ui.theme.SuccessGreen
 import com.example.ui.viewmodel.EmailDraftState
 import com.example.util.EmailIntentUtil
 
@@ -50,8 +49,7 @@ fun EmailDraftPreviewDialog(
     draftState: EmailDraftState,
     onDismiss: () -> Unit,
     onDraftUpdated: (EmailDraftState) -> Unit,
-    onSendEmail: () -> Unit,
-    onSaveToHistory: () -> Unit
+    onSendEmail: () -> Unit
 ) {
     val context = LocalContext.current
 
@@ -359,21 +357,17 @@ fun EmailDraftPreviewDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Save to history only button
-                Button(
-                    onClick = {
-                        onSaveToHistory()
-                        onDismiss()
-                    },
+                // Cancel button
+                OutlinedButton(
+                    onClick = onDismiss,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .testTag("save_history_only_button"),
-                    colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
+                        .testTag("cancel_dialog_button"),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.Save, contentDescription = "Guardar")
+                    Icon(imageVector = Icons.Default.Close, contentDescription = "Cancelar")
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Guardar en Historial", fontWeight = FontWeight.Bold)
+                    Text("Cancelar", fontWeight = FontWeight.Bold)
                 }
             }
         }

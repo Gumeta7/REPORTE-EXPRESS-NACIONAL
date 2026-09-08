@@ -489,9 +489,6 @@ fun MainAppScreen(viewModel: ReportViewModel) {
                 },
                 onSendEmail = {
                     viewModel.sendAndDispatchEmailReport()
-                },
-                onSaveToHistory = {
-                    viewModel.saveDraftToHistory(dispatchToSheets = false)
                 }
             )
         }
