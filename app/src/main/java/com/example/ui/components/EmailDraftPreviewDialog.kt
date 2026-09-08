@@ -15,8 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Button
@@ -29,7 +27,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -44,7 +41,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.ui.theme.GmailRed
-import com.example.ui.theme.OutlookBlue
 import com.example.ui.theme.SuccessGreen
 import com.example.ui.viewmodel.EmailDraftState
 import com.example.util.EmailIntentUtil
@@ -123,36 +119,6 @@ fun EmailDraftPreviewDialog(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-
-                // Recipient (Read-Only)
-                OutlinedTextField(
-                    value = draftState.recipient.ifBlank { "Sin destinatario principal" },
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Para (Destinatario Principal)") },
-                    supportingText = { Text("Asignado automáticamente por catálogo de proveedor", style = MaterialTheme.typography.labelSmall) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("email_recipient_input"),
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // CC (Read-Only)
-                OutlinedTextField(
-                    value = draftState.cc.ifBlank { "Ninguno" },
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("CC (Con Copia)") },
-                    supportingText = { Text("Copia asignada automáticamente por proveedor", style = MaterialTheme.typography.labelSmall) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("email_cc_input"),
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
 
                 // Subject
                 OutlinedTextField(
@@ -389,88 +355,6 @@ fun EmailDraftPreviewDialog(
                     Icon(imageVector = Icons.Default.Send, contentDescription = "Gmail")
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Enviar con Gmail", fontWeight = FontWeight.Bold)
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Outlook Direct
-                Button(
-                    onClick = {
-                        onSendEmail()
-                        EmailIntentUtil.sendViaOutlook(
-                            context,
-                            draftState.recipient,
-                            draftState.subject,
-                            draftState.body,
-                            draftState.cc
-                        )
-                        onDismiss()
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("send_via_outlook_button"),
-                    colors = ButtonDefaults.buttonColors(containerColor = OutlookBlue),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(imageVector = Icons.Default.Send, contentDescription = "Outlook")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Enviar con Outlook", fontWeight = FontWeight.Bold)
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Standard Chooser
-                    OutlinedButton(
-                        onClick = {
-                            onSendEmail()
-                            EmailIntentUtil.sendViaStandardEmailChooser(
-                                context,
-                                draftState.recipient,
-                                draftState.subject,
-                                draftState.body,
-                                draftState.cc
-                            )
-                            onDismiss()
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("send_via_chooser_button"),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Email, contentDescription = "Mail")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Otra App")
-                    }
-
-                    // Copy to Clipboard
-                    OutlinedButton(
-                        onClick = {
-                            val clipboardContent = buildString {
-                                appendLine("Para: ${draftState.recipient}")
-                                if (draftState.cc.isNotBlank()) appendLine("CC: ${draftState.cc}")
-                                appendLine("Asunto: ${draftState.subject}")
-                                appendLine()
-                                append(draftState.body)
-                            }
-                            EmailIntentUtil.copyToClipboard(
-                                context,
-                                "Correo de Reporte",
-                                clipboardContent
-                            )
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("copy_email_button"),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.ContentCopy, contentDescription = "Copiar")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Copiar")
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
