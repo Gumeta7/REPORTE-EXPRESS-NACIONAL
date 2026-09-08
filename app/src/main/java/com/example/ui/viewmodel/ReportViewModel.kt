@@ -1200,7 +1200,10 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     ) {
         if (machines.isEmpty()) return
         viewModelScope.launch {
-            val registeredProviders = providerEmails.value
+            val dbProviders = repository.getAllProviderEmailsList()
+            val registeredProviders = if (dbProviders.isNotEmpty()) dbProviders else {
+                if (providerEmails.value.isNotEmpty()) providerEmails.value else DemoData.sampleProviderEmails
+            }
 
             // 1. Unify Salas
             val uniqueSalas = machines.map { it.sala.trim() }.filter { it.isNotBlank() }.distinct()
@@ -1249,9 +1252,18 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val finalRecipient = when {
                 customRecipient.isNotBlank() -> customRecipient.trim()
                 matchedEmails.isNotEmpty() -> matchedEmails.distinct().joinToString(", ")
+                finalPropietario.trim().equals("ZITRO", ignoreCase = true) || finalBrand.trim().equals("ZITRO", ignoreCase = true) -> "contactcenter@operacionesdelnorte.com"
+                finalPropietario.trim().equals("WINPOT", ignoreCase = true) -> "atorres@winpot.com.mx"
+                finalPropietario.trim().contains("CADILLAC", ignoreCase = true) || finalBrand.trim().contains("CADILLAC", ignoreCase = true) -> "soporteags@playags.com"
                 else -> ""
             }
-            val finalCc = matchedCcEmails.distinct().joinToString(", ")
+            val finalCc = when {
+                matchedCcEmails.isNotEmpty() -> matchedCcEmails.distinct().joinToString(", ")
+                finalPropietario.trim().equals("ZITRO", ignoreCase = true) || finalBrand.trim().equals("ZITRO", ignoreCase = true) -> "guillermol@operacionesdelnorte.com, atorres@winpot.com.mx"
+                finalPropietario.trim().equals("WINPOT", ignoreCase = true) -> "aparra@winpot.com.mx, mrivera@winpot.com.mx"
+                finalPropietario.trim().contains("CADILLAC", ignoreCase = true) || finalBrand.trim().contains("CADILLAC", ignoreCase = true) -> "atorres@winpot.com.mx, aparra@winpot.com.mx"
+                else -> ""
+            }
 
             val greeting = getTimeOfDayGreeting()
             val cleanedIssue = issueDescription.trim().ifBlank { "Falla reportada en terminales" }

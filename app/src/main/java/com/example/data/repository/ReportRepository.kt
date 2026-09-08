@@ -164,6 +164,10 @@ class ReportRepository(
         providerEmailDao.insertAllProviderEmails(DemoData.sampleProviderEmails)
     }
 
+    suspend fun getAllProviderEmailsList(): List<ProviderEmailEntity> {
+        return providerEmailDao.getAllProviderEmailsList()
+    }
+
     suspend fun importProviderEmails(newProviders: List<ProviderEmailEntity>) {
         if (newProviders.isEmpty()) return
         val existing = providerEmailDao.getAllProviderEmailsList()
