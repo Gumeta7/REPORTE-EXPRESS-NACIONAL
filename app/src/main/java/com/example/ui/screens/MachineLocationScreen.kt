@@ -286,16 +286,16 @@ fun MachineLocationCard(
 ) {
     val surfaceColor = MaterialTheme.colorScheme.surface
     val isDarkTheme = remember(surfaceColor) { surfaceColor.luminance() < 0.5f }
-    val cardBgColor = remember(isDarkTheme, surfaceColor) { if (isDarkTheme) Color(0xFF1E293B) else surfaceColor }
+    val cardBgColor = remember(isDarkTheme, surfaceColor) { if (isDarkTheme) Color(0xFF13131A) else surfaceColor }
     val cardBorder = remember(isDarkTheme) {
-        if (isDarkTheme) BorderStroke(1.dp, Color(0xFF334155)) else BorderStroke(1.dp, Color(0xFFE2E8F0))
+        if (isDarkTheme) BorderStroke(1.dp, Color(0xFF262636)) else BorderStroke(1.dp, Color(0xFFE2E8F0))
     }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("machine_location_card_${machine.machineNumber}"),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = cardBgColor),
         border = cardBorder,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -400,8 +400,8 @@ fun MachineLocationCard(
             Spacer(modifier = Modifier.height(10.dp))
 
             // 3. BARRA SIMÉTRICA DE SERIE
-            val boxBg = if (isDarkTheme) Color(0xFF0F172A) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            val boxBorder = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF334155)) else null
+            val boxBg = if (isDarkTheme) Color(0xFF1A1A24) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            val boxBorder = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF262636)) else null
 
             Surface(
                 shape = RoundedCornerShape(12.dp),
@@ -414,25 +414,16 @@ fun MachineLocationCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Fingerprint,
-                            contentDescription = "Serie",
-                            modifier = Modifier.size(15.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Número de Serie:",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                    Text(
+                        text = "Número de Serie",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = if (isDarkTheme) Color(0xFF9090A6) else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Text(
                         text = machine.serialNumber.ifBlank { "N/A" },
                         style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.ExtraBold,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
@@ -452,29 +443,17 @@ fun MachineLocationCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f, fill = false)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Casino,
-                                contentDescription = "Título",
-                                modifier = Modifier.size(15.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Título:",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
+                        Text(
+                            text = "Título / Juego",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = if (isDarkTheme) Color(0xFF9090A6) else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = machine.game,
                             style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.ExtraBold,
+                            fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -494,36 +473,31 @@ fun MachineGridBox(
     modifier: Modifier = Modifier
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val boxBg = if (isDarkTheme) Color(0xFF0F172A) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
-    val boxBorder = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF334155)) else BorderStroke(1.dp, Color(0xFFE2E8F0))
+    val boxBg = if (isDarkTheme) Color(0xFF1A1A24) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+    val boxBorder = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF262636)) else BorderStroke(1.dp, Color(0xFFE2E8F0))
 
     Surface(
-        modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         color = boxBg,
-        border = boxBorder
+        border = boxBorder,
+        modifier = modifier
     ) {
-        Column(modifier = Modifier.padding(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = label,
-                    modifier = Modifier.size(14.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Spacer(modifier = Modifier.height(3.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
+                color = if (isDarkTheme) Color(0xFF9090A6) else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = value,
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.ExtraBold,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

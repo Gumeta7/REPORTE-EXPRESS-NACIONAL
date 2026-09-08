@@ -145,17 +145,22 @@ fun IncidenciasDashboardScreen(
         item {
             Spacer(modifier = Modifier.height(6.dp))
             // 1. Header Informativo de la Sala
+            val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+            val headerBg = if (isDarkTheme) Color(0xFF13131A) else MaterialTheme.colorScheme.primaryContainer
+            val headerBorder = if (isDarkTheme) Color(0xFF262636) else Color.Transparent
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                    containerColor = headerBg
                 ),
-                shape = RoundedCornerShape(22.dp)
+                shape = RoundedCornerShape(20.dp),
+                border = if (isDarkTheme) androidx.compose.foundation.BorderStroke(1.dp, headerBorder) else null
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 16.dp),
+                        .padding(horizontal = 18.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -165,15 +170,15 @@ fun IncidenciasDashboardScreen(
                         Text(
                             text = "Incidencias de Sala",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            fontWeight = FontWeight.Black,
+                            color = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = activeSalaDisplay,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = if (isDarkTheme) ElectricIndigoLight else MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -183,7 +188,8 @@ fun IncidenciasDashboardScreen(
 
                     Surface(
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                        color = if (isDarkTheme) Color(0xFF1A1A24) else MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                        border = if (isDarkTheme) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF262636)) else null,
                         modifier = Modifier.padding(start = 8.dp)
                     ) {
                         IconButton(
@@ -193,12 +199,12 @@ fun IncidenciasDashboardScreen(
                                 .testTag("refresh_dashboard_button")
                         ) {
                             if (isSyncing) {
-                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = ElectricIndigoPrimary)
                             } else {
                                 Icon(
                                     imageVector = Icons.Default.Refresh,
                                     contentDescription = "Actualizar máquinas y reportes",
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = if (isDarkTheme) ElectricIndigoLight else MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -267,7 +273,7 @@ fun IncidenciasDashboardScreen(
                     KpiStatCard(
                         label = "Fuera Servicio",
                         count = noOperativas,
-                        color = Color(0xFFDC2626), // Rojo
+                        color = StatusFueraServicio,
                         isSelected = isFueraSelected,
                         modifier = Modifier.weight(1f),
                         onClick = {
@@ -282,7 +288,7 @@ fun IncidenciasDashboardScreen(
                     KpiStatCard(
                         label = "Pendientes",
                         count = pendientes,
-                        color = Color(0xFFEA580C), // Naranja/Ámbar
+                        color = StatusPendiente,
                         isSelected = isPendientesSelected,
                         modifier = Modifier.weight(1f),
                         onClick = {
@@ -297,7 +303,7 @@ fun IncidenciasDashboardScreen(
                     KpiStatCard(
                         label = "En Servicio",
                         count = operativas,
-                        color = Color(0xFF16A34A), // Verde
+                        color = StatusOperativa,
                         isSelected = isEnServicioSelected,
                         modifier = Modifier.weight(1f),
                         onClick = {
@@ -319,7 +325,7 @@ fun IncidenciasDashboardScreen(
                     KpiStatCard(
                         label = "Críticas",
                         count = criticas,
-                        color = Color(0xFFB91C1C), // Guinda / Rojo oscuro
+                        color = StatusFueraServicio,
                         isSelected = isCriticasSelected,
                         modifier = Modifier.weight(1f),
                         onClick = {
@@ -334,7 +340,7 @@ fun IncidenciasDashboardScreen(
                     KpiStatCard(
                         label = "Resueltos",
                         count = resueltos,
-                        color = Color(0xFF0284C7), // Azul Cielo
+                        color = Color(0xFF38BDF8), // Azul celeste limpio
                         isSelected = isResueltosSelected,
                         modifier = Modifier.weight(1f),
                         onClick = {
@@ -349,7 +355,7 @@ fun IncidenciasDashboardScreen(
                     KpiStatCard(
                         label = "Total",
                         count = totalCount,
-                        color = Color(0xFF4F46E5), // Indigo
+                        color = StatusTotal,
                         isSelected = isTotalSelected,
                         modifier = Modifier.weight(1f),
                         onClick = { viewModel.updateSelectedIncidenciaEstadoFilter("TODOS") }
@@ -396,14 +402,14 @@ fun IncidenciasDashboardScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("incidencias_search_input"),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                    focusedBorderColor = ElectricIndigoPrimary,
+                    unfocusedBorderColor = if (isDarkTheme) Color(0xFF262636) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+                    focusedContainerColor = if (isDarkTheme) Color(0xFF13131A) else MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = if (isDarkTheme) Color(0xFF13131A) else MaterialTheme.colorScheme.surface
                 )
             )
         }
@@ -572,39 +578,52 @@ fun KpiStatCard(
     isSelected: Boolean = false,
     onClick: (() -> Unit)? = null
 ) {
+    val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val cardBg = when {
+        isSelected -> if (isDarkTheme) Color(0xFF1E1E2B) else color.copy(alpha = 0.15f)
+        isDarkTheme -> Color(0xFF13131A)
+        else -> MaterialTheme.colorScheme.surface
+    }
+    val cardBorder = when {
+        isSelected -> color
+        isDarkTheme -> Color(0xFF262636)
+        else -> Color(0xFFE2E8F0)
+    }
+
     val clickableModifier = if (onClick != null) modifier.clickable { onClick() } else modifier
     Surface(
         modifier = clickableModifier,
-        shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) color.copy(alpha = 0.22f) else color.copy(alpha = 0.10f),
+        shape = RoundedCornerShape(16.dp),
+        color = cardBg,
         border = androidx.compose.foundation.BorderStroke(
-            width = if (isSelected) 2.dp else 1.dp,
-            color = if (isSelected) color else color.copy(alpha = 0.25f)
-        )
+            width = if (isSelected) 1.5.dp else 1.dp,
+            color = cardBorder
+        ),
+        shadowElevation = if (isSelected) 4.dp else 0.dp
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 7.dp, horizontal = 4.dp),
+            modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = count.toString(),
                 style = MaterialTheme.typography.titleMedium.copy(
-                    fontSize = 18.sp,
-                    lineHeight = 20.sp
+                    fontSize = 20.sp,
+                    lineHeight = 22.sp
                 ),
-                fontWeight = FontWeight.ExtraBold,
+                fontWeight = FontWeight.Black,
                 color = color
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(3.dp))
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 10.sp,
-                    lineHeight = 12.sp
+                    fontSize = 11.sp,
+                    lineHeight = 13.sp
                 ),
-                fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
-                color = if (isSelected) color else MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (isSelected) Color.White else (if (isDarkTheme) Color(0xFF9090A6) else Color(0xFF64748B)),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -621,10 +640,12 @@ fun IncidenciaTicketCard(
     val isOperativaNo = incidencia.operativa.equals("NO", ignoreCase = true)
     val isCritica = incidencia.prioridad.equals("CRITICA", ignoreCase = true) || incidencia.prioridad.equals("ALTA", ignoreCase = true)
 
+    val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+
     val estadoColor = when {
-        isResuelto -> Color(0xFF16A34A) // Verde esmeralda
-        incidencia.estadoTicket.contains("PROCESO", ignoreCase = true) -> Color(0xFF0284C7) // Azul
-        else -> Color(0xFFEA580C) // Naranja
+        isResuelto -> StatusOperativa
+        incidencia.estadoTicket.contains("PROCESO", ignoreCase = true) -> Color(0xFF38BDF8)
+        else -> StatusPendiente
     }
     val estadoBadgeText = when {
         isResuelto -> "RESUELTO"
@@ -633,9 +654,9 @@ fun IncidenciaTicketCard(
     }
 
     val accentBorderColor = when {
-        isResuelto -> Color(0xFF16A34A)
-        isCritica -> Color(0xFFDC2626)
-        else -> Color(0xFFEA580C)
+        isResuelto -> StatusOperativa
+        isCritica || isOperativaNo -> StatusFueraServicio
+        else -> StatusPendiente
     }
 
     val displayDate = remember(incidencia.fechaOrigen) {
@@ -645,20 +666,23 @@ fun IncidenciaTicketCard(
         formatExcelDate(incidencia.fechaReparacion)
     }
 
+    val cardBg = if (isDarkTheme) Color(0xFF13131A) else MaterialTheme.colorScheme.surface
+    val cardBorder = if (isDarkTheme) Color(0xFF262636) else Color(0xFFE2E8F0)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
             .testTag("incidencia_card_${incidencia.idTicket}"),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = cardBg
         ),
         border = androidx.compose.foundation.BorderStroke(
             width = 1.dp,
-            color = if (isResuelto) Color(0xFF86EFAC).copy(alpha = 0.7f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+            color = cardBorder
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -798,17 +822,17 @@ fun IncidenciaTicketCard(
 
                 // 4. DETALLE DE LA FALLA
                 Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isDarkTheme) Color(0xFF1A1A24) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, if (isDarkTheme) Color(0xFF262636) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
                         Text(
-                            text = "Falla Reportada:",
+                            text = "Falla Reportada",
                             style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.primary
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDarkTheme) ElectricIndigoLight else MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(3.dp))
                         Text(
@@ -822,32 +846,23 @@ fun IncidenciaTicketCard(
                 // 5. SOLUCIÓN / RESOLUCIÓN APLICADA (Si existe)
                 if (incidencia.resolucion.isNotBlank()) {
                     Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = Color(0xFFF0FDF4),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF86EFAC)),
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isDarkTheme) Color(0xFF0D281E) else Color(0xFFF0FDF4),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isDarkTheme) Color(0xFF134E39) else Color(0xFF86EFAC)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(10.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    tint = Color(0xFF15803D),
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Solución / Resolución Aplicada:",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF15803D)
-                                )
-                            }
+                            Text(
+                                text = "Resolución Aplicada",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDarkTheme) Color(0xFF6EE7B7) else Color(0xFF15803D)
+                            )
                             Spacer(modifier = Modifier.height(3.dp))
                             Text(
                                 text = incidencia.resolucion,
                                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
-                                color = Color(0xFF14532D)
+                                color = if (isDarkTheme) Color(0xFFE2E8F0) else Color(0xFF14532D)
                             )
                         }
                     }

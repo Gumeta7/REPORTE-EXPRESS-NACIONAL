@@ -12,23 +12,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = CobaltPrimary,
+    primary = ElectricIndigoPrimary,
     onPrimary = Color.White,
-    primaryContainer = CobaltContainerDark,
-    onPrimaryContainer = CobaltCyan,
-    secondary = CobaltCyan,
-    onSecondary = Slate950,
-    secondaryContainer = Slate800,
-    onSecondaryContainer = Slate100,
-    background = DarkBackground,
+    primaryContainer = ElectricIndigoContainer,
+    onPrimaryContainer = ElectricIndigoLight,
+    secondary = ElectricIndigoLight,
+    onSecondary = DarkOledBackground,
+    secondaryContainer = DarkOledSurfaceVariant,
+    onSecondaryContainer = TextPrimaryDark,
+    background = DarkOledBackground,
     onBackground = TextPrimaryDark,
-    surface = DarkSurface,
+    surface = DarkOledSurface,
     onSurface = TextPrimaryDark,
-    surfaceVariant = DarkSurfaceVariant,
+    surfaceVariant = DarkOledSurfaceVariant,
     onSurfaceVariant = TextSecondaryDark,
-    outline = Slate700,
-    outlineVariant = Slate700,
-    error = Color(0xFFEF4444)
+    outline = DarkOledBorder,
+    outlineVariant = DarkOledBorder,
+    error = StatusFueraServicio
 )
 
 private val LightColorScheme = lightColorScheme(

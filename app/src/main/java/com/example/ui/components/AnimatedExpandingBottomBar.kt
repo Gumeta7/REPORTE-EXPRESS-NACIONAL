@@ -63,18 +63,18 @@ fun AnimatedExpandingBottomBar(
     modifier: Modifier = Modifier
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val barBgColor = if (isDarkTheme) Slate900 else MaterialTheme.colorScheme.surface
-    val barBorder = if (isDarkTheme) BorderStroke(1.dp, Slate700) else BorderStroke(1.dp, Color(0xFFE2E8F0))
+    val barBgColor = if (isDarkTheme) Color(0xFF13131A) else MaterialTheme.colorScheme.surface
+    val barBorder = if (isDarkTheme) BorderStroke(1.dp, Color(0xFF262636)) else BorderStroke(1.dp, Color(0xFFE2E8F0))
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 10.dp)
-            .height(66.dp),
-        shape = RoundedCornerShape(26.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .height(64.dp),
+        shape = RoundedCornerShape(28.dp),
         color = barBgColor,
         border = barBorder,
-        shadowElevation = 8.dp
+        shadowElevation = 12.dp
     ) {
         Row(
             modifier = Modifier
@@ -96,7 +96,7 @@ fun AnimatedExpandingBottomBar(
                 )
 
                 val iconScale by animateFloatAsState(
-                    targetValue = if (isSelected) 1.12f else 1.0f,
+                    targetValue = if (isSelected) 1.08f else 1.0f,
                     animationSpec = spring(
                         dampingRatio = Spring.DampingRatioMediumBouncy,
                         stiffness = Spring.StiffnessMediumLow
@@ -106,8 +106,8 @@ fun AnimatedExpandingBottomBar(
 
                 val activePillBrush = Brush.horizontalGradient(
                     listOf(
-                        Color(0xFF1D4ED8), // Cobalt Dark
-                        CobaltPrimary      // Cobalt 600
+                        Color(0xFF5E5BF7), // Electric Indigo
+                        Color(0xFF4743EB)  // Electric Indigo Dark
                     )
                 )
 
