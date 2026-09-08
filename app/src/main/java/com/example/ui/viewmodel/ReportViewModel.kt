@@ -1020,12 +1020,23 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    // --- Provider Machine Matching Helper (Priority 1: Propietario, Priority 2: Brand) ---
+    // --- Provider Machine Matching Helper (Priority 1: ZITRO brand always takes precedence, then Propietario, then Brand) ---
     fun findProviderForMachine(
         machine: MachineEntity,
         registeredProviders: List<com.example.data.db.ProviderEmailEntity> = providerEmails.value
     ): com.example.data.db.ProviderEmailEntity? {
-        // Priority 1: Match by machine's propietario (e.g. ZITRO, WINPOT, AGS)
+        val brandLower = machine.brand.trim().lowercase()
+
+        // EXCEPCIÓN CLAVE: Para el proveedor ZITRO, si la marca es Zitro, SIEMPRE se envía al grupo de Zitro
+        // aunque el propietario sea WINPOT u otro operador
+        if (brandLower.contains("zitro")) {
+            val zitroProvider = findProviderForBrand("ZITRO", registeredProviders)
+            if (zitroProvider != null && zitroProvider.email.isNotBlank()) {
+                return zitroProvider
+            }
+        }
+
+        // Priority 1: Match by machine's propietario (e.g. WINPOT, AGS, DREIDEL)
         if (machine.propietario.isNotBlank()) {
             val byPropietario = findProviderForBrand(machine.propietario, registeredProviders)
             if (byPropietario != null && byPropietario.email.isNotBlank()) {
@@ -1033,7 +1044,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
 
-        // Priority 2: Fallback to machine's brand (e.g. Zitro, IGT, Cadillac Jack)
+        // Priority 2: Fallback to machine's brand (e.g. IGT, Cadillac Jack, Ainsworth)
         if (machine.brand.isNotBlank()) {
             return findProviderForBrand(machine.brand, registeredProviders)
         }
