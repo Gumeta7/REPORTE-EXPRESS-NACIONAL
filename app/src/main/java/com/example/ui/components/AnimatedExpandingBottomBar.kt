@@ -106,8 +106,8 @@ fun AnimatedExpandingBottomBar(
 
                 val activePillBrush = Brush.horizontalGradient(
                     listOf(
-                        Color(0xFF5E5BF7), // Electric Indigo
-                        Color(0xFF4743EB)  // Electric Indigo Dark
+                        Color(0xFF0284C7), // Azul Océano (Inspirado en el Avatar del Técnico)
+                        Color(0xFF0369A1)  // Azul Zafiro Profundo
                     )
                 )
 

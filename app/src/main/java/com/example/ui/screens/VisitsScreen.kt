@@ -163,7 +163,6 @@ fun VisitsScreen(
         }
     }
 
-    var showManageProvidersDialog by remember { mutableStateOf(false) }
     var showAssetGridDialog by remember { mutableStateOf(false) }
     var showIslaGridDialog by remember { mutableStateOf(false) }
     var showDatePickerDialog by remember { mutableStateOf(false) }
@@ -479,31 +478,12 @@ fun VisitsScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Provider Row with Manage button
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Proveedor:",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold
-            )
-
-            TextButton(
-                onClick = { showManageProvidersDialog = true },
-                modifier = Modifier.testTag("manage_providers_visits_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "Gestionar",
-                    modifier = Modifier.height(16.dp).width(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Gestionar Proveedores", style = MaterialTheme.typography.labelMedium)
-            }
-        }
+        // Provider Label
+        Text(
+            text = "Proveedor:",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold
+        )
 
         Spacer(modifier = Modifier.height(4.dp))
 
@@ -823,24 +803,6 @@ fun VisitsScreen(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-    }
-
-
-
-    if (showManageProvidersDialog) {
-        ManageProvidersDialog(
-            providersList = providerEmailsList,
-            onDismiss = { showManageProvidersDialog = false },
-            onSaveProvider = { id, name, email, cc ->
-                viewModel.saveProviderEmail(id, name, email, cc)
-            },
-            onDeleteProvider = { id ->
-                viewModel.deleteProviderEmail(id)
-            },
-            onRestoreDefaults = {
-                viewModel.restoreDefaultProviders()
-            }
-        )
     }
 
     if (showAssetGridDialog) {

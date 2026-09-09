@@ -2,16 +2,23 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Primary Brand Colors & Modern Electric Accents (Estilo Minimalista OLED)
-val ElectricIndigoPrimary = Color(0xFF5E5BF7) // Púrpura/Índigo Eléctrico (Acento destacado)
-val ElectricIndigoDark = Color(0xFF4743EB)
-val ElectricIndigoContainer = Color(0xFF1E1C38) // Fondo sutil para acento índigo
-val ElectricIndigoLight = Color(0xFF7C79FF)
+// Info & Brand Accents (Inspirados en el Avatar del Técnico: Cyan #38BDF8 y Azul Océano #0284C7 / #1E3A8A)
+val InfoAccentDark = Color(0xFF38BDF8)          // Cyan vibrante (Anillo y texto del avatar en Modo Oscuro)
+val InfoAccentLight = Color(0xFF0284C7)         // Azul Océano contrastado (Modo Claro)
+val InfoAccentNavy = Color(0xFF1E3A8A)          // Azul Zafiro / Marino Profundo (Fondo del avatar)
+val InfoAccentDeepDark = Color(0xFF0369A1)      // Azul Océano Intenso
+val InfoContainerDark = Color(0xFF0F263E)       // Contenedor azul marino sutil oscuro
+val InfoContainerLight = Color(0xFFE0F2FE)      // Contenedor cielo suave claro
 
-val PrimaryBlue = ElectricIndigoPrimary
-val PrimaryBlueVariant = ElectricIndigoDark
-val AccentCyan = Color(0xFF38BDF8)
-val AccentElectricBlue = Color(0xFF5E5BF7)
+val ElectricIndigoPrimary = InfoAccentLight
+val ElectricIndigoDark = InfoAccentDeepDark
+val ElectricIndigoContainer = InfoContainerDark
+val ElectricIndigoLight = InfoAccentDark
+
+val PrimaryBlue = InfoAccentLight
+val PrimaryBlueVariant = InfoAccentDeepDark
+val AccentCyan = InfoAccentDark
+val AccentElectricBlue = InfoAccentLight
 
 // OLED Pure Charcoal / Minimalist Dark Palette (Referencia Premium)
 val DarkOledBackground = Color(0xFF09090D)       // Fondo principal ultra oscuro (OLED profundo)
@@ -33,11 +40,11 @@ val Slate200 = Color(0xFFE2E8F0)
 val Slate100 = Color(0xFFF1F5F9)
 val Slate50  = Color(0xFFF8FAFC)
 
-val CobaltPrimary = ElectricIndigoPrimary
-val CobaltDark = ElectricIndigoDark
-val CobaltContainerDark = ElectricIndigoContainer
-val CobaltCyan = ElectricIndigoLight
-val CobaltLight = ElectricIndigoLight
+val CobaltPrimary = InfoAccentLight
+val CobaltDark = InfoAccentDeepDark
+val CobaltContainerDark = InfoContainerDark
+val CobaltCyan = InfoAccentDark
+val CobaltLight = InfoAccentDark
 
 // True Dark Surfaces
 val DarkBackground = DarkOledBackground
@@ -61,8 +68,8 @@ val WarningAmber = Color(0xFFF59E0B)
 val StatusFueraServicio = Color(0xFFE11D48)     // Carmesí Intenso (Fuera de Servicio / Crítica)
 val StatusPendiente     = Color(0xFFEA580C)     // Ámbar Naranja Cálido (Pendiente)
 val StatusOperativa     = Color(0xFF16A34A)     // Verde Esmeralda (En Servicio / Resuelto)
-val StatusTotal         = Color(0xFF4F46E5)     // Índigo Eléctrico (Total / Destacado)
-val StatusEnProceso     = Color(0xFF0284C7)     // Azul Zafiro (En Proceso)
+val StatusTotal         = InfoAccentLight       // Azul Océano (Total / Destacado - Armonizado con Avatar)
+val StatusEnProceso     = InfoAccentLight       // Azul Zafiro (En Proceso)
 
 // Badges (Propia / Proveedor)
 val PropiaGreenBgLight = Color(0xFFDCFCE7)

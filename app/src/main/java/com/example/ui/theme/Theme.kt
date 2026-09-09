@@ -12,11 +12,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = ElectricIndigoPrimary,
-    onPrimary = Color.White,
-    primaryContainer = ElectricIndigoContainer,
-    onPrimaryContainer = ElectricIndigoLight,
-    secondary = ElectricIndigoLight,
+    primary = InfoAccentDark,
+    onPrimary = Color(0xFF082F49),
+    primaryContainer = InfoContainerDark,
+    onPrimaryContainer = InfoAccentDark,
+    secondary = InfoAccentLight,
     onSecondary = DarkOledBackground,
     secondaryContainer = DarkOledSurfaceVariant,
     onSecondaryContainer = TextPrimaryDark,
