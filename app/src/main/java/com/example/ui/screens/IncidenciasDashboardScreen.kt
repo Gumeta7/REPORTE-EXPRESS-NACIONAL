@@ -61,6 +61,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -587,9 +588,21 @@ fun KpiStatCard(
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
 
-    // Fondo calibrado: en claro usa tintado suave al 12% o superficie blanca nítida
+    // Fondo calibrado: 100% opaco para evitar fallos de renderizado y sombras filtradas
     val cardBg = when {
-        isSelected -> if (isDarkTheme) Color(0xFF1E1E2B) else color.copy(alpha = 0.12f)
+        isSelected -> {
+            if (isDarkTheme) {
+                Color(0xFF1E1E2B)
+            } else {
+                // Mezcla sólida al 12% con blanco puro (#FFFFFF), 100% opaco
+                Color(
+                    red = (color.red * 0.12f + 0.88f).coerceIn(0f, 1f),
+                    green = (color.green * 0.12f + 0.88f).coerceIn(0f, 1f),
+                    blue = (color.blue * 0.12f + 0.88f).coerceIn(0f, 1f),
+                    alpha = 1.0f
+                )
+            }
+        }
         isDarkTheme -> Color(0xFF13131A)
         else -> Color.White
     }
@@ -601,7 +614,7 @@ fun KpiStatCard(
         else -> Color(0xFFE2E8F0)
     }
 
-    // Color del texto de la etiqueta: en claro seleccionado toma el color del estado para no desaparecer
+    // Color del texto de la etiqueta: alta legibilidad y contraste
     val labelTextColor = when {
         isSelected && isDarkTheme -> Color.White
         isSelected && !isDarkTheme -> color
@@ -609,16 +622,20 @@ fun KpiStatCard(
         else -> Color(0xFF64748B)
     }
 
-    val clickableModifier = if (onClick != null) modifier.clickable { onClick() } else modifier
+    val cardShape = RoundedCornerShape(14.dp)
+
     Surface(
-        modifier = clickableModifier,
-        shape = RoundedCornerShape(16.dp),
+        modifier = modifier
+            .clip(cardShape)
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
+        shape = cardShape,
         color = cardBg,
         border = androidx.compose.foundation.BorderStroke(
             width = if (isSelected) 2.dp else 1.dp,
             color = cardBorder
         ),
-        shadowElevation = if (isSelected && !isDarkTheme) 2.dp else 0.dp
+        shadowElevation = 0.dp,
+        tonalElevation = 0.dp
     ) {
         Column(
             modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
