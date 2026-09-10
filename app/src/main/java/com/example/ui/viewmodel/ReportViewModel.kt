@@ -1064,19 +1064,23 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /**
-     * Obtiene el siguiente número consecutivo para folios de reporte, comenzando en 1.
-     * Analiza las incidencias registradas en la base de datos de Google Sheets y el contador
-     * local en SharedPreferences para garantizar una secuencia creciente sin duplicados.
+     * Calcula de forma puramente proyectiva (solo lectura, sin mutar contadores)
+     * el siguiente número consecutivo disponible, basándose exclusivamente en
+     * las incidencias reales existentes en Google Sheets. Comienza en 1.
      */
-    @Synchronized
-    fun getNextFolioConsecutive(): Int {
+    fun calculateProjectedConsecutive(): Int {
         val maxFromExisting = _rawIncidencias.value.mapNotNull { item ->
             com.example.util.TicketIdGenerator.extractConsecutiveFromTicketId(item.idTicket)
         }.maxOrNull() ?: 0
+        return maxFromExisting + 1
+    }
 
-        val storedConsecutive = prefs.getInt("last_generated_folio_consecutive", 0)
-
-        val nextNumber = maxOf(maxFromExisting, storedConsecutive) + 1
+    /**
+     * Consume y asigna el consecutivo definitivo en el momento exacto de despachar el reporte.
+     */
+    @Synchronized
+    fun consumeNextFolioConsecutive(): Int {
+        val nextNumber = calculateProjectedConsecutive()
         prefs.edit().putInt("last_generated_folio_consecutive", nextNumber).apply()
         return nextNumber
     }
@@ -1157,8 +1161,8 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val finalSala = foundMachine?.sala?.ifBlank { null } ?: venueName.value.ifBlank { "Sala Principal" }
             val finalArea = foundMachine?.area ?: "Sala Principal"
             val finalPropietario = foundMachine?.propietario?.ifBlank { "WINPOT" } ?: "WINPOT"
-            val nextConsecutive = getNextFolioConsecutive()
-            val ticketId = com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial, nextConsecutive)
+            val projectedConsecutive = calculateProjectedConsecutive()
+            val ticketId = com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial, projectedConsecutive)
             val greeting = getTimeOfDayGreeting()
             val formattedBody = buildString {
                 appendLine("$greeting estimados, solicitamos apoyo con la siguiente terminal")
@@ -1304,8 +1308,8 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
             val cleanedIssue = issueDescription.trim().ifBlank { "Falla reportada en terminales" }
             val isSingle = machines.size == 1
-            val nextConsecutive = getNextFolioConsecutive()
-            val ticketId = com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial, nextConsecutive)
+            val projectedConsecutive = calculateProjectedConsecutive()
+            val ticketId = com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial, projectedConsecutive)
 
             val greeting = getTimeOfDayGreeting()
             val introLine = if (isSingle) {
@@ -1414,7 +1418,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         val finalSala = draft.sala.ifBlank { venueName.value.ifBlank { "Sala Principal" } }
         val finalSerial = draft.serialNumber.ifBlank { "SN-${draft.machineNumber.ifBlank { "PENDIENTE" }}" }
         val ticketId = draft.ticketId?.ifBlank { null }
-            ?: com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial, getNextFolioConsecutive())
+            ?: com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial, consumeNextFolioConsecutive())
 
         if (dispatchedTicketIds.contains(ticketId)) {
             // Prevenir duplicidad en Google Sheets si ya fue despachado

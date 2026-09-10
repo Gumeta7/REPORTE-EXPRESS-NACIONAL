@@ -89,6 +89,21 @@ object TicketIdGenerator {
     }
 
     /**
+     * Reemplaza o actualiza el número consecutivo de un ticket respetando sala y serie.
+     * Ejemplo: "PHIE-22/55243-1", 7 -> "PHIE-22/55243-7"
+     */
+    fun updateConsecutiveInTicketId(originalTicketId: String, newConsecutive: Int): String {
+        val trimmed = originalTicketId.trim()
+        val parts = trimmed.split("-")
+        return if (parts.size >= 3) {
+            val prefix = parts.dropLast(1).joinToString("-")
+            "$prefix-$newConsecutive"
+        } else {
+            trimmed
+        }
+    }
+
+    /**
      * Valida si una sala tiene un nombre válido.
      */
     fun isSupportedSala(salaName: String): Boolean {
