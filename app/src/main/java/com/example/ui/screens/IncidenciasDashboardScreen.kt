@@ -1289,7 +1289,7 @@ fun IncidenciaDetailDialog(
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "Solución / Resolución Aplicada",
+                                        text = "Solución",
                                         style = MaterialTheme.typography.titleSmall.copy(fontSize = 14.sp),
                                         fontWeight = FontWeight.Bold,
                                         color = if (isDark) Color(0xFF6EE7B7) else Color(0xFF15803D)
@@ -1313,7 +1313,7 @@ fun IncidenciaDetailDialog(
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
-                                            text = "Fecha de reparación: ${currentTicket.fechaReparacion}",
+                                            text = "Fecha de reparación: ${formatExcelDate(currentTicket.fechaReparacion, dateOnly = true)}",
                                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
                                             fontWeight = FontWeight.SemiBold,
                                             color = if (isDark) Color(0xFFA7F3D0) else Color(0xFF166534)

@@ -23,18 +23,35 @@ data class TechnicianEntity(
         }
 
     val isDirector: Boolean
-        get() = rol.trim().uppercase() == "DIRECTOR" || rol.trim().uppercase() == "DIRECTORA"
+        get() {
+            val r = rol.trim().uppercase()
+            val s = sala.trim().uppercase()
+            val id = idSala.trim().uppercase()
+            return r == "DIRECTOR" || r == "DIRECTORA" || r.contains("DIRECTOR") || s.contains("DIRECTOR") || id == "DOPE"
+        }
+
+    val isCorporativo: Boolean
+        get() {
+            val s = sala.trim().uppercase()
+            val id = idSala.trim().uppercase()
+            val r = rol.trim().uppercase()
+            return s.contains("CORPORATIVO") || id == "CGDL" || r.contains("CORPORATIVO")
+        }
 
     val isAdmin: Boolean
         get() {
             val r = rol.trim().uppercase()
-            return r == "ADMIN" || r == "ADMINISTRADOR" || r == "ADMINISTRADORA" || isDirector || isSuperUser
+            return r == "ADMIN" || r == "ADMINISTRADOR" || r == "ADMINISTRADORA" || isDirector || isSuperUser || isCorporativo
         }
+
+    val canViewAllSalas: Boolean
+        get() = isAdmin || isDirector || isSuperUser || isCorporativo
 
     val rolDisplay: String
         get() = when {
             isSuperUser -> "Superusuario"
-            isDirector -> "Director Corporativo"
+            isDirector -> "Director de Operaciones"
+            isCorporativo -> "Corporativo GDL"
             isAdmin -> "Administrador Corporativo"
             else -> "Técnico"
         }

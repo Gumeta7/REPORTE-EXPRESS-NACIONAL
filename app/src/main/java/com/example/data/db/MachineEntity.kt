@@ -1,9 +1,19 @@
 package com.example.data.db
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "machines")
+@Entity(
+    tableName = "machines",
+    indices = [
+        Index(value = ["sala"]),
+        Index(value = ["machineNumber"]),
+        Index(value = ["serialNumber"]),
+        Index(value = ["assetNumber"]),
+        Index(value = ["brand"])
+    ]
+)
 data class MachineEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,

@@ -6,108 +6,138 @@ import com.example.data.db.TechnicianEntity
 import com.example.data.remote.IncidenciaItem
 import org.apache.poi.ss.usermodel.Cell
 import org.apache.poi.ss.usermodel.CellType
+import org.apache.poi.ss.usermodel.Workbook
 import org.apache.poi.ss.usermodel.WorkbookFactory
 import java.io.InputStream
 
+data class ParsedWorkbookResult(
+    val machines: List<MachineEntity> = emptyList(),
+    val technicians: List<TechnicianEntity> = emptyList(),
+    val incidencias: List<IncidenciaItem> = emptyList(),
+    val providers: List<ProviderEmailEntity> = emptyList()
+)
+
 object FileParserUtil {
+
+    fun parseAllData(bytes: ByteArray, defaultSala: String = ""): ParsedWorkbookResult {
+        if (bytes.isEmpty()) return ParsedWorkbookResult()
+        try {
+            bytes.inputStream().use { stream ->
+                val workbook = WorkbookFactory.create(stream)
+                val machines = parseWorkbookToMachines(workbook, defaultSala)
+                val technicians = parseWorkbookToTechnicians(workbook)
+                val incidencias = parseWorkbookToIncidencias(workbook)
+                val providers = parseWorkbookToProviderEmails(workbook)
+                workbook.close()
+                return ParsedWorkbookResult(machines, technicians, incidencias, providers)
+            }
+        } catch (_: Throwable) {
+            val text = try { String(bytes, Charsets.UTF_8) } catch (_: Throwable) { "" }
+            val machines = if (text.isNotBlank()) parseCsvToMachines(text, defaultSala) else emptyList()
+            return ParsedWorkbookResult(machines = machines)
+        }
+    }
+
+    fun parseWorkbookToMachines(workbook: Workbook, defaultSala: String = ""): List<MachineEntity> {
+        val allMachines = mutableListOf<MachineEntity>()
+        // Identify sheets to process: target specifically sheet named "maquinas" (ignoring accents/case)
+        val targetSheetIndices = mutableListOf<Int>()
+        for (sheetIndex in 0 until workbook.numberOfSheets) {
+            val rawName = workbook.getSheetName(sheetIndex).trim()
+            val normalizedName = rawName.lowercase()
+                .replace("á", "a")
+                .replace("é", "e")
+                .replace("í", "i")
+                .replace("ó", "o")
+                .replace("ú", "u")
+            if (normalizedName == "maquinas" || normalizedName == "maquina") {
+                targetSheetIndices.add(sheetIndex)
+            }
+        }
+
+        // If 'maquinas' sheet was found, process ONLY that sheet; otherwise fallback to all sheets
+        val sheetsToProcess = if (targetSheetIndices.isNotEmpty()) {
+            targetSheetIndices
+        } else {
+            (0 until workbook.numberOfSheets).toList()
+        }
+
+        for (sheetIndex in sheetsToProcess) {
+            val sheet = workbook.getSheetAt(sheetIndex) ?: continue
+            if (sheet.physicalNumberOfRows == 0) continue
+
+            // Find header row in first 20 rows
+            var headerRowIndex = -1
+            var columnIndices = emptyMap<String, Int>()
+
+            for (r in 0..minOf(20, sheet.lastRowNum)) {
+                val row = sheet.getRow(r) ?: continue
+                val rowCells = (0 until row.lastCellNum).map { c ->
+                    getCellValueAsString(row.getCell(c))
+                }
+                val map = findHeaderIndices(rowCells)
+                if (map.containsKey("asset") || map.containsKey("serie") || map.containsKey("marca") || map.containsKey("sala") || map.containsKey("maquina") || map.containsKey("modelo")) {
+                    headerRowIndex = r
+                    columnIndices = map
+                    break
+                }
+            }
+
+            val startRow = if (headerRowIndex != -1) headerRowIndex + 1 else 0
+            val isHeaderFound = headerRowIndex != -1
+
+            for (r in startRow..sheet.lastRowNum) {
+                val row = sheet.getRow(r) ?: continue
+                fun getVal(key: String, fallbackCol: Int): String {
+                    val idx = columnIndices[key] ?: if (isHeaderFound) -1 else fallbackCol
+                    if (idx < 0) return ""
+                    val cell = row.getCell(idx) ?: return ""
+                    return getCellValueAsString(cell).trim()
+                }
+
+                val asset = cleanNumericString(getVal("asset", 0))
+                val salaRaw = getVal("sala", -1)
+                val sala = salaRaw.ifBlank { defaultSala }
+                val marca = getVal("marca", 1)
+                val modelo = getVal("modelo", 2)
+                val juego = getVal("juego", -1)
+                val area = getVal("area", 4)
+                val isla = cleanNumericString(getVal("isla", -1))
+                val serie = getVal("serie", 6)
+                val propietario = getVal("propietario", -1)
+                val qrId = getVal("qrid", -1)
+                val maquina = cleanNumericString(getVal("maquina", -1)).ifBlank { asset }.ifBlank { serie }
+
+                if (maquina.isNotBlank() || asset.isNotBlank() || serie.isNotBlank() || marca.isNotBlank()) {
+                    allMachines.add(
+                        MachineEntity(
+                            machineNumber = maquina.ifBlank { "M-${allMachines.size + 1}" },
+                            brand = marca.ifBlank { "General" },
+                            model = modelo.ifBlank { "Estándar" },
+                            serialNumber = serie.ifBlank { if (maquina.isNotBlank()) "SN-$maquina" else "SN-DESCONOCIDO" },
+                            assetNumber = asset.ifBlank { maquina },
+                            area = area.ifBlank { "Sala Principal" },
+                            game = juego,
+                            island = isla,
+                            sala = sala,
+                            qrId = qrId,
+                            propietario = propietario
+                        )
+                    )
+                }
+            }
+        }
+        return allMachines
+    }
 
     fun parseStreamToMachines(inputStream: InputStream, defaultSala: String = ""): List<MachineEntity> {
         val bytes = inputStream.readBytes()
         if (bytes.isEmpty()) return emptyList()
 
-        // 1. Try parsing with Apache POI as Excel (.xls or .xlsx)
         try {
             bytes.inputStream().use { stream ->
                 val workbook = WorkbookFactory.create(stream)
-                val allMachines = mutableListOf<MachineEntity>()
-
-                // Identify sheets to process: target specifically sheet named "maquinas" (ignoring accents/case)
-                val targetSheetIndices = mutableListOf<Int>()
-                for (sheetIndex in 0 until workbook.numberOfSheets) {
-                    val rawName = workbook.getSheetName(sheetIndex).trim()
-                    val normalizedName = rawName.lowercase()
-                        .replace("á", "a")
-                        .replace("é", "e")
-                        .replace("í", "i")
-                        .replace("ó", "o")
-                        .replace("ú", "u")
-                    if (normalizedName == "maquinas" || normalizedName == "maquina") {
-                        targetSheetIndices.add(sheetIndex)
-                    }
-                }
-
-                // If 'maquinas' sheet was found, process ONLY that sheet; otherwise fallback to all sheets
-                val sheetsToProcess = if (targetSheetIndices.isNotEmpty()) {
-                    targetSheetIndices
-                } else {
-                    (0 until workbook.numberOfSheets).toList()
-                }
-
-                for (sheetIndex in sheetsToProcess) {
-                    val sheet = workbook.getSheetAt(sheetIndex)
-                    if ((sheet == null) || (sheet.physicalNumberOfRows == 0)) continue
-
-                    // Find header row in first 20 rows
-                    var headerRowIndex = -1
-                    var columnIndices = emptyMap<String, Int>()
-
-                    for (r in 0..minOf(20, sheet.lastRowNum)) {
-                        val row = sheet.getRow(r) ?: continue
-                        val rowCells = (0 until row.lastCellNum).map { c ->
-                            getCellValueAsString(row.getCell(c))
-                        }
-                        val map = findHeaderIndices(rowCells)
-                        if (map.containsKey("asset") || map.containsKey("serie") || map.containsKey("marca") || map.containsKey("sala") || map.containsKey("maquina") || map.containsKey("modelo")) {
-                            headerRowIndex = r
-                            columnIndices = map
-                            break
-                        }
-                    }
-
-                    val startRow = if (headerRowIndex != -1) headerRowIndex + 1 else 0
-                    val isHeaderFound = headerRowIndex != -1
-
-                    for (r in startRow..sheet.lastRowNum) {
-                        val row = sheet.getRow(r) ?: continue
-                        fun getVal(key: String, fallbackCol: Int): String {
-                            val idx = columnIndices[key] ?: if (isHeaderFound) -1 else fallbackCol
-                            if (idx < 0) return ""
-                            val cell = row.getCell(idx) ?: return ""
-                            return getCellValueAsString(cell).trim()
-                        }
-
-                        val asset = cleanNumericString(getVal("asset", 0))
-                        val salaRaw = getVal("sala", -1)
-                        val sala = salaRaw.ifBlank { defaultSala }
-                        val marca = getVal("marca", 1)
-                        val modelo = getVal("modelo", 2)
-                        val juego = getVal("juego", -1)
-                        val area = getVal("area", 4)
-                        val isla = cleanNumericString(getVal("isla", -1))
-                        val serie = getVal("serie", 6)
-                        val propietario = getVal("propietario", -1)
-                        val qrId = getVal("qrid", -1)
-                        val maquina = cleanNumericString(getVal("maquina", -1)).ifBlank { asset }.ifBlank { serie }
-
-                        if (maquina.isNotBlank() || asset.isNotBlank() || serie.isNotBlank() || marca.isNotBlank()) {
-                            allMachines.add(
-                                MachineEntity(
-                                    machineNumber = maquina.ifBlank { "M-${allMachines.size + 1}" },
-                                    brand = marca.ifBlank { "General" },
-                                    model = modelo.ifBlank { "Estándar" },
-                                    serialNumber = serie.ifBlank { if (maquina.isNotBlank()) "SN-$maquina" else "SN-DESCONOCIDO" },
-                                    assetNumber = asset.ifBlank { maquina },
-                                    area = area.ifBlank { "Sala Principal" },
-                                    game = juego,
-                                    island = isla,
-                                    sala = sala,
-                                    qrId = qrId,
-                                    propietario = propietario
-                                )
-                            )
-                        }
-                    }
-                }
+                val allMachines = parseWorkbookToMachines(workbook, defaultSala)
                 workbook.close()
                 if (allMachines.isNotEmpty()) {
                     return allMachines
@@ -121,6 +151,90 @@ object FileParserUtil {
         return parseCsvToMachines(text, defaultSala)
     }
 
+    fun parseWorkbookToTechnicians(workbook: Workbook): List<TechnicianEntity> {
+        val allTechnicians = mutableListOf<TechnicianEntity>()
+        // Locate sheet named "tecnicos" or "técnicos"
+        var targetSheetIndex = -1
+        for (sheetIndex in 0 until workbook.numberOfSheets) {
+            val rawName = workbook.getSheetName(sheetIndex).trim().lowercase()
+                .replace("á", "a")
+                .replace("é", "e")
+                .replace("í", "i")
+                .replace("ó", "o")
+                .replace("ú", "u")
+            if (normalizedName == "tecnicos" || normalizedName == "tecnico" || normalizedName == "usuarios") {
+                targetSheetIndex = sheetIndex
+                break
+            }
+        }
+
+        if (targetSheetIndex != -1) {
+            val sheet = workbook.getSheetAt(targetSheetIndex)
+            if (sheet != null && sheet.physicalNumberOfRows > 0) {
+                var headerRowIndex = -1
+                var colMap = emptyMap<String, Int>()
+
+                for (r in 0..minOf(15, sheet.lastRowNum)) {
+                    val row = sheet.getRow(r) ?: continue
+                    val rowCells = (0 until row.lastCellNum).map { c ->
+                        getCellValueAsString(row.getCell(c))
+                    }
+                    val map = findTechnicianHeaderIndices(rowCells)
+                    if (map.containsKey("usuario") || map.containsKey("nombre")) {
+                        headerRowIndex = r
+                        colMap = map
+                        break
+                    }
+                }
+
+                val startRow = if (headerRowIndex != -1) headerRowIndex + 1 else 0
+
+                for (r in startRow..sheet.lastRowNum) {
+                    val row = sheet.getRow(r) ?: continue
+                    fun getVal(key: String): String {
+                        val idx = colMap[key] ?: return ""
+                        if (idx < 0) return ""
+                        val cell = row.getCell(idx) ?: return ""
+                        return getCellValueAsString(cell).trim()
+                    }
+
+                    val idTecnico = getVal("id_tecnico")
+                    val nombre = getVal("nombre")
+                    val idSala = getVal("id_sala")
+                    val sala = getVal("sala")
+                    val usuario = getVal("usuario")
+                    val password = getVal("password")
+                    val estatus = getVal("estatus").ifBlank { "ACTIVO" }
+                    val rawRol = getVal("rol")
+                    val rawWeb = getVal("web")
+                    val rol = when {
+                        rawRol.trim().uppercase() in listOf("SUPERUSER", "SUPERUSUARIO") -> "SUPERUSER"
+                        rawWeb.trim().uppercase() in listOf("SUPERUSER", "SUPERUSUARIO") -> "SUPERUSER"
+                        rawRol.isNotBlank() -> rawRol
+                        rawWeb.trim().uppercase() in listOf("ADMIN", "DIRECTOR") -> rawWeb
+                        else -> "TECNICO"
+                    }
+
+                    if (usuario.isNotBlank() || nombre.isNotBlank()) {
+                        allTechnicians.add(
+                            TechnicianEntity(
+                                technicianId = idTecnico,
+                                nombre = nombre,
+                                idSala = idSala,
+                                sala = sala,
+                                usuario = usuario,
+                                password = password,
+                                estatus = estatus,
+                                rol = rol
+                            )
+                        )
+                    }
+                }
+            }
+        }
+        return allTechnicians
+    }
+
     fun parseStreamToTechnicians(inputStream: InputStream): List<TechnicianEntity> {
         val bytes = inputStream.readBytes()
         if (bytes.isEmpty()) return emptyList()
@@ -128,95 +242,107 @@ object FileParserUtil {
         try {
             bytes.inputStream().use { stream ->
                 val workbook = WorkbookFactory.create(stream)
-                val allTechnicians = mutableListOf<TechnicianEntity>()
-
-                // Locate sheet named "tecnicos" or "técnicos"
-                var targetSheetIndex = -1
-                for (sheetIndex in 0 until workbook.numberOfSheets) {
-                    val rawName = workbook.getSheetName(sheetIndex).trim()
-                    val normalizedName = rawName.lowercase()
-                        .replace("á", "a")
-                        .replace("é", "e")
-                        .replace("í", "i")
-                        .replace("ó", "o")
-                        .replace("ú", "u")
-                    if (normalizedName == "tecnicos" || normalizedName == "tecnico" || normalizedName == "usuarios") {
-                        targetSheetIndex = sheetIndex
-                        break
-                    }
-                }
-
-                if (targetSheetIndex != -1) {
-                    val sheet = workbook.getSheetAt(targetSheetIndex)
-                    if (sheet != null && sheet.physicalNumberOfRows > 0) {
-                        var headerRowIndex = -1
-                        var colMap = emptyMap<String, Int>()
-
-                        for (r in 0..minOf(15, sheet.lastRowNum)) {
-                            val row = sheet.getRow(r) ?: continue
-                            val rowCells = (0 until row.lastCellNum).map { c ->
-                                getCellValueAsString(row.getCell(c))
-                            }
-                            val map = findTechnicianHeaderIndices(rowCells)
-                            if (map.containsKey("usuario") || map.containsKey("nombre")) {
-                                headerRowIndex = r
-                                colMap = map
-                                break
-                            }
-                        }
-
-                        val startRow = if (headerRowIndex != -1) headerRowIndex + 1 else 0
-
-                        for (r in startRow..sheet.lastRowNum) {
-                            val row = sheet.getRow(r) ?: continue
-                            fun getVal(key: String): String {
-                                val idx = colMap[key] ?: return ""
-                                if (idx < 0) return ""
-                                val cell = row.getCell(idx) ?: return ""
-                                return getCellValueAsString(cell).trim()
-                            }
-
-                            val idTecnico = getVal("id_tecnico")
-                            val nombre = getVal("nombre")
-                            val idSala = getVal("id_sala")
-                            val sala = getVal("sala")
-                            val usuario = getVal("usuario")
-                            val password = getVal("password")
-                            val estatus = getVal("estatus").ifBlank { "ACTIVO" }
-                            val rawRol = getVal("rol")
-                            val rawWeb = getVal("web")
-                            val rol = when {
-                                rawRol.trim().uppercase() in listOf("SUPERUSER", "SUPERUSUARIO") -> "SUPERUSER"
-                                rawWeb.trim().uppercase() in listOf("SUPERUSER", "SUPERUSUARIO") -> "SUPERUSER"
-                                rawRol.isNotBlank() -> rawRol
-                                rawWeb.trim().uppercase() in listOf("ADMIN", "DIRECTOR") -> rawWeb
-                                else -> "TECNICO"
-                            }
-
-                            if (usuario.isNotBlank() || nombre.isNotBlank()) {
-                                allTechnicians.add(
-                                    TechnicianEntity(
-                                        technicianId = idTecnico,
-                                        nombre = nombre,
-                                        idSala = idSala,
-                                        sala = sala,
-                                        usuario = usuario,
-                                        password = password,
-                                        estatus = estatus,
-                                        rol = rol
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-
+                val allTechnicians = parseWorkbookToTechnicians(workbook)
                 workbook.close()
                 return allTechnicians
             }
         } catch (_: Throwable) {
             return emptyList()
         }
+    }
+
+    fun parseWorkbookToIncidencias(workbook: Workbook): List<IncidenciaItem> {
+        val allIncidencias = mutableListOf<IncidenciaItem>()
+        // Locate sheet named "incidencias" or "incidencia"
+        var targetSheetIndex = -1
+        for (sheetIndex in 0 until workbook.numberOfSheets) {
+            val rawName = workbook.getSheetName(sheetIndex).trim().lowercase()
+                .replace("á", "a")
+                .replace("é", "e")
+                .replace("í", "i")
+                .replace("ó", "o")
+                .replace("ú", "u")
+            if (rawName == "incidencias" || rawName == "incidencia") {
+                targetSheetIndex = sheetIndex
+                break
+            }
+        }
+
+        if (targetSheetIndex != -1) {
+            val sheet = workbook.getSheetAt(targetSheetIndex)
+            if (sheet != null && sheet.physicalNumberOfRows > 0) {
+                var headerRowIndex = -1
+                var colMap = emptyMap<String, Int>()
+
+                for (r in 0..minOf(15, sheet.lastRowNum)) {
+                    val row = sheet.getRow(r) ?: continue
+                    val rowCells = (0 until row.lastCellNum).map { c ->
+                        getCellValueAsString(row.getCell(c))
+                    }
+                    val map = findIncidenciaHeaderIndices(rowCells)
+                    if (map.containsKey("id_ticket") || map.containsKey("falla") || map.containsKey("sala")) {
+                        headerRowIndex = r
+                        colMap = map
+                        break
+                    }
+                }
+
+                val startRow = if (headerRowIndex != -1) headerRowIndex + 1 else 1
+
+                for (r in startRow..sheet.lastRowNum) {
+                    val row = sheet.getRow(r) ?: continue
+                    fun getVal(key: String): String {
+                        val idx = colMap[key] ?: return ""
+                        if (idx < 0) return ""
+                        val cell = row.getCell(idx) ?: return ""
+                        return getCellValueAsString(cell).trim()
+                    }
+
+                    val idTicket = getVal("id_ticket")
+                    val sala = getVal("sala")
+                    val marca = getVal("marca")
+                    val modelo = getVal("modelo")
+                    val serie = getVal("serie")
+                    val asset = getVal("asset")
+                    val area = getVal("area")
+                    val propietario = getVal("propietario").ifBlank { "WINPOT" }
+                    val operativa = getVal("operativa").uppercase().ifBlank { "NO" }
+                    val estadoTicket = getVal("estado_ticket").uppercase().ifBlank { "ABIERTO" }
+                    val fechaOrigen = getVal("fecha_origen")
+                    val fechaReparacion = getVal("fecha_reparacion")
+                    val falla = getVal("falla")
+                    val prioridad = getVal("prioridad").uppercase().ifBlank { "MEDIA" }
+                    val idTecnico = getVal("id_tecnico")
+                    val tecnico = getVal("tecnico")
+                    val resolucion = getVal("resolucion")
+
+                    if (idTicket.isNotBlank() || falla.isNotBlank() || asset.isNotBlank() || serie.isNotBlank()) {
+                        allIncidencias.add(
+                            IncidenciaItem(
+                                idTicket = idTicket.ifBlank { "INC-$r" },
+                                sala = sala,
+                                marca = marca,
+                                modelo = modelo,
+                                serie = serie,
+                                asset = asset,
+                                area = area,
+                                propietario = propietario,
+                                operativa = operativa,
+                                estadoTicket = estadoTicket,
+                                fechaOrigen = fechaOrigen,
+                                fechaReparacion = fechaReparacion,
+                                falla = falla,
+                                prioridad = prioridad,
+                                idTecnico = idTecnico,
+                                tecnico = tecnico,
+                                resolucion = resolucion
+                            )
+                        )
+                    }
+                }
+            }
+        }
+        return allIncidencias
     }
 
     fun parseStreamToIncidencias(inputStream: InputStream): List<IncidenciaItem> {
@@ -226,104 +352,91 @@ object FileParserUtil {
         try {
             bytes.inputStream().use { stream ->
                 val workbook = WorkbookFactory.create(stream)
-                val allIncidencias = mutableListOf<IncidenciaItem>()
-
-                // Locate sheet named "incidencias" or "incidencia"
-                var targetSheetIndex = -1
-                for (sheetIndex in 0 until workbook.numberOfSheets) {
-                    val rawName = workbook.getSheetName(sheetIndex).trim().lowercase()
-                        .replace("á", "a")
-                        .replace("é", "e")
-                        .replace("í", "i")
-                        .replace("ó", "o")
-                        .replace("ú", "u")
-                    if (rawName == "incidencias" || rawName == "incidencia") {
-                        targetSheetIndex = sheetIndex
-                        break
-                    }
-                }
-
-                if (targetSheetIndex != -1) {
-                    val sheet = workbook.getSheetAt(targetSheetIndex)
-                    if (sheet != null && sheet.physicalNumberOfRows > 0) {
-                        var headerRowIndex = -1
-                        var colMap = emptyMap<String, Int>()
-
-                        for (r in 0..minOf(15, sheet.lastRowNum)) {
-                            val row = sheet.getRow(r) ?: continue
-                            val rowCells = (0 until row.lastCellNum).map { c ->
-                                getCellValueAsString(row.getCell(c))
-                            }
-                            val map = findIncidenciaHeaderIndices(rowCells)
-                            if (map.containsKey("id_ticket") || map.containsKey("falla") || map.containsKey("sala")) {
-                                headerRowIndex = r
-                                colMap = map
-                                break
-                            }
-                        }
-
-                        val startRow = if (headerRowIndex != -1) headerRowIndex + 1 else 1
-
-                        for (r in startRow..sheet.lastRowNum) {
-                            val row = sheet.getRow(r) ?: continue
-                            fun getVal(key: String): String {
-                                val idx = colMap[key] ?: return ""
-                                if (idx < 0) return ""
-                                val cell = row.getCell(idx) ?: return ""
-                                return getCellValueAsString(cell).trim()
-                            }
-
-                            val idTicket = getVal("id_ticket")
-                            val sala = getVal("sala")
-                            val marca = getVal("marca")
-                            val modelo = getVal("modelo")
-                            val serie = getVal("serie")
-                            val asset = getVal("asset")
-                            val area = getVal("area")
-                            val propietario = getVal("propietario").ifBlank { "WINPOT" }
-                            val operativa = getVal("operativa").uppercase().ifBlank { "NO" }
-                            val estadoTicket = getVal("estado_ticket").uppercase().ifBlank { "ABIERTO" }
-                            val fechaOrigen = getVal("fecha_origen")
-                            val fechaReparacion = getVal("fecha_reparacion")
-                            val falla = getVal("falla")
-                            val prioridad = getVal("prioridad").uppercase().ifBlank { "MEDIA" }
-                            val idTecnico = getVal("id_tecnico")
-                            val tecnico = getVal("tecnico")
-                            val resolucion = getVal("resolucion")
-
-                            if (idTicket.isNotBlank() || falla.isNotBlank() || asset.isNotBlank() || serie.isNotBlank()) {
-                                allIncidencias.add(
-                                    IncidenciaItem(
-                                        idTicket = idTicket.ifBlank { "INC-$r" },
-                                        sala = sala,
-                                        marca = marca,
-                                        modelo = modelo,
-                                        serie = serie,
-                                        asset = asset,
-                                        area = area,
-                                        propietario = propietario,
-                                        operativa = operativa,
-                                        estadoTicket = estadoTicket,
-                                        fechaOrigen = fechaOrigen,
-                                        fechaReparacion = fechaReparacion,
-                                        falla = falla,
-                                        prioridad = prioridad,
-                                        idTecnico = idTecnico,
-                                        tecnico = tecnico,
-                                        resolucion = resolucion
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-
+                val allIncidencias = parseWorkbookToIncidencias(workbook)
                 workbook.close()
                 return allIncidencias
             }
         } catch (_: Throwable) {
             return emptyList()
         }
+    }
+
+    fun parseWorkbookToProviderEmails(workbook: Workbook): List<ProviderEmailEntity> {
+        val allProviders = mutableListOf<ProviderEmailEntity>()
+        // Locate sheet named "propietario", "propietarios", "proveedor", "proveedores"
+        var targetSheetIndex = -1
+        for (sheetIndex in 0 until workbook.numberOfSheets) {
+            val rawName = workbook.getSheetName(sheetIndex).trim().lowercase()
+                .replace("á", "a")
+                .replace("é", "e")
+                .replace("í", "i")
+                .replace("ó", "o")
+                .replace("ú", "u")
+            if (rawName == "propietario" || rawName == "propietarios" || rawName == "proveedor" || rawName == "proveedores") {
+                targetSheetIndex = sheetIndex
+                break
+            }
+        }
+
+        if (targetSheetIndex != -1) {
+            val sheet = workbook.getSheetAt(targetSheetIndex)
+            if (sheet != null && sheet.physicalNumberOfRows > 0) {
+                var headerRowIndex = -1
+                var proveedorCol = -1
+                var correo1Col = -1
+                val ccCols = mutableListOf<Int>()
+
+                for (r in 0..minOf(15, sheet.lastRowNum)) {
+                    val row = sheet.getRow(r) ?: continue
+                    for (c in 0 until row.lastCellNum) {
+                        val rawHeader = getCellValueAsString(row.getCell(c))
+                        val col = sanitizeHeader(rawHeader)
+                        val colNoSpaces = col.replace(" ", "")
+
+                        if (col.contains("PROVEEDOR") || col.contains("MARCA") || col == "PROPIETARIO") {
+                            proveedorCol = c
+                        } else if (colNoSpaces == "CORREO1" || colNoSpaces == "EMAIL1" || col == "CORREO 1" || col == "EMAIL 1" || (col == "CORREO" && correo1Col == -1)) {
+                            correo1Col = c
+                        } else if (col.contains("CORREO") || col.contains("EMAIL") || col.contains("CC") || col.contains("COPIA")) {
+                            ccCols.add(c)
+                        }
+                    }
+                    if (proveedorCol != -1 && (correo1Col != -1 || ccCols.isNotEmpty())) {
+                        headerRowIndex = r
+                        break
+                    }
+                }
+
+                val startRow = if (headerRowIndex != -1) headerRowIndex + 1 else 0
+                for (r in startRow..sheet.lastRowNum) {
+                    val row = sheet.getRow(r) ?: continue
+                    val providerName = if (proveedorCol != -1) getCellValueAsString(row.getCell(proveedorCol)).trim() else ""
+                    if (providerName.isBlank()) continue
+
+                    val email1 = if (correo1Col != -1) getCellValueAsString(row.getCell(correo1Col)).trim() else ""
+                    val ccList = mutableListOf<String>()
+                    for (col in ccCols) {
+                        val ccVal = getCellValueAsString(row.getCell(col)).trim()
+                        if (ccVal.isNotBlank()) {
+                            // In case cell has multiple emails separated by comma or semicolon
+                            val parts = ccVal.split(',', ';').map { it.trim() }.filter { it.isNotBlank() }
+                            ccList.addAll(parts)
+                        }
+                    }
+
+                    if (email1.isNotBlank() || ccList.isNotEmpty()) {
+                        allProviders.add(
+                            ProviderEmailEntity(
+                                providerName = providerName,
+                                email = email1,
+                                ccEmails = ccList.distinct().joinToString(", ")
+                            )
+                        )
+                    }
+                }
+            }
+        }
+        return allProviders
     }
 
     fun parseStreamToProviderEmails(inputStream: InputStream): List<ProviderEmailEntity> {
@@ -333,82 +446,7 @@ object FileParserUtil {
         try {
             bytes.inputStream().use { stream ->
                 val workbook = WorkbookFactory.create(stream)
-                val allProviders = mutableListOf<ProviderEmailEntity>()
-
-                // Locate sheet named "propietario", "propietarios", "proveedor", "proveedores"
-                var targetSheetIndex = -1
-                for (sheetIndex in 0 until workbook.numberOfSheets) {
-                    val rawName = workbook.getSheetName(sheetIndex).trim().lowercase()
-                        .replace("á", "a")
-                        .replace("é", "e")
-                        .replace("í", "i")
-                        .replace("ó", "o")
-                        .replace("ú", "u")
-                    if (rawName == "propietario" || rawName == "propietarios" || rawName == "proveedor" || rawName == "proveedores") {
-                        targetSheetIndex = sheetIndex
-                        break
-                    }
-                }
-
-                if (targetSheetIndex != -1) {
-                    val sheet = workbook.getSheetAt(targetSheetIndex)
-                    if (sheet != null && sheet.physicalNumberOfRows > 0) {
-                        var headerRowIndex = -1
-                        var proveedorCol = -1
-                        var correo1Col = -1
-                        val ccCols = mutableListOf<Int>()
-
-                        for (r in 0..minOf(15, sheet.lastRowNum)) {
-                            val row = sheet.getRow(r) ?: continue
-                            for (c in 0 until row.lastCellNum) {
-                                val rawHeader = getCellValueAsString(row.getCell(c))
-                                val col = sanitizeHeader(rawHeader)
-                                val colNoSpaces = col.replace(" ", "")
-
-                                if (col.contains("PROVEEDOR") || col.contains("MARCA") || col == "PROPIETARIO") {
-                                    proveedorCol = c
-                                } else if (colNoSpaces == "CORREO1" || colNoSpaces == "EMAIL1" || col == "CORREO 1" || col == "EMAIL 1" || (col == "CORREO" && correo1Col == -1)) {
-                                    correo1Col = c
-                                } else if (col.contains("CORREO") || col.contains("EMAIL") || col.contains("CC") || col.contains("COPIA")) {
-                                    ccCols.add(c)
-                                }
-                            }
-                            if (proveedorCol != -1 && (correo1Col != -1 || ccCols.isNotEmpty())) {
-                                headerRowIndex = r
-                                break
-                            }
-                        }
-
-                        val startRow = if (headerRowIndex != -1) headerRowIndex + 1 else 0
-                        for (r in startRow..sheet.lastRowNum) {
-                            val row = sheet.getRow(r) ?: continue
-                            val providerName = if (proveedorCol != -1) getCellValueAsString(row.getCell(proveedorCol)).trim() else ""
-                            if (providerName.isBlank()) continue
-
-                            val email1 = if (correo1Col != -1) getCellValueAsString(row.getCell(correo1Col)).trim() else ""
-                            val ccList = mutableListOf<String>()
-                            for (col in ccCols) {
-                                val ccVal = getCellValueAsString(row.getCell(col)).trim()
-                                if (ccVal.isNotBlank()) {
-                                    // In case cell has multiple emails separated by comma or semicolon
-                                    val parts = ccVal.split(',', ';').map { it.trim() }.filter { it.isNotBlank() }
-                                    ccList.addAll(parts)
-                                }
-                            }
-
-                            if (email1.isNotBlank() || ccList.isNotEmpty()) {
-                                allProviders.add(
-                                    ProviderEmailEntity(
-                                        providerName = providerName,
-                                        email = email1,
-                                        ccEmails = ccList.distinct().joinToString(", ")
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-
+                val allProviders = parseWorkbookToProviderEmails(workbook)
                 workbook.close()
                 return allProviders
             }
@@ -434,11 +472,11 @@ object FileParserUtil {
                 col.contains("OPERATIVA") -> map.putIfAbsent("operativa", idx)
                 col.contains("ORIGEN") || col.contains("FECHA_ORIGEN") || (col.contains("FECHA") && !col.contains("REPARACION")) -> map.putIfAbsent("fecha_origen", idx)
                 col.contains("REPARACION") -> map.putIfAbsent("fecha_reparacion", idx)
-                col.contains("FALLA") || col.contains("DESCRIPCION") || col.contains("MOTIVO") -> map.putIfAbsent("falla", idx)
+                col.contains("RESOLUCION") || col.contains("SOLUCION") -> map.putIfAbsent("resolucion", idx)
+                (col.contains("FALLA") || col.contains("DESCRIPCION") || col.contains("MOTIVO")) && !col.contains("RESOLUCION") && !col.contains("SOLUCION") -> map.putIfAbsent("falla", idx)
                 col.contains("PRIORIDAD") -> map.putIfAbsent("prioridad", idx)
                 col.contains("ID_TECNICO") || col.contains("ID TECNICO") -> map.putIfAbsent("id_tecnico", idx)
                 col == "TECNICO" || (col.contains("TECNICO") && !col.contains("ID")) -> map.putIfAbsent("tecnico", idx)
-                col.contains("RESOLUCION") || col.contains("SOLUCION") -> map.putIfAbsent("resolucion", idx)
             }
         }
         return map
@@ -469,11 +507,22 @@ object FileParserUtil {
             when (cell.cellType) {
                 CellType.STRING -> cell.stringCellValue.trim()
                 CellType.NUMERIC -> {
-                    val num = cell.numericCellValue
-                    if (num == num.toLong().toDouble()) {
-                        num.toLong().toString()
+                    if (org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(cell)) {
+                        try {
+                            val date = cell.dateCellValue
+                            val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+                            sdf.format(date)
+                        } catch (_: Throwable) {
+                            val num = cell.numericCellValue
+                            if (num == num.toLong().toDouble()) num.toLong().toString() else num.toString()
+                        }
                     } else {
-                        num.toString()
+                        val num = cell.numericCellValue
+                        if (num == num.toLong().toDouble()) {
+                            num.toLong().toString()
+                        } else {
+                            num.toString()
+                        }
                     }
                 }
                 CellType.BOOLEAN -> cell.booleanCellValue.toString()
@@ -481,8 +530,19 @@ object FileParserUtil {
                     try {
                         when (cell.cachedFormulaResultType) {
                             CellType.NUMERIC -> {
-                                val num = cell.numericCellValue
-                                if (num == num.toLong().toDouble()) num.toLong().toString() else num.toString()
+                                if (org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(cell)) {
+                                    try {
+                                        val date = cell.dateCellValue
+                                        val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+                                        sdf.format(date)
+                                    } catch (_: Throwable) {
+                                        val num = cell.numericCellValue
+                                        if (num == num.toLong().toDouble()) num.toLong().toString() else num.toString()
+                                    }
+                                } else {
+                                    val num = cell.numericCellValue
+                                    if (num == num.toLong().toDouble()) num.toLong().toString() else num.toString()
+                                }
                             }
                             CellType.STRING -> cell.stringCellValue.trim()
                             CellType.BOOLEAN -> cell.booleanCellValue.toString()

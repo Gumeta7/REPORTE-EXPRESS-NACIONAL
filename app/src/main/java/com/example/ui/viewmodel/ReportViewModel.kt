@@ -798,10 +798,11 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 val bytes = DriveSyncService.downloadSpreadsheetBytes(url)
                 if (bytes != null && bytes.isNotEmpty()) {
-                    val parsedMachines = FileParserUtil.parseStreamToMachines(bytes.inputStream())
-                    val parsedTechnicians = FileParserUtil.parseStreamToTechnicians(bytes.inputStream())
-                    val parsedIncidencias = FileParserUtil.parseStreamToIncidencias(bytes.inputStream())
-                    val parsedProviders = FileParserUtil.parseStreamToProviderEmails(bytes.inputStream())
+                    val parsed = FileParserUtil.parseAllData(bytes)
+                    val parsedMachines = parsed.machines
+                    val parsedTechnicians = parsed.technicians
+                    val parsedIncidencias = parsed.incidencias
+                    val parsedProviders = parsed.providers
                     if (parsedProviders.isNotEmpty()) {
                         repository.importProviderEmails(parsedProviders)
                     }
@@ -883,10 +884,11 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                     inputStream.close()
 
                     if (bytes.isNotEmpty()) {
-                        val parsedMachines = FileParserUtil.parseStreamToMachines(bytes.inputStream(), defaultSala = userDefaultSala)
-                        val parsedTechnicians = FileParserUtil.parseStreamToTechnicians(bytes.inputStream())
-                        val parsedIncidencias = FileParserUtil.parseStreamToIncidencias(bytes.inputStream())
-                        val parsedProviders = FileParserUtil.parseStreamToProviderEmails(bytes.inputStream())
+                        val parsed = FileParserUtil.parseAllData(bytes, defaultSala = userDefaultSala)
+                        val parsedMachines = parsed.machines
+                        val parsedTechnicians = parsed.technicians
+                        val parsedIncidencias = parsed.incidencias
+                        val parsedProviders = parsed.providers
                         if (parsedProviders.isNotEmpty()) {
                             repository.importProviderEmails(parsedProviders)
                         }

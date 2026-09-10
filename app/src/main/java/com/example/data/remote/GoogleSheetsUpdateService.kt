@@ -170,7 +170,7 @@ Aqh+qUvynCZ9qhEoIRoWku+u
             val idxEstado = headers.indexOfFirst { it.contains("estado") }
             val idxOperativa = headers.indexOfFirst { it == "operativa" }
             val idxFechaReparacion = headers.indexOfFirst { it.contains("reparacion") }
-            val idxResolucion = headers.indexOfFirst { it.contains("resolucion") }
+            val idxResolucion = headers.indexOfFirst { it.contains("resolucion") || it.contains("solucion") }
 
             if (idxId == -1 || idxEstado == -1) {
                 return@withContext Result.failure(Exception("No se encontraron las columnas requeridas en la hoja de incidencias."))
