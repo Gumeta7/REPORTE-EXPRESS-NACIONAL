@@ -1306,7 +1306,7 @@ fun IncidenciaDetailDialog(
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(
-                                            imageVector = Icons.Default.DateRange,
+                                            imageVector = Icons.Default.CalendarToday,
                                             contentDescription = null,
                                             tint = if (isDark) Color(0xFF6EE7B7) else Color(0xFF15803D),
                                             modifier = Modifier.size(14.dp)
