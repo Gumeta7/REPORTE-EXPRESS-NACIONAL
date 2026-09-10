@@ -156,7 +156,7 @@ object FileParserUtil {
         // Locate sheet named "tecnicos" or "técnicos"
         var targetSheetIndex = -1
         for (sheetIndex in 0 until workbook.numberOfSheets) {
-            val rawName = workbook.getSheetName(sheetIndex).trim().lowercase()
+            val normalizedName = workbook.getSheetName(sheetIndex).trim().lowercase()
                 .replace("á", "a")
                 .replace("é", "e")
                 .replace("í", "i")
