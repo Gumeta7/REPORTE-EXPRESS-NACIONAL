@@ -226,19 +226,30 @@ function doPost(e) {
 
       if (rowIndex !== -1) {
         // Actualizar ticket existente
-        if (payload.estado && estadoCol !== -1) {
-          sheet.getRange(rowIndex, estadoCol + 1).setValue(payload.estado);
+        var newEstado = payload.estado || payload.estado_ticket || payload.estadoTicket;
+        var newFechaRep = payload.fecha_reparacion || payload.fechaReparacion;
+        var newResolucion = payload.resolucion || payload.solucion;
+
+        if (newEstado && estadoCol !== -1) {
+          sheet.getRange(rowIndex, estadoCol + 1).setValue(newEstado);
         }
-        if (payload.fecha_reparacion && fechaRepCol !== -1) {
-          sheet.getRange(rowIndex, fechaRepCol + 1).setValue(payload.fecha_reparacion);
+        if (newFechaRep && fechaRepCol !== -1) {
+          sheet.getRange(rowIndex, fechaRepCol + 1).setValue(newFechaRep);
         }
-        if (payload.resolucion && resolucionCol !== -1) {
-          sheet.getRange(rowIndex, resolucionCol + 1).setValue(payload.resolucion);
+        if (newResolucion && resolucionCol !== -1) {
+          sheet.getRange(rowIndex, resolucionCol + 1).setValue(newResolucion);
         }
         return jsonResponse({ result: "success", message: "Ticket actualizado", id_ticket: ticketId });
       }
 
       // Si es nuevo ticket, agregarlo al final
+      var ticketId = (payload.id_ticket || payload.idTicket || "").trim();
+      var estadoVal = payload.estado || payload.estado_ticket || payload.estadoTicket || "ABIERTO";
+      var fechaOrigVal = payload.fecha_origen || payload.fechaOrigen || Utilities.formatDate(new Date(), "America/Mexico_City", "dd/MM/yyyy HH:mm:ss");
+      var fechaRepVal = payload.fecha_reparacion || payload.fechaReparacion || "";
+      var resolucionVal = payload.resolucion || payload.solucion || "";
+      var idTecnicoVal = payload.id_tecnico || payload.idTecnico || "";
+
       var newRow = [];
       for (var c = 0; c < headers.length; c++) {
         var h = headersUpper[c];
@@ -251,13 +262,13 @@ function doPost(e) {
         else if (h.indexOf("AREA") !== -1 || h.indexOf("ZONA") !== -1) newRow.push(payload.area || "");
         else if (h.indexOf("PROPIETARIO") !== -1) newRow.push(payload.propietario || "WINPOT");
         else if (h.indexOf("OPERATIVA") !== -1) newRow.push(payload.operativa || "NO");
-        else if (h.indexOf("ESTADO") !== -1 || h.indexOf("STATUS") !== -1) newRow.push(payload.estado || "ABIERTO");
-        else if (h.indexOf("ORIGEN") !== -1 || (h.indexOf("FECHA") !== -1 && h.indexOf("REPARACION") === -1)) newRow.push(payload.fecha_origen || Utilities.formatDate(new Date(), "America/Mexico_City", "dd/MM/yyyy HH:mm:ss"));
-        else if (h.indexOf("REPARACION") !== -1) newRow.push(payload.fecha_reparacion || "");
-        else if (h.indexOf("RESOLUCION") !== -1 || h.indexOf("SOLUCION") !== -1) newRow.push(payload.resolucion || "");
+        else if (h.indexOf("ESTADO") !== -1 || h.indexOf("STATUS") !== -1) newRow.push(estadoVal);
+        else if (h.indexOf("ORIGEN") !== -1 || (h.indexOf("FECHA") !== -1 && h.indexOf("REPARACION") === -1)) newRow.push(fechaOrigVal);
+        else if (h.indexOf("REPARACION") !== -1) newRow.push(fechaRepVal);
+        else if (h.indexOf("RESOLUCION") !== -1 || h.indexOf("SOLUCION") !== -1) newRow.push(resolucionVal);
         else if (h.indexOf("FALLA") !== -1 || h.indexOf("DESCRIPCION") !== -1) newRow.push(payload.falla || "");
         else if (h.indexOf("PRIORIDAD") !== -1) newRow.push(payload.prioridad || "MEDIA");
-        else if (h.indexOf("ID_TECNICO") !== -1) newRow.push(payload.id_tecnico || "");
+        else if (h.indexOf("ID_TECNICO") !== -1) newRow.push(idTecnicoVal);
         else if (h.indexOf("TECNICO") !== -1) newRow.push(payload.tecnico || "");
         else newRow.push("");
       }
