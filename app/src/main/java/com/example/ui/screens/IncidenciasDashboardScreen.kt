@@ -678,13 +678,17 @@ fun IncidenciaTicketCard(
 
     val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
 
+    val isAbierto = incidencia.estadoTicket.contains("ABIERTO", ignoreCase = true)
+
     val estadoColor = when {
         isResuelto -> StatusOperativa
+        isAbierto -> StatusFueraServicio
         incidencia.estadoTicket.contains("PROCESO", ignoreCase = true) -> Color(0xFF38BDF8)
         else -> StatusPendiente
     }
     val estadoBadgeText = when {
         isResuelto -> "RESUELTO"
+        isAbierto -> "ABIERTO"
         incidencia.estadoTicket.contains("PROCESO", ignoreCase = true) -> "EN PROCESO"
         else -> "PENDIENTE"
     }
@@ -1017,7 +1021,11 @@ fun IncidenciaDetailDialog(
 ) {
     var currentTicket by remember(incidencia) { mutableStateOf(incidencia) }
 
-    val initialStatus = if (currentTicket.estadoTicket.contains("RESUELT", true) || currentTicket.estadoTicket.contains("CERRAD", true)) "RESUELTO" else "PENDIENTE"
+    val initialStatus = when {
+        currentTicket.estadoTicket.contains("RESUELT", true) || currentTicket.estadoTicket.contains("CERRAD", true) -> "RESUELTO"
+        currentTicket.estadoTicket.contains("ABIERTO", true) -> "ABIERTO"
+        else -> "PENDIENTE"
+    }
     var editStatus by remember(currentTicket) { mutableStateOf(initialStatus) }
     var editOperativa by remember(currentTicket) {
         mutableStateOf(currentTicket.operativa.ifBlank { if (initialStatus == "RESUELTO") "SI" else "NO" })
@@ -1104,13 +1112,22 @@ fun IncidenciaDetailDialog(
 
                         // Estado badge
                         val isCurrResuelto = currentTicket.estadoTicket.contains("RESUELT", true) || currentTicket.estadoTicket.contains("CERRAD", true)
-                        val currBadgeColor = if (isCurrResuelto) Color(0xFF16A34A) else Color(0xFFEA580C)
+                        val isCurrAbierto = currentTicket.estadoTicket.contains("ABIERTO", true)
+                        val currBadgeColor = when {
+                            isCurrResuelto -> Color(0xFF16A34A)
+                            isCurrAbierto -> StatusFueraServicio
+                            else -> Color(0xFFEA580C)
+                        }
                         Surface(
                             shape = RoundedCornerShape(8.dp),
                             color = currBadgeColor
                         ) {
                             Text(
-                                text = if (isCurrResuelto) "RESUELTO" else "PENDIENTE",
+                                text = when {
+                                    isCurrResuelto -> "RESUELTO"
+                                    isCurrAbierto -> "ABIERTO"
+                                    else -> "PENDIENTE"
+                                },
                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                                 fontWeight = FontWeight.ExtraBold,
                                 color = Color.White,
@@ -1265,6 +1282,32 @@ fun IncidenciaDetailDialog(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
+                                    val isAbiertoSelected = editStatus == "ABIERTO"
+                                    Surface(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable(enabled = !isUpdating) {
+                                                editStatus = "ABIERTO"
+                                                editOperativa = "NO"
+                                                editFechaReparacion = ""
+                                            },
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isAbiertoSelected) StatusFueraServicio else MaterialTheme.colorScheme.surface,
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            1.dp,
+                                            if (isAbiertoSelected) StatusFueraServicio else MaterialTheme.colorScheme.outlineVariant
+                                        )
+                                    ) {
+                                        Text(
+                                            text = "ABIERTO",
+                                            modifier = Modifier.padding(vertical = 10.dp),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = if (isAbiertoSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+
                                     val isPendienteSelected = editStatus == "PENDIENTE"
                                     Surface(
                                         modifier = Modifier

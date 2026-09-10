@@ -282,7 +282,7 @@ object FileParserUtil {
                             val area = getVal("area")
                             val propietario = getVal("propietario").ifBlank { "WINPOT" }
                             val operativa = getVal("operativa").uppercase().ifBlank { "NO" }
-                            val estadoTicket = getVal("estado_ticket").uppercase().ifBlank { "PENDIENTE" }
+                            val estadoTicket = getVal("estado_ticket").uppercase().ifBlank { "ABIERTO" }
                             val fechaOrigen = getVal("fecha_origen")
                             val fechaReparacion = getVal("fecha_reparacion")
                             val falla = getVal("falla")

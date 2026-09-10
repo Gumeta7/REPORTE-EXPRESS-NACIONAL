@@ -528,7 +528,10 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 val st = it.estadoTicket.uppercase()
                 it.operativa.equals("NO", ignoreCase = true) && !st.contains("RESUELT") && !st.contains("CERRAD")
             }
-            "PENDIENTES", "PENDIENTE", "ABIERTO", "EN PROCESO" -> salaFiltered.filter {
+            "ABIERTOS", "ABIERTO" -> salaFiltered.filter {
+                it.estadoTicket.contains("ABIERTO", ignoreCase = true)
+            }
+            "PENDIENTES", "PENDIENTE", "EN PROCESO" -> salaFiltered.filter {
                 val st = it.estadoTicket.uppercase()
                 !st.contains("RESUELT") && !st.contains("CERRAD")
             }
@@ -644,7 +647,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                         area = obj.optString("area", ""),
                         propietario = obj.optString("propietario", "WINPOT"),
                         operativa = obj.optString("operativa", "NO"),
-                        estadoTicket = obj.optString("estadoTicket", "PENDIENTE"),
+                        estadoTicket = obj.optString("estadoTicket", "ABIERTO"),
                         fechaOrigen = obj.optString("fechaOrigen", ""),
                         fechaReparacion = obj.optString("fechaReparacion", ""),
                         falla = obj.optString("falla", ""),
