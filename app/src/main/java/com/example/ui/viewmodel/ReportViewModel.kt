@@ -1136,7 +1136,6 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             // 4. Extract issue description cleanly
             val cleanedIssue = cleanIssueDescription(promptText, numberMatch, matchedProvider?.providerName)
 
-            val greeting = getTimeOfDayGreeting()
             val finalBrand = when {
                 foundMachine != null && foundMachine.brand.isNotBlank() -> foundMachine.brand
                 matchedProvider != null -> matchedProvider.providerName
@@ -1152,7 +1151,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val ticketId = com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial, nextConsecutive)
 
             val formattedBody = buildString {
-                appendLine("$greeting estimados, nos podrían apoyar con la revisión y atención de la siguiente terminal, la cual presenta el siguiente inconveniente:")
+                appendLine("Buen dia estimados, solicitamos apoyo con la siguiente terminal")
                 appendLine()
                 appendLine("Detalle de la falla: $cleanedIssue.")
                 appendLine()
@@ -1163,11 +1162,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 appendLine("• Modelo: $finalModel")
                 appendLine("• Asset Number: $finalAsset")
                 appendLine("• Número de Serie: $finalSerial")
-                appendLine("• Área: $finalArea")
-                appendLine()
-                appendLine("Quedamos a la espera de sus comentarios y apoyo.")
-                appendLine()
-                append("Saludos cordiales.")
+                append("• Área: $finalArea")
             }
 
             val subjectLine = ticketId
@@ -1300,16 +1295,15 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 else -> ""
             }
 
-            val greeting = getTimeOfDayGreeting()
             val cleanedIssue = issueDescription.trim().ifBlank { "Falla reportada en terminales" }
             val isSingle = machines.size == 1
             val nextConsecutive = getNextFolioConsecutive()
             val ticketId = com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial, nextConsecutive)
 
             val introLine = if (isSingle) {
-                "$greeting estimados, nos podrían apoyar con la revisión y atención de la siguiente terminal, la cual presenta el siguiente inconveniente:"
+                "Buen dia estimados, solicitamos apoyo con la siguiente terminal"
             } else {
-                "$greeting estimados, nos podrían apoyar con la revisión y atención de las siguientes terminales, las cuales presentan el siguiente inconveniente:"
+                "Buen dia estimados, solicitamos apoyo con las siguientes terminales"
             }
 
             val formattedBody = buildString {
@@ -1324,11 +1318,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 appendLine("• Modelo: $finalModel")
                 appendLine("• Asset Number: $finalAsset")
                 appendLine("• Número de Serie: $finalSerial")
-                appendLine("• Área: $finalArea")
-                appendLine()
-                appendLine("Quedamos a la espera de sus comentarios y apoyo.")
-                appendLine()
-                append("Saludos cordiales.")
+                append("• Área: $finalArea")
             }
 
             val subjectLine = ticketId
