@@ -99,15 +99,23 @@ object DriveSyncService {
         return this.size >= 4 && this[0] == 0x50.toByte() && this[1] == 0x4B.toByte()
     }
 
+    data class WebhookResult(
+        val success: Boolean,
+        val idTicket: String? = null,
+        val consecutive: Int? = null,
+        val message: String? = null
+    )
+
     /**
      * Envía la información de una incidencia a la pestaña 'Incidencias' del Google Spreadsheet vía Webhook POST.
+     * Retorna el resultado y el ID definitivo asignado atómicamente por Google Sheets.
      */
-    suspend fun postIncidenciaToDriveSheet(payload: IncidenciaTicketPayload): Boolean =
+    suspend fun postIncidenciaToDriveSheet(payload: IncidenciaTicketPayload): WebhookResult =
         withContext(Dispatchers.IO) {
             val webhook = customWebhookUrl.trim().ifBlank { DEFAULT_INCIDENCIAS_WEBHOOK_URL }
             if (webhook.isBlank()) {
                 Log.w(TAG, "No se ha configurado la URL de Webhook de Incidencias en la hoja de cálculo.")
-                return@withContext false
+                return@withContext WebhookResult(success = false, message = "URL Webhook no configurada")
             }
 
             try {
@@ -124,11 +132,31 @@ object DriveSyncService {
 
                 val response = client.newCall(request).execute()
                 val isSuccess = response.isSuccessful
-                Log.d(TAG, "Respuesta de registro de incidencia Webhook: HTTP ${response.code} (éxito=$isSuccess)")
-                return@withContext isSuccess
+                val responseBody = response.body?.string().orEmpty()
+                Log.d(TAG, "Respuesta Webhook: HTTP ${response.code} (éxito=$isSuccess) Body: $responseBody")
+
+                if (isSuccess && responseBody.isNotBlank()) {
+                    try {
+                        val json = org.json.JSONObject(responseBody)
+                        val resultStr = json.optString("result", "")
+                        val isOk = resultStr.equals("success", ignoreCase = true) || resultStr.equals("already_exists", ignoreCase = true)
+                        val returnedTicketId = json.optString("id_ticket", "").ifBlank { null }
+                        val returnedConsecutive = if (json.has("consecutive")) json.optInt("consecutive") else null
+                        return@withContext WebhookResult(
+                            success = isOk,
+                            idTicket = returnedTicketId ?: payload.idTicket,
+                            consecutive = returnedConsecutive,
+                            message = json.optString("message", "")
+                        )
+                    } catch (pe: Exception) {
+                        Log.w(TAG, "No se pudo parsear respuesta JSON de Webhook: $responseBody", pe)
+                    }
+                }
+
+                return@withContext WebhookResult(success = isSuccess, idTicket = payload.idTicket)
             } catch (e: Exception) {
                 Log.e(TAG, "Error al enviar la incidencia a Google Sheets", e)
-                return@withContext false
+                return@withContext WebhookResult(success = false, message = e.message)
             }
         }
 }

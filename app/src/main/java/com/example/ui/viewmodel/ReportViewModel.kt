@@ -1436,9 +1436,20 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             com.example.data.remote.DriveSyncService.customWebhookUrl = configuredUrl.ifBlank {
                 com.example.data.remote.DriveSyncService.DEFAULT_INCIDENCIAS_WEBHOOK_URL
             }
-            val success = com.example.data.remote.DriveSyncService.postIncidenciaToDriveSheet(payload)
-            if (success) {
-                _statusMessage.value = "Incidencia registrada en Google Sheets ($ticketId)."
+            val result = com.example.data.remote.DriveSyncService.postIncidenciaToDriveSheet(payload)
+            if (result.success) {
+                val confirmedId = result.idTicket ?: ticketId
+                if (confirmedId != ticketId) {
+                    dispatchedTicketIds.add(confirmedId)
+                }
+                // Si el servidor asignó un consecutivo atómico, actualizar SharedPreferences localmente
+                result.consecutive?.let { serverConsecutive ->
+                    val localConsecutive = prefs.getInt("last_generated_folio_consecutive", 0)
+                    if (serverConsecutive >= localConsecutive) {
+                        prefs.edit().putInt("last_generated_folio_consecutive", serverConsecutive).apply()
+                    }
+                }
+                _statusMessage.value = "Incidencia registrada en Google Sheets ($confirmedId)."
                 // Sincronizar automáticamente para reflejar la nueva incidencia en la app y KPIs de inmediato
                 syncFromDrive(showProgressMessage = false)
             } else {
