@@ -55,16 +55,37 @@ object TicketIdGenerator {
     }
 
     /**
-     * Genera el ID_Ticket con estructura: [PREFIJO]-[YYYYMMDD]-[SERIE]
-     * Ejemplo: CIR-20260906-CAPRI111
-     * Siempre retorna un ID válido para garantizar que la incidencia se registre en Google Sheets.
+     * Genera el ID_Ticket con la nueva nomenclatura oficial:
+     * [ID_SALA]-[NUMERO DE SERIE DEL EQUIPO]-[NUMERO CONSECUTIVO]
+     * Ejemplo: PHIE-22/55243-1
+     * El número consecutivo comienza en 1.
      */
-    fun generateTicketId(salaName: String, serialNumber: String, date: Date = Date()): String {
-        val prefix = getSalaPrefix(salaName)
-        val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
-        val dateString = dateFormat.format(date)
+    fun generateTicketId(salaName: String, serialNumber: String, consecutive: Int = 1): String {
+        val idSala = getSalaPrefix(salaName)
         val cleanSerial = serialNumber.trim().ifBlank { "SN-PENDIENTE" }
-        return "$prefix-$dateString-$cleanSerial"
+        val validConsecutive = if (consecutive > 0) consecutive else 1
+        return "$idSala-$cleanSerial-$validConsecutive"
+    }
+
+    /**
+     * Extrae el número consecutivo de un folio con el formato [ID_SALA]-[SERIE]-[CONSECUTIVO].
+     * Ignora folios con el formato antiguo [ID_SALA]-[YYYYMMDD]-[SERIE].
+     */
+    fun extractConsecutiveFromTicketId(ticketId: String): Int? {
+        val trimmed = ticketId.trim()
+        if (trimmed.isBlank()) return null
+
+        val parts = trimmed.split("-")
+        // Formato nuevo requiere al menos 3 partes: ID_SALA, SERIE y CONSECUTIVO
+        if (parts.size < 3) return null
+
+        // En el formato anterior [SALA]-[YYYYMMDD]-[SERIE], la segunda parte es una fecha de 8 dígitos que empieza con "20"
+        if (parts.size == 3 && parts[1].length == 8 && parts[1].startsWith("20") && parts[1].all { it.isDigit() }) {
+            return null
+        }
+
+        val lastPart = parts.lastOrNull() ?: return null
+        return lastPart.toIntOrNull()
     }
 
     /**

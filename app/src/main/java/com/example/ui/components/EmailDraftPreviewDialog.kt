@@ -147,7 +147,7 @@ fun EmailDraftPreviewDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Extracted Machine Highlights Badge Card
-                if (draftState.serialNumber.isNotBlank() || draftState.assetNumber.isNotBlank()) {
+                if (draftState.serialNumber.isNotBlank() || draftState.assetNumber.isNotBlank() || !draftState.ticketId.isNullOrBlank()) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -156,12 +156,32 @@ fun EmailDraftPreviewDialog(
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text(
-                                text = "Resumen de Datos Extraídos",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Resumen de Datos Extraídos",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                if (!draftState.ticketId.isNullOrBlank()) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = MaterialTheme.colorScheme.primaryContainer
+                                    ) {
+                                        Text(
+                                            text = draftState.ticketId,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Black,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                }
+                            }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = "• Serie: ${draftState.serialNumber.ifBlank { "N/A" }} | Asset: ${draftState.assetNumber.ifBlank { "N/A" }}",

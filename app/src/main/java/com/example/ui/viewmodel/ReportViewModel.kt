@@ -1053,6 +1053,24 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         return null
     }
 
+    /**
+     * Obtiene el siguiente número consecutivo para folios de reporte, comenzando en 1.
+     * Analiza las incidencias registradas en la base de datos de Google Sheets y el contador
+     * local en SharedPreferences para garantizar una secuencia creciente sin duplicados.
+     */
+    @Synchronized
+    fun getNextFolioConsecutive(): Int {
+        val maxFromExisting = _rawIncidencias.value.mapNotNull { item ->
+            com.example.util.TicketIdGenerator.extractConsecutiveFromTicketId(item.idTicket)
+        }.maxOrNull() ?: 0
+
+        val storedConsecutive = prefs.getInt("last_generated_folio_consecutive", 0)
+
+        val nextNumber = maxOf(maxFromExisting, storedConsecutive) + 1
+        prefs.edit().putInt("last_generated_folio_consecutive", nextNumber).apply()
+        return nextNumber
+    }
+
     // --- Step 5: Quick Prompt Report Generator ---
     fun generateQuickReport(
         promptText: String,
@@ -1130,7 +1148,8 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val finalSala = foundMachine?.sala?.ifBlank { null } ?: venueName.value.ifBlank { "Sala Principal" }
             val finalArea = foundMachine?.area ?: "Sala Principal"
             val finalPropietario = foundMachine?.propietario?.ifBlank { "WINPOT" } ?: "WINPOT"
-            val ticketId = com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial)
+            val nextConsecutive = getNextFolioConsecutive()
+            val ticketId = com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial, nextConsecutive)
 
             val formattedBody = buildString {
                 appendLine("$greeting estimados, nos podrían apoyar con la revisión y atención de la siguiente terminal, la cual presenta el siguiente inconveniente:")
@@ -1138,6 +1157,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 appendLine("Detalle de la falla: $cleanedIssue.")
                 appendLine()
                 appendLine("--- Datos del equipo ---")
+                appendLine("• Folio de Reporte: $ticketId")
                 appendLine("• Sala / Ubicación: $finalSala")
                 appendLine("• Marca: $finalBrand")
                 appendLine("• Modelo: $finalModel")
@@ -1150,7 +1170,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 append("Saludos cordiales.")
             }
 
-            val subjectLine = "REPORTE DE TERMINAL - $finalSala (ASSET: $finalAsset)"
+            val subjectLine = "REPORTE DE TERMINAL - $finalSala (FOLIO: $ticketId | ASSET: $finalAsset)"
 
             val draft = EmailDraftState(
                 recipient = finalRecipient,
@@ -1283,7 +1303,8 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val greeting = getTimeOfDayGreeting()
             val cleanedIssue = issueDescription.trim().ifBlank { "Falla reportada en terminales" }
             val isSingle = machines.size == 1
-            val ticketId = if (isSingle) com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial) else null
+            val nextConsecutive = getNextFolioConsecutive()
+            val ticketId = com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial, nextConsecutive)
 
             val introLine = if (isSingle) {
                 "$greeting estimados, nos podrían apoyar con la revisión y atención de la siguiente terminal, la cual presenta el siguiente inconveniente:"
@@ -1297,6 +1318,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 appendLine("Detalle de la falla: $cleanedIssue.")
                 appendLine()
                 appendLine(if (isSingle) "--- Datos del equipo ---" else "--- Datos de los equipos ---")
+                appendLine("• Folio de Reporte: $ticketId")
                 appendLine("• Sala / Ubicación: $finalSala")
                 appendLine("• Marca: $finalBrand")
                 appendLine("• Modelo: $finalModel")
@@ -1310,9 +1332,9 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             }
 
             val subjectLine = if (isSingle) {
-                "REPORTE DE TERMINAL - $finalSala (ASSET: $finalAsset)"
+                "REPORTE DE TERMINAL - $finalSala (FOLIO: $ticketId | ASSET: $finalAsset)"
             } else {
-                "REPORTE DE TERMINALES - $finalSala (ASSETS: $finalAsset)"
+                "REPORTE DE TERMINALES - $finalSala (FOLIO: $ticketId | ASSETS: $finalAsset)"
             }
 
             val draft = EmailDraftState(
@@ -1401,7 +1423,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         val finalSala = draft.sala.ifBlank { venueName.value.ifBlank { "Sala Principal" } }
         val finalSerial = draft.serialNumber.ifBlank { "SN-${draft.machineNumber.ifBlank { "PENDIENTE" }}" }
         val ticketId = draft.ticketId?.ifBlank { null }
-            ?: com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial)
+            ?: com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial, getNextFolioConsecutive())
 
         if (dispatchedTicketIds.contains(ticketId)) {
             // Prevenir duplicidad en Google Sheets si ya fue despachado
