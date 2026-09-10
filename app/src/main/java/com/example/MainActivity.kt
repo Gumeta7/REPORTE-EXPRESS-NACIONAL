@@ -279,10 +279,10 @@ fun MainAppScreen(viewModel: ReportViewModel) {
                                 Image(
                                     painter = painterResource(id = R.drawable.logo_parra),
                                     contentDescription = "Logo Personal",
-                                    contentScale = ContentScale.Fit,
+                                    contentScale = ContentScale.Crop,
                                     modifier = Modifier
-                                        .height(34.dp)
-                                        .widthIn(min = 45.dp, max = 95.dp)
+                                        .size(34.dp)
+                                        .clip(CircleShape)
                                 )
                             }
                         } else {
@@ -543,10 +543,10 @@ fun MainAppScreen(viewModel: ReportViewModel) {
                                 Image(
                                     painter = painterResource(id = R.drawable.logo_parra),
                                     contentDescription = "Logo Personal aparra",
-                                    contentScale = ContentScale.Fit,
+                                    contentScale = ContentScale.Crop,
                                     modifier = Modifier
                                         .size(200.dp)
-                                        .clip(RoundedCornerShape(18.dp))
+                                        .clip(CircleShape)
                                 )
                             }
                         }

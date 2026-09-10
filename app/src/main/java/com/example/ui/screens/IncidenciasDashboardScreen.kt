@@ -1264,7 +1264,67 @@ fun IncidenciaDetailDialog(
                         }
                     }
 
-                    // Sección 4: Gestión para SUPERUSER o Resolución solo lectura
+                    // Sección 4: Solución / Resolución (visible cuando el ticket está resuelto o tiene notas de solución)
+                    val isTicketResuelto = currentTicket.estadoTicket.equals("RESUELTO", ignoreCase = true) ||
+                            currentTicket.estadoTicket.contains("CERRAD", ignoreCase = true) ||
+                            currentTicket.resolucion.isNotBlank()
+
+                    if (isTicketResuelto) {
+                        val resolucionCardBg = if (isDark) Color(0xFF0D281E) else Color(0xFFF0FDF4)
+                        val resolucionBorder = if (isDark) Color(0xFF134E39) else Color(0xFF86EFAC)
+                        Card(
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = resolucionCardBg),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, resolucionBorder),
+                            elevation = CardDefaults.cardElevation(defaultElevation = if (isDark) 0.dp else 1.5.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = Color(0xFF16A34A),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Solución / Resolución Aplicada",
+                                        style = MaterialTheme.typography.titleSmall.copy(fontSize = 14.sp),
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isDark) Color(0xFF6EE7B7) else Color(0xFF15803D)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = if (currentTicket.resolucion.isNotBlank()) currentTicket.resolucion else "Ticket marcado como RESUELTO sin notas adicionales.",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 18.sp),
+                                    fontWeight = FontWeight.Medium,
+                                    color = if (isDark) Color(0xFFE2E8F0) else Color(0xFF14532D)
+                                )
+                                if (currentTicket.fechaReparacion.isNotBlank()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.DateRange,
+                                            contentDescription = null,
+                                            tint = if (isDark) Color(0xFF6EE7B7) else Color(0xFF15803D),
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Fecha de reparación: ${currentTicket.fechaReparacion}",
+                                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = if (isDark) Color(0xFFA7F3D0) else Color(0xFF166534)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Sección 5: Gestión para SUPERUSER
                     if (isSuperUser) {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -1617,42 +1677,6 @@ fun IncidenciaDetailDialog(
                                         Text("Actualizar Estatus", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                     }
                                 }
-                            }
-                        }
-                    } else if (currentTicket.resolucion.isNotBlank()) {
-                        // Resolución solo lectura para rol Técnico / Admin no-superuser
-                        val resolucionCardBg = if (isDark) Color(0xFF0D281E) else Color(0xFFF0FDF4)
-                        val resolucionBorder = if (isDark) Color(0xFF134E39) else Color(0xFF86EFAC)
-                        Card(
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = resolucionCardBg),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, resolucionBorder),
-                            elevation = CardDefaults.cardElevation(defaultElevation = if (isDark) 0.dp else 1.5.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        tint = Color(0xFF15803D),
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Resolución Aplicada:",
-                                        style = MaterialTheme.typography.titleSmall.copy(fontSize = 13.5.sp),
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isDark) Color(0xFF6EE7B7) else Color(0xFF15803D)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = currentTicket.resolucion,
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 18.sp),
-                                    fontWeight = FontWeight.Medium,
-                                    color = if (isDark) Color(0xFFE2E8F0) else Color(0xFF14532D)
-                                )
                             }
                         }
                     }
