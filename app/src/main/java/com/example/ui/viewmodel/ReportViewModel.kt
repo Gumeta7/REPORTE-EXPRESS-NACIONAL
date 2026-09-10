@@ -604,19 +604,26 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun parseIncidenciaDateToMillis(dateStr: String): Long {
         if (dateStr.isBlank()) return 0L
+        val trimmed = dateStr.trim()
+        val num = trimmed.toDoubleOrNull()
+        if (num != null && num > 30000 && num < 60000) {
+            return ((num - 25569) * 86400 * 1000).toLong()
+        }
         val formats = listOf(
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy-MM-dd H:m:s",
+            "yyyy-MM-dd",
             "d/M/yyyy H:m:s",
             "d/M/yyyy HH:mm:ss",
             "dd/MM/yyyy HH:mm:ss",
+            "dd/MM/yyyy HH:mm",
             "d/M/yyyy",
-            "dd/MM/yyyy",
-            "yyyy-MM-dd HH:mm:ss",
-            "yyyy-MM-dd"
+            "dd/MM/yyyy"
         )
         for (fmt in formats) {
             try {
                 val sdf = SimpleDateFormat(fmt, Locale.getDefault())
-                val d = sdf.parse(dateStr.trim())
+                val d = sdf.parse(trimmed)
                 if (d != null) return d.time
             } catch (_: Exception) {}
         }

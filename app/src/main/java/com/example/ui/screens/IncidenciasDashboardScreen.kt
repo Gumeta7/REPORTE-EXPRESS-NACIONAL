@@ -75,12 +75,16 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.data.remote.IncidenciaItem
+import com.example.ui.theme.DarkOledBorder
+import com.example.ui.theme.DarkOledSurface
+import com.example.ui.theme.DarkOledSurfaceVariant
 import com.example.ui.theme.ElectricIndigoLight
 import com.example.ui.theme.ElectricIndigoPrimary
 import com.example.ui.theme.StatusFueraServicio
 import com.example.ui.theme.StatusOperativa
 import com.example.ui.theme.StatusPendiente
 import com.example.ui.theme.StatusTotal
+import com.example.ui.theme.TextPrimaryDark
 import com.example.ui.viewmodel.ReportViewModel
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -703,7 +707,7 @@ fun IncidenciaTicketCard(
         formatExcelDate(incidencia.fechaOrigen)
     }
     val displayFechaReparacion = remember(incidencia.fechaReparacion) {
-        formatExcelDate(incidencia.fechaReparacion)
+        formatExcelDate(incidencia.fechaReparacion, dateOnly = true)
     }
 
     val cardBg = if (isDarkTheme) Color(0xFF13131A) else MaterialTheme.colorScheme.surface
@@ -997,16 +1001,40 @@ fun MetadataTag(label: String, value: String) {
 }
 
 // Convierte números seriales de fecha de Excel (ej: 46270.91099) o textos a formato dd/MM/yyyy HH:mm
-fun formatExcelDate(dateStr: String): String {
+fun formatExcelDate(dateStr: String, dateOnly: Boolean = false): String {
     val trimmed = dateStr.trim()
     if (trimmed.isBlank()) return ""
     try {
         val num = trimmed.toDoubleOrNull()
         if (num != null && num > 30000 && num < 60000) {
-            // Número serial de fecha de Excel
+            // Número serial de fecha de Excel. Se usa UTC para preservar la hora local sin desfases.
             val millis = ((num - 25569) * 86400 * 1000).toLong()
-            val sdf = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+            val hasTime = kotlin.math.abs(num - kotlin.math.round(num)) > 0.0001
+            val pattern = if (!hasTime || dateOnly) "dd/MM/yyyy" else "dd/MM/yyyy HH:mm"
+            val sdf = java.text.SimpleDateFormat(pattern, java.util.Locale.getDefault())
+            sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
             return sdf.format(java.util.Date(millis))
+        }
+
+        val parseFormats = listOf(
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy-MM-dd H:m:s",
+            "yyyy-MM-dd",
+            "dd/MM/yyyy HH:mm:ss",
+            "dd/MM/yyyy HH:mm",
+            "dd/MM/yyyy"
+        )
+        for (fmt in parseFormats) {
+            try {
+                val parser = java.text.SimpleDateFormat(fmt, java.util.Locale.getDefault())
+                parser.isLenient = false
+                val d = parser.parse(trimmed)
+                if (d != null) {
+                    val outPattern = if (dateOnly || fmt == "yyyy-MM-dd" || fmt == "dd/MM/yyyy") "dd/MM/yyyy" else "dd/MM/yyyy HH:mm"
+                    val formatter = java.text.SimpleDateFormat(outPattern, java.util.Locale.getDefault())
+                    return formatter.format(d)
+                }
+            } catch (_: Exception) {}
         }
     } catch (_: Exception) {}
     return trimmed
@@ -1035,7 +1063,7 @@ fun IncidenciaDetailDialog(
     val defaultToday = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()) }
     var editFechaReparacion by remember(currentTicket) {
         val f = currentTicket.fechaReparacion.trim()
-        val parsed = if (f.isNotBlank()) formatExcelDate(f).split(" ")[0] else if (initialStatus == "RESUELTO") defaultToday else ""
+        val parsed = if (f.isNotBlank()) formatExcelDate(f, dateOnly = true).split(" ")[0] else if (initialStatus == "RESUELTO") defaultToday else ""
         mutableStateOf(parsed)
     }
 
@@ -1044,6 +1072,11 @@ fun IncidenciaDetailDialog(
     var isUpdateSuccess by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
+
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val dialogBg = if (isDark) DarkOledSurface else Color(0xFFF1F5F9)
+    val headerBg = if (isDark) DarkOledSurfaceVariant else Color.White
+    val borderCol = if (isDark) DarkOledBorder else Color(0xFFE2E8F0)
 
     Dialog(
         onDismissRequest = { if (!isUpdating) onDismiss() },
@@ -1054,15 +1087,15 @@ fun IncidenciaDetailDialog(
                 .fillMaxWidth(0.95f)
                 .fillMaxHeight(0.92f),
             shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp
+            color = dialogBg,
+            shadowElevation = 8.dp
         ) {
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
                 // Modal Header
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    color = headerBg,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -1077,7 +1110,7 @@ fun IncidenciaDetailDialog(
                                 text = "Detalle del Reporte",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = if (isDark) TextPrimaryDark else Color(0xFF0F172A)
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Row(
@@ -1144,13 +1177,13 @@ fun IncidenciaDetailDialog(
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Cerrar",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = if (isDark) MaterialTheme.colorScheme.onSurfaceVariant else Color(0xFF64748B)
                             )
                         }
                     }
                 }
 
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                HorizontalDivider(color = borderCol)
 
                 // Scrollable Body
                 Column(
@@ -1178,38 +1211,55 @@ fun IncidenciaDetailDialog(
                         DetailRowItem(label = "Fecha de Reporte", value = formatExcelDate(currentTicket.fechaOrigen))
                         DetailRowItem(
                             label = "Fecha Reparación",
-                            value = if (currentTicket.fechaReparacion.isNotBlank()) formatExcelDate(currentTicket.fechaReparacion) else "Pendiente"
+                            value = if (currentTicket.fechaReparacion.isNotBlank()) formatExcelDate(currentTicket.fechaReparacion, dateOnly = true) else "Pendiente"
                         )
                     }
 
                     // Sección 3: Falla Reportada
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                    val fallaCardBg = if (isDark) DarkOledSurfaceVariant else Color.White
+                    val fallaBorder = if (isDark) DarkOledBorder else Color(0xFFCBD5E1)
+                    Card(
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = fallaCardBg),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, fallaBorder),
+                        elevation = CardDefaults.cardElevation(defaultElevation = if (isDark) 0.dp else 1.5.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
+                        Column(modifier = Modifier.padding(14.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.Warning,
-                                    contentDescription = null,
-                                    tint = Color(0xFFDC2626),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(26.dp)
+                                        .background(
+                                            color = Color(0xFFDC2626).copy(alpha = if (isDark) 0.2f else 0.12f),
+                                            shape = RoundedCornerShape(6.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = Color(0xFFDC2626),
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Falla Reportada:",
-                                    style = MaterialTheme.typography.labelMedium,
+                                    text = "Falla Reportada",
+                                    style = MaterialTheme.typography.titleSmall.copy(fontSize = 13.5.sp),
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = if (isDark) TextPrimaryDark else Color(0xFF0F172A)
                                 )
                             }
-                            Spacer(modifier = Modifier.height(6.dp))
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 8.dp),
+                                color = if (isDark) DarkOledBorder else Color(0xFFF1F5F9)
+                            )
                             Text(
                                 text = currentTicket.falla.ifBlank { "Sin descripción detallada." },
-                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
-                                color = MaterialTheme.colorScheme.onSurface
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 18.sp),
+                                fontWeight = FontWeight.Medium,
+                                color = if (isDark) Color(0xFFE2E8F0) else Color(0xFF1E293B)
                             )
                         }
                     }
@@ -1571,13 +1621,16 @@ fun IncidenciaDetailDialog(
                         }
                     } else if (currentTicket.resolucion.isNotBlank()) {
                         // Resolución solo lectura para rol Técnico / Admin no-superuser
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFFF0FDF4),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF86EFAC)),
+                        val resolucionCardBg = if (isDark) Color(0xFF0D281E) else Color(0xFFF0FDF4)
+                        val resolucionBorder = if (isDark) Color(0xFF134E39) else Color(0xFF86EFAC)
+                        Card(
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = resolucionCardBg),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, resolucionBorder),
+                            elevation = CardDefaults.cardElevation(defaultElevation = if (isDark) 0.dp else 1.5.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
+                            Column(modifier = Modifier.padding(14.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
                                         imageVector = Icons.Default.CheckCircle,
@@ -1588,16 +1641,17 @@ fun IncidenciaDetailDialog(
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
                                         text = "Resolución Aplicada:",
-                                        style = MaterialTheme.typography.labelMedium,
+                                        style = MaterialTheme.typography.titleSmall.copy(fontSize = 13.5.sp),
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF15803D)
+                                        color = if (isDark) Color(0xFF6EE7B7) else Color(0xFF15803D)
                                     )
                                 }
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = currentTicket.resolucion,
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
-                                    color = Color(0xFF14532D)
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 18.sp),
+                                    fontWeight = FontWeight.Medium,
+                                    color = if (isDark) Color(0xFFE2E8F0) else Color(0xFF14532D)
                                 )
                             }
                         }
@@ -1614,34 +1668,50 @@ private fun DetailSectionCard(
     icon: ImageVector,
     content: @Composable () -> Unit
 ) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val cardBg = if (isDark) DarkOledSurfaceVariant else Color.White
+    val cardBorder = if (isDark) DarkOledBorder else Color(0xFFCBD5E1)
+    val dividerColor = if (isDark) DarkOledBorder else Color(0xFFF1F5F9)
+
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = cardBg),
+        border = androidx.compose.foundation.BorderStroke(1.dp, cardBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isDark) 0.dp else 1.5.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
+                Box(
+                    modifier = Modifier
+                        .size(26.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = if (isDark) 0.2f else 0.12f),
+                            shape = RoundedCornerShape(6.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.titleSmall.copy(fontSize = 13.5.sp),
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = if (isDark) TextPrimaryDark else Color(0xFF0F172A)
                 )
             }
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 4.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                color = dividerColor
             )
             content()
         }
@@ -1650,6 +1720,7 @@ private fun DetailSectionCard(
 
 @Composable
 private fun DetailRowItem(label: String, value: String) {
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1657,15 +1728,15 @@ private fun DetailRowItem(label: String, value: String) {
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+            fontWeight = FontWeight.SemiBold,
+            color = if (isDark) Color(0xFF94A3B8) else Color(0xFF475569)
         )
         Text(
             text = value.ifBlank { "N/A" },
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp),
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = if (isDark) Color.White else Color(0xFF0F172A),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
