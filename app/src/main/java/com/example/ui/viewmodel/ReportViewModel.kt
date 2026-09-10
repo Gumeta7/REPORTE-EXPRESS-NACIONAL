@@ -1149,20 +1149,17 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val finalPropietario = foundMachine?.propietario?.ifBlank { "WINPOT" } ?: "WINPOT"
             val nextConsecutive = getNextFolioConsecutive()
             val ticketId = com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial, nextConsecutive)
-
+            val greeting = getTimeOfDayGreeting()
             val formattedBody = buildString {
-                appendLine("Buen dia estimados, solicitamos apoyo con la siguiente terminal")
+                appendLine("$greeting estimados, solicitamos apoyo con la siguiente terminal")
                 appendLine()
                 appendLine("Detalle de la falla: $cleanedIssue.")
                 appendLine()
                 appendLine("--- Datos del equipo ---")
-                appendLine("• Folio de Reporte: $ticketId")
-                appendLine("• Sala / Ubicación: $finalSala")
+                appendLine("• Sala: $finalSala")
                 appendLine("• Marca: $finalBrand")
                 appendLine("• Modelo: $finalModel")
-                appendLine("• Asset Number: $finalAsset")
-                appendLine("• Número de Serie: $finalSerial")
-                append("• Área: $finalArea")
+                append("• Número de Serie: $finalSerial")
             }
 
             val subjectLine = ticketId
@@ -1300,10 +1297,11 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val nextConsecutive = getNextFolioConsecutive()
             val ticketId = com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial, nextConsecutive)
 
+            val greeting = getTimeOfDayGreeting()
             val introLine = if (isSingle) {
-                "Buen dia estimados, solicitamos apoyo con la siguiente terminal"
+                "$greeting estimados, solicitamos apoyo con la siguiente terminal"
             } else {
-                "Buen dia estimados, solicitamos apoyo con las siguientes terminales"
+                "$greeting estimados, solicitamos apoyo con las siguientes terminales"
             }
 
             val formattedBody = buildString {
@@ -1312,13 +1310,10 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 appendLine("Detalle de la falla: $cleanedIssue.")
                 appendLine()
                 appendLine(if (isSingle) "--- Datos del equipo ---" else "--- Datos de los equipos ---")
-                appendLine("• Folio de Reporte: $ticketId")
-                appendLine("• Sala / Ubicación: $finalSala")
+                appendLine("• Sala: $finalSala")
                 appendLine("• Marca: $finalBrand")
                 appendLine("• Modelo: $finalModel")
-                appendLine("• Asset Number: $finalAsset")
-                appendLine("• Número de Serie: $finalSerial")
-                append("• Área: $finalArea")
+                append("• Número de Serie: $finalSerial")
             }
 
             val subjectLine = ticketId
