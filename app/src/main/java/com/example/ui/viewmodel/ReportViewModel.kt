@@ -1170,7 +1170,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 append("Saludos cordiales.")
             }
 
-            val subjectLine = "REPORTE DE TERMINAL - $finalSala (FOLIO: $ticketId | ASSET: $finalAsset)"
+            val subjectLine = ticketId
 
             val draft = EmailDraftState(
                 recipient = finalRecipient,
@@ -1331,11 +1331,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 append("Saludos cordiales.")
             }
 
-            val subjectLine = if (isSingle) {
-                "REPORTE DE TERMINAL - $finalSala (FOLIO: $ticketId | ASSET: $finalAsset)"
-            } else {
-                "REPORTE DE TERMINALES - $finalSala (FOLIO: $ticketId | ASSETS: $finalAsset)"
-            }
+            val subjectLine = ticketId
 
             val draft = EmailDraftState(
                 recipient = finalRecipient,
