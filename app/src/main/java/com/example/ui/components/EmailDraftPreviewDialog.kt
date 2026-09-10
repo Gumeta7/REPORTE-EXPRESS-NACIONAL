@@ -117,19 +117,12 @@ fun EmailDraftPreviewDialog(
                                 )
                             }
                             Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = "Previsualización de Correo",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = if (isDark) TextPrimaryDark else Color(0xFF0F172A)
-                                )
-                                Text(
-                                    text = "Revisa los datos antes de despachar",
-                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                                    color = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
-                                )
-                            }
+                            Text(
+                                text = "Previsualización de Correo",
+                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
+                                fontWeight = FontWeight.ExtraBold,
+                                color = if (isDark) TextPrimaryDark else Color(0xFF0F172A)
+                            )
                         }
 
                         IconButton(
@@ -413,14 +406,6 @@ fun EmailDraftPreviewDialog(
                             }
                         }
                     }
-
-                    // Opciones de Envío e Integración
-                    Text(
-                        text = "Opciones de Envío e Integración",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDark) Color(0xFF94A3B8) else Color(0xFF475569)
-                    )
 
                     // Gmail Direct
                     Button(
