@@ -1,26 +1,174 @@
 /**
- * SCRIPT DE OPTIMIZACIÓN PARA GOOGLE SHEETS / GOOGLE APPS SCRIPT
- * Proyecto: Reportes Express Nacional (Winpot / Cirsa)
- *
- * Instrucciones de instalación:
- * 1. Abre tu hoja de cálculo en Google Sheets:
- *    https://docs.google.com/spreadsheets/d/1HSyA-GdDOmwdGwK5n1u3eNrggENZjqQqJNHInFbeHeU
- * 2. En el menú superior ve a: Extensiones -> Apps Script.
- * 3. Reemplaza el código del archivo Código.gs con este contenido.
- * 4. Haz clic en "Implementar" (Deploy) -> "Nueva implementación" (New deployment).
- * 5. Tipo: "Aplicación web" (Web app).
- *    - Ejecutar como: "Yo" (Tu cuenta de Google).
- *    - Quién tiene acceso: "Cualquier persona" (Anyone).
- * 6. Haz clic en "Implementar" y autoriza los permisos si te los solicita.
+ * ============================================================================
+ * SISTEMA CENTRALIZADO DE GESTIÓN DE INCIDENCIAS Y CATÁLOGO NACIONAL (5,000+)
+ * PROYECTO: REPORTE EXPRESS NACIONAL (WINPOT / CIRSA)
+ * ============================================================================
+ * Este script actúa como el "cerebro" o API Webhook en Google Sheets:
+ * 1. Recibe los reportes desde la app Android con control de concurrencia (LockService),
+ *    evitando duplicados o pérdida de folios consecutivos.
+ * 2. OPTIMIZACIÓN: Permite consultar el catálogo de máquinas filtrado por sala
+ *    en formato JSON ligero (milisegundos) para que técnicos de salas individuales
+ *    no tengan que descargar ni procesar 5,000 registros en el teléfono.
+ * 3. PERFILES CORPORATIVOS: Los usuarios de "Corporativo GDL" y "Director de Operaciones"
+ *    reciben todas las máquinas de todas las salas a nivel nacional.
+ * 4. Exporta el archivo Excel completo (DB_WINPOT_FORMS.xlsx en Base64) para
+ *    sincronización tradicional offline.
  */
 
+/**
+ * Función que se ejecuta automáticamente cuando la app móvil envía un reporte o actualización (vía HTTP POST).
+ */
+function doPost(e) {
+  // PASO 1: Bloqueo de seguridad atómico (LockService)
+  // Atiende ordenadamente uno por uno durante un máximo de 30 segundos si varios técnicos reportan al mismo tiempo.
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000); // Espera pacientemente en la fila hasta 30 segundos
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: "error",
+      message: "El servidor está ocupado procesando otros reportes. Por favor intenta de nuevo en unos segundos."
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  try {
+    // PASO 2: Leer los datos que mandó la aplicación en formato JSON
+    var data = JSON.parse(e.postData.contents);
+    
+    // Conectarse a este archivo de Google Sheets y buscar la pestaña "Incidencias"
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName("Incidencias") || ss.getSheetByName("incidencias");
+    
+    // Verificación de seguridad
+    if (!sheet) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: "error",
+        message: "No se encontró la pestaña 'Incidencias' en esta hoja de cálculo."
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var lastRow = sheet.getLastRow();
+    var proposedTicketId = (data.id_ticket || data.idTicket || "").trim();
+
+    // Comprobar si es una actualización de un ticket existente (por ejemplo, al resolverlo o agregar notas)
+    if (proposedTicketId && lastRow > 1) {
+      var idValues = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (var r = 0; r < idValues.length; r++) {
+        var existingId = String(idValues[r][0] || "").trim();
+        if (existingId && existingId.toUpperCase() === proposedTicketId.toUpperCase()) {
+          var targetRow = r + 2;
+          var newEstado = data.estado || data.estado_ticket || data.estadoTicket;
+          var newFechaRep = data.fecha_reparacion || data.fechaReparacion;
+          var newResolucion = data.resolucion || data.solucion || data.descripcion_resolucion;
+
+          if (newEstado) sheet.getRange(targetRow, 10).setValue(newEstado.toUpperCase()); // Col J: Estado
+          if (newFechaRep) sheet.getRange(targetRow, 12).setValue(newFechaRep);          // Col L: Fecha Reparación
+          if (newResolucion) sheet.getRange(targetRow, 17).setValue(newResolucion);      // Col Q: Descripción Resolución
+
+          return ContentService.createTextOutput(JSON.stringify({
+            result: "success",
+            message: "Ticket actualizado correctamente",
+            id_ticket: proposedTicketId
+          })).setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+    }
+
+    // PASO 3: Revisar los folios que ya existen en la columna A (ID Ticket) para cálculo consecutivo
+    var maxConsecutive = 0;
+    var idsExistentes = [];
+
+    if (lastRow > 1) {
+      var rangeValues = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (var i = 0; i < rangeValues.length; i++) {
+        var tId = String(rangeValues[i][0] || "").trim();
+        if (tId) {
+          idsExistentes.push(tId);
+          // Extrae el número consecutivo final (ej: de "PHIE-22/55243-15" extrae el 15)
+          var match = tId.match(/-(\d+)$/);
+          if (match) {
+            var num = parseInt(match[1], 10);
+            if (num > maxConsecutive) {
+              maxConsecutive = num;
+            }
+          }
+        }
+      }
+    }
+
+    // PASO 4: Resolver y garantizar el Folio Único
+    var finalTicketId = proposedTicketId;
+    var isDuplicate = idsExistentes.indexOf(proposedTicketId) !== -1;
+    
+    // Si ya existe o si la app no mandó ninguno, calculamos atómicamente el siguiente folio libre
+    if (isDuplicate || !finalTicketId) {
+      var nextConsecutive = maxConsecutive + 1;
+      var sala = (data.sala || "").trim();
+      var idSala = getIdSalaFromNombre(sala);
+      var serie = String(data.serie || "").trim().replace(/\s+/g, "");
+      if (!serie) serie = "SN-" + (data.asset || "PENDIENTE");
+
+      // Nueva Nomenclatura oficial: ID_SALA-SERIE-CONSECUTIVO (ej: PHIE-22/55243-16)
+      finalTicketId = idSala + "-" + serie + "-" + nextConsecutive;
+    }
+
+    // PASO 5: Generar la marca de tiempo (Fecha y hora actual de Ciudad de México)
+    var fechaOrigen = Utilities.formatDate(new Date(), "America/Mexico_City", "yyyy-MM-dd HH:mm:ss");
+
+    // PASO 6: Insertar la fila completa en la pestaña Incidencias de Google Sheets (Columnas A - Q)
+    sheet.appendRow([
+      finalTicketId,                                          // Columna A: ID Ticket
+      data.sala || "",                                        // Columna B: Sala
+      data.marca || "",                                       // Columna C: Marca
+      data.modelo || "",                                      // Columna D: Modelo
+      data.serie || "",                                       // Columna E: Serie
+      data.asset || "",                                       // Columna F: Asset
+      data.area || "Sala Principal",                          // Columna G: Área
+      data.propietario || "WINPOT",                           // Columna H: Propietario
+      (data.operativa || "NO").toUpperCase(),                 // Columna I: Operativa (SI / NO)
+      (data.estado_ticket || data.estado || "ABIERTO").toUpperCase(), // Columna J: Estado Ticket
+      fechaOrigen,                                            // Columna K: Fecha Origen
+      data.fecha_reparacion || data.fechaReparacion || "",    // Columna L: Fecha Reparación
+      data.falla || "",                                       // Columna M: Descripción de la falla
+      (data.prioridad || "MEDIA").toUpperCase(),              // Columna N: Prioridad (BAJA, MEDIA, ALTA, CRITICA)
+      data.id_tecnico || data.idTecnico || "",                // Columna O: ID del Técnico
+      data.tecnico || "",                                     // Columna P: Nombre del Técnico
+      data.resolucion || data.solucion || ""                  // Columna Q: Descripción Resolución
+    ]);
+    
+    // PASO 7: Responder a la app móvil con éxito y el ID de ticket final registrado
+    return ContentService.createTextOutput(JSON.stringify({
+      result: "success",
+      id_ticket: finalTicketId,
+      consecutive: maxConsecutive + 1
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: "error",
+      message: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } finally {
+    // PASO 8: Liberar el candado de seguridad
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Función que se ejecuta cuando la app móvil consulta o descarga la base de datos (vía HTTP GET).
+ * - Si recibe ?action=getMaquinas&sala=... filtra en el servidor y devuelve solo las máquinas necesarias en JSON.
+ * - Si no recibe parámetros o pide export, entrega el archivo Excel completo (DB_WINPOT_FORMS.xlsx) en Base64.
+ */
 function doGet(e) {
   try {
     var params = e ? e.parameter : {};
     var action = (params.action || "").trim().toLowerCase();
     var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    // 1. Endpoint: Obtener máquinas filtradas por sala o catálogo completo en JSON
+    // =========================================================================
+    // OPTIMIZACIÓN 1: Consulta rápida de máquinas por sala o Corporativo (JSON)
+    // =========================================================================
     if (action === "getmaquinas" || action === "maquinas") {
       var salaParam = (params.sala || "").trim().toUpperCase();
       var sheetMaquinas = ss.getSheetByName("maquinas") || ss.getSheetByName("Maquinas") || ss.getSheetByName("MAQUINAS");
@@ -48,7 +196,8 @@ function doGet(e) {
         propietario: headers.indexOf("PROPIETARIO") !== -1 ? headers.indexOf("PROPIETARIO") : headers.indexOf("OPERADOR")
       };
 
-      var isCorporate = (salaParam === "" || salaParam === "TODAS" || salaParam === "CORPORATIVO GDL" || salaParam === "DIRECTOR DE OPERACIONES" || salaParam === "CGDL" || salaParam === "DOPE");
+      // Los perfiles "Corporativo GDL" y "Director de Operaciones" ven TODAS las máquinas de todas las salas
+      var isCorporate = (salaParam === "" || salaParam === "TODAS" || salaParam.indexOf("CORPORATIVO") !== -1 || salaParam.indexOf("DIRECTOR") !== -1 || salaParam === "CGDL" || salaParam === "DOPE");
       var results = [];
 
       for (var i = 1; i < data.length; i++) {
@@ -56,7 +205,6 @@ function doGet(e) {
         var rowSala = colIdx.sala !== -1 ? String(row[colIdx.sala] || "").trim() : "";
         var rowSalaUpper = rowSala.toUpperCase();
 
-        // Si es corporativo o coincide con la sala solicitada
         if (isCorporate || rowSalaUpper.indexOf(salaParam) !== -1 || salaParam.indexOf(rowSalaUpper) !== -1) {
           var maquinaVal = colIdx.maquina !== -1 ? String(row[colIdx.maquina] || "").trim() : "";
           var assetVal = colIdx.asset !== -1 ? String(row[colIdx.asset] || "").trim() : "";
@@ -86,211 +234,71 @@ function doGet(e) {
       });
     }
 
-    // 2. Endpoint: Sincronización completa en JSON ligero
-    if (action === "syncall" || action === "sync") {
-      var salaFiltro = (params.sala || "").trim().toUpperCase();
-      var isCorp = (salaFiltro === "" || salaFiltro === "TODAS" || salaFiltro.indexOf("CORPORATIVO") !== -1 || salaFiltro.indexOf("DIRECTOR") !== -1);
-
-      // Tecnicos
-      var sheetTecnicos = ss.getSheetByName("tecnicos") || ss.getSheetByName("Tecnicos") || ss.getSheetByName("usuarios");
-      var tecnicos = [];
-      if (sheetTecnicos) {
-        var tData = sheetTecnicos.getDataRange().getValues();
-        var tHeaders = tData[0].map(function(h) { return String(h || "").trim().toUpperCase(); });
-        var uIdx = tHeaders.indexOf("USUARIO") !== -1 ? tHeaders.indexOf("USUARIO") : tHeaders.indexOf("USER");
-        var pIdx = tHeaders.indexOf("PASSWORD") !== -1 ? tHeaders.indexOf("PASSWORD") : tHeaders.indexOf("CONTRASEÑA");
-        var nIdx = tHeaders.indexOf("NOMBRE");
-        var sIdx = tHeaders.indexOf("SALA");
-        var rIdx = tHeaders.indexOf("ROL");
-        var idSIdx = tHeaders.indexOf("ID_SALA");
-
-        for (var t = 1; t < tData.length; t++) {
-          var tRow = tData[t];
-          var uVal = uIdx !== -1 ? String(tRow[uIdx] || "").trim() : "";
-          if (uVal) {
-            tecnicos.push({
-              usuario: uVal,
-              password: pIdx !== -1 ? String(tRow[pIdx] || "").trim() : "",
-              nombre: nIdx !== -1 ? String(tRow[nIdx] || "").trim() : "",
-              sala: sIdx !== -1 ? String(tRow[sIdx] || "").trim() : "",
-              idSala: idSIdx !== -1 ? String(tRow[idSIdx] || "").trim() : "",
-              rol: rIdx !== -1 ? String(tRow[rIdx] || "").trim() : "TECNICO",
-              estatus: "ACTIVO"
-            });
-          }
-        }
-      }
-
-      // Incidencias
-      var sheetInc = ss.getSheetByName("incidencias") || ss.getSheetByName("Incidencias");
-      var incidencias = [];
-      if (sheetInc) {
-        var incData = sheetInc.getDataRange().getValues();
-        if (incData.length > 1) {
-          var incHeaders = incData[0].map(function(h) { return String(h || "").trim().toUpperCase(); });
-          var idTickIdx = incHeaders.indexOf("ID_TICKET") !== -1 ? incHeaders.indexOf("ID_TICKET") : incHeaders.indexOf("ID TICKET");
-          var salaIncIdx = incHeaders.indexOf("SALA");
-          var estIdx = incHeaders.indexOf("ESTADO") !== -1 ? incHeaders.indexOf("ESTADO") : incHeaders.indexOf("STATUS");
-          var repIdx = incHeaders.indexOf("FECHA REPARACION") !== -1 ? incHeaders.indexOf("FECHA REPARACION") : incHeaders.indexOf("FECHA_REPARACION");
-          var resIdx = incHeaders.indexOf("DESCRIPCION RESOLUCION") !== -1 ? incHeaders.indexOf("DESCRIPCION RESOLUCION") : incHeaders.indexOf("RESOLUCION");
-          var fldIdx = incHeaders.indexOf("DESCRIPCION FALLA") !== -1 ? incHeaders.indexOf("DESCRIPCION FALLA") : incHeaders.indexOf("FALLA");
-
-          for (var k = 1; k < incData.length; k++) {
-            var iRow = incData[k];
-            var iSala = salaIncIdx !== -1 ? String(iRow[salaIncIdx] || "").trim() : "";
-            if (isCorp || iSala.toUpperCase().indexOf(salaFiltro) !== -1) {
-              incidencias.push({
-                idTicket: idTickIdx !== -1 ? String(iRow[idTickIdx] || "").trim() : ("INC-" + k),
-                sala: iSala,
-                estadoTicket: estIdx !== -1 ? String(iRow[estIdx] || "").trim().toUpperCase() : "ABIERTO",
-                falla: fldIdx !== -1 ? String(iRow[fldIdx] || "").trim() : "",
-                fechaReparacion: repIdx !== -1 ? formatDateCell(iRow[repIdx]) : "",
-                resolucion: resIdx !== -1 ? String(iRow[resIdx] || "").trim() : ""
-              });
-            }
-          }
-        }
-      }
-
-      return jsonResponse({
-        success: true,
-        tecnicos: tecnicos,
-        incidencias: incidencias
-      });
-    }
-
-    // 3. Fallback: Exportar archivo XLSX completo
-    var id = ss.getId();
-    var exportUrl = "https://docs.google.com/spreadsheets/d/" + id + "/export?format=xlsx";
-    var response = UrlFetchApp.fetch(exportUrl, {
-      headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() },
+    // =========================================================================
+    // EXPORTACIÓN ORIGINAL POR DEFECTO: Descargar archivo Excel completo Base64
+    // =========================================================================
+    var sheetId = ss.getId();
+    var url = "https://docs.google.com/spreadsheets/d/" + sheetId + "/export?format=xlsx";
+    var token = ScriptApp.getOAuthToken();
+    var response = UrlFetchApp.fetch(url, {
+      headers: {
+        'Authorization': 'Bearer ' + token
+      },
       muteHttpExceptions: true
     });
-
-    if (response.getResponseCode() === 200) {
-      var blob = response.getBlob();
-      var base64 = Utilities.base64Encode(blob.getBytes());
-      return ContentService.createTextOutput(base64)
-        .setMimeType(ContentService.MimeType.TEXT);
-    }
-
-    return ContentService.createTextOutput("Error al exportar archivo").setMimeType(ContentService.MimeType.TEXT);
+    
+    var blob = response.getBlob();
+    blob.setName("DB_WINPOT_FORMS.xlsx");
+    
+    // Enviamos el archivo Excel codificado en Base64 para que la app lo lea localmente
+    return ContentService.createTextOutput(Utilities.base64Encode(blob.getBytes()))
+      .setMimeType(ContentService.MimeType.TEXT);
 
   } catch (err) {
-    return jsonResponse({ success: false, error: err.toString() });
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "error",
+      message: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
-function doPost(e) {
-  try {
-    var contents = e.postData ? e.postData.contents : "";
-    if (!contents) {
-      return jsonResponse({ result: "error", message: "Sin datos recibidos" });
-    }
-
-    var payload = JSON.parse(contents);
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName("incidencias") || ss.getSheetByName("Incidencias");
-    if (!sheet) {
-      return jsonResponse({ result: "error", message: "Pestaña 'incidencias' no encontrada" });
-    }
-
-    var lock = LockService.getScriptLock();
-    try {
-      lock.waitLock(10000);
-    } catch (le) {
-      return jsonResponse({ result: "error", message: "Servidor ocupado. Intenta de nuevo." });
-    }
-
-    try {
-      var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-      var headersUpper = headers.map(function(h) { return String(h || "").trim().toUpperCase(); });
-
-      var idCol = headersUpper.indexOf("ID_TICKET") !== -1 ? headersUpper.indexOf("ID_TICKET") : headersUpper.indexOf("ID TICKET");
-      var estadoCol = headersUpper.indexOf("ESTADO") !== -1 ? headersUpper.indexOf("ESTADO") : headersUpper.indexOf("STATUS");
-      var fechaRepCol = headersUpper.indexOf("FECHA REPARACION") !== -1 ? headersUpper.indexOf("FECHA REPARACION") : headersUpper.indexOf("FECHA_REPARACION");
-      var resolucionCol = headersUpper.indexOf("DESCRIPCION RESOLUCION") !== -1 ? headersUpper.indexOf("DESCRIPCION RESOLUCION") : headersUpper.indexOf("RESOLUCION");
-
-      // Buscar si el ticket ya existe para actualizarlo
-      var ticketId = (payload.id_ticket || "").trim();
-      var data = sheet.getDataRange().getValues();
-      var rowIndex = -1;
-
-      for (var r = 1; r < data.length; r++) {
-        var curId = idCol !== -1 ? String(data[r][idCol] || "").trim() : "";
-        if (curId && curId.toUpperCase() === ticketId.toUpperCase()) {
-          rowIndex = r + 1;
-          break;
-        }
-      }
-
-      if (rowIndex !== -1) {
-        // Actualizar ticket existente
-        var newEstado = payload.estado || payload.estado_ticket || payload.estadoTicket;
-        var newFechaRep = payload.fecha_reparacion || payload.fechaReparacion;
-        var newResolucion = payload.resolucion || payload.solucion;
-
-        if (newEstado && estadoCol !== -1) {
-          sheet.getRange(rowIndex, estadoCol + 1).setValue(newEstado);
-        }
-        if (newFechaRep && fechaRepCol !== -1) {
-          sheet.getRange(rowIndex, fechaRepCol + 1).setValue(newFechaRep);
-        }
-        if (newResolucion && resolucionCol !== -1) {
-          sheet.getRange(rowIndex, resolucionCol + 1).setValue(newResolucion);
-        }
-        return jsonResponse({ result: "success", message: "Ticket actualizado", id_ticket: ticketId });
-      }
-
-      // Si es nuevo ticket, agregarlo al final
-      var ticketId = (payload.id_ticket || payload.idTicket || "").trim();
-      var estadoVal = payload.estado || payload.estado_ticket || payload.estadoTicket || "ABIERTO";
-      var fechaOrigVal = payload.fecha_origen || payload.fechaOrigen || Utilities.formatDate(new Date(), "America/Mexico_City", "dd/MM/yyyy HH:mm:ss");
-      var fechaRepVal = payload.fecha_reparacion || payload.fechaReparacion || "";
-      var resolucionVal = payload.resolucion || payload.solucion || "";
-      var idTecnicoVal = payload.id_tecnico || payload.idTecnico || "";
-
-      var newRow = [];
-      for (var c = 0; c < headers.length; c++) {
-        var h = headersUpper[c];
-        if (h.indexOf("ID_TICKET") !== -1 || h === "ID") newRow.push(ticketId);
-        else if (h.indexOf("SALA") !== -1 || h.indexOf("CASINO") !== -1) newRow.push(payload.sala || "");
-        else if (h.indexOf("MARCA") !== -1) newRow.push(payload.marca || "");
-        else if (h.indexOf("MODELO") !== -1) newRow.push(payload.modelo || "");
-        else if (h.indexOf("SERIE") !== -1 || h.indexOf("SERIAL") !== -1) newRow.push(payload.serie || "");
-        else if (h.indexOf("ASSET") !== -1 || h.indexOf("ACTIVO") !== -1) newRow.push(payload.asset || "");
-        else if (h.indexOf("AREA") !== -1 || h.indexOf("ZONA") !== -1) newRow.push(payload.area || "");
-        else if (h.indexOf("PROPIETARIO") !== -1) newRow.push(payload.propietario || "WINPOT");
-        else if (h.indexOf("OPERATIVA") !== -1) newRow.push(payload.operativa || "NO");
-        else if (h.indexOf("ESTADO") !== -1 || h.indexOf("STATUS") !== -1) newRow.push(estadoVal);
-        else if (h.indexOf("ORIGEN") !== -1 || (h.indexOf("FECHA") !== -1 && h.indexOf("REPARACION") === -1)) newRow.push(fechaOrigVal);
-        else if (h.indexOf("REPARACION") !== -1) newRow.push(fechaRepVal);
-        else if (h.indexOf("RESOLUCION") !== -1 || h.indexOf("SOLUCION") !== -1) newRow.push(resolucionVal);
-        else if (h.indexOf("FALLA") !== -1 || h.indexOf("DESCRIPCION") !== -1) newRow.push(payload.falla || "");
-        else if (h.indexOf("PRIORIDAD") !== -1) newRow.push(payload.prioridad || "MEDIA");
-        else if (h.indexOf("ID_TECNICO") !== -1) newRow.push(idTecnicoVal);
-        else if (h.indexOf("TECNICO") !== -1) newRow.push(payload.tecnico || "");
-        else newRow.push("");
-      }
-
-      sheet.appendRow(newRow);
-      return jsonResponse({ result: "success", message: "Ticket registrado", id_ticket: ticketId });
-
-    } finally {
-      lock.releaseLock();
-    }
-
-  } catch (e) {
-    return jsonResponse({ result: "error", message: e.toString() });
-  }
+/**
+ * Función auxiliar para convertir el nombre completo de una sala a su clave oficial corta.
+ * Incluye soportes oficiales para "Corporativo GDL" (CGDL) y "Director de Operaciones" (DOPE).
+ */
+function getIdSalaFromNombre(sala) {
+  var s = (sala || "").toUpperCase();
+  if (s.indexOf("METROCENTRO") !== -1) return "METR";
+  if (s.indexOf("PUERTA DE HIERRO") !== -1 || s.indexOf("HIERRO") !== -1) return "PHIE";
+  if (s.indexOf("SATELITE") !== -1) return "SATE";
+  if (s.indexOf("DIAMONDS GUADALAJARA") !== -1 || s.indexOf("DIAMONDS") !== -1) return "CORD";
+  if (s.indexOf("INTERLOMAS") !== -1 || s.indexOf("VENETO") !== -1) return "INTE";
+  if (s.indexOf("TUXTLA") !== -1) return "TUXT";
+  if (s.indexOf("CIRCUNVALACION") !== -1) return "CIRC";
+  if (s.indexOf("PACHUCA") !== -1) return "PACH";
+  if (s.indexOf("MERIDA") !== -1) return "MERI";
+  if (s.indexOf("PLAYA") !== -1) return "PLAY";
+  if (s.indexOf("PUEBLA") !== -1) return "PUEB";
+  if (s.indexOf("CARRANZA") !== -1) return "CARR";
+  if (s.indexOf("POZA RICA") !== -1) return "POZA";
+  if (s.indexOf("TONALA") !== -1) return "TONA";
+  if (s.indexOf("CORDILLERAS") !== -1) return "CORD";
+  if (s.indexOf("METEPEC") !== -1) return "METE";
+  if (s.indexOf("MANDARIN") !== -1) return "MAND";
+  if (s.indexOf("GUAYMAS") !== -1) return "GUAY";
+  if (s.indexOf("BOCA DEL RIO") !== -1) return "BOCA";
+  if (s.indexOf("PUNTO SUR") !== -1) return "PSUR";
+  if (s.indexOf("DIRECTOR") !== -1 || s.indexOf("DOPE") !== -1) return "DOPE";
+  if (s.indexOf("CORPORATIVO") !== -1 || s.indexOf("CGDL") !== -1) return "CGDL";
+  return (sala || "SALA").substring(0, 4).toUpperCase();
 }
 
-function formatDateCell(val) {
-  if (!val) return "";
-  if (val instanceof Date) {
-    return Utilities.formatDate(val, "America/Mexico_City", "dd/MM/yyyy");
-  }
-  return String(val).trim();
+/**
+ * Función de utilidad para solicitar permisos de Drive e Internet a Google Apps Script
+ */
+function testAuth() {
+  DriveApp.getRootFolder();
+  UrlFetchApp.fetch("https://www.google.com");
 }
 
 function jsonResponse(obj) {
