@@ -1051,10 +1051,14 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         // Regla 2: Si es PROVEEDOR -> Se busca el proveedor por MARCA
         val brand = machine.brand.trim()
         if (brand.isNotBlank()) {
-            return findProviderForBrand(brand, registeredProviders)
+            val matched = findProviderForBrand(brand, registeredProviders)
+            if (matched != null && matched.email.isNotBlank()) {
+                return matched
+            }
         }
 
-        return null
+        // Regla 3: Si no tiene proveedor asignado -> Por defecto envía a Winpot
+        return findProviderForBrand("WINPOT", registeredProviders)
     }
 
     /**
