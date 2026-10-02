@@ -1033,33 +1033,25 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    // --- Provider Machine Matching Helper (Priority 1: ZITRO brand always takes precedence, then Propietario, then Brand) ---
+    // --- Provider Machine Matching Helper ---
+    // Directriz oficial:
+    // 1. Si PROPIETARIO es "PROPIA" (o "WINPOT") -> Siempre va a WINPOT, sin importar la marca.
+    // 2. Si PROPIETARIO es "PROVEEDOR" -> Se busca el proveedor por MARCA (Ainsworth, Zitro, EGT, etc.).
     fun findProviderForMachine(
         machine: MachineEntity,
         registeredProviders: List<com.example.data.db.ProviderEmailEntity> = providerEmails.value
     ): com.example.data.db.ProviderEmailEntity? {
-        val brandLower = machine.brand.trim().lowercase()
+        val prop = machine.propietario.trim().uppercase()
 
-        // EXCEPCIÓN CLAVE: Para el proveedor ZITRO, si la marca es Zitro, SIEMPRE se envía al grupo de Zitro
-        // aunque el propietario sea WINPOT u otro operador
-        if (brandLower.contains("zitro")) {
-            val zitroProvider = findProviderForBrand("ZITRO", registeredProviders)
-            if (zitroProvider != null && zitroProvider.email.isNotBlank()) {
-                return zitroProvider
-            }
+        // Regla 1: Si es máquina PROPIA -> Se envía a Winpot
+        if (prop == "PROPIA" || prop == "WINPOT") {
+            return findProviderForBrand("WINPOT", registeredProviders)
         }
 
-        // Priority 1: Match by machine's propietario (e.g. WINPOT, AGS, DREIDEL)
-        if (machine.propietario.isNotBlank()) {
-            val byPropietario = findProviderForBrand(machine.propietario, registeredProviders)
-            if (byPropietario != null && byPropietario.email.isNotBlank()) {
-                return byPropietario
-            }
-        }
-
-        // Priority 2: Fallback to machine's brand (e.g. IGT, Cadillac Jack, Ainsworth)
-        if (machine.brand.isNotBlank()) {
-            return findProviderForBrand(machine.brand, registeredProviders)
+        // Regla 2: Si es PROVEEDOR -> Se busca el proveedor por MARCA
+        val brand = machine.brand.trim()
+        if (brand.isNotBlank()) {
+            return findProviderForBrand(brand, registeredProviders)
         }
 
         return null
@@ -1142,28 +1134,39 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
 
+            val finalBrand = when {
+                foundMachine != null && foundMachine.brand.isNotBlank() -> foundMachine.brand
+                matchedProvider != null -> matchedProvider.providerName
+                else -> "Winpot"
+            }
+            val rawProp = foundMachine?.propietario?.trim()?.uppercase() ?: "PROPIA"
+            val finalPropietario = if (rawProp == "PROPIA" || rawProp == "WINPOT") "PROPIA" else "PROVEEDOR"
+
             val finalRecipient = when {
                 matchedProvider != null && matchedProvider.email.isNotBlank() -> matchedProvider.email
                 customRecipient.isNotBlank() -> customRecipient
-                else -> "soporte@zitro.com"
+                finalPropietario == "PROPIA" -> "atorres@winpot.com.mx"
+                finalBrand.contains("zitro", ignoreCase = true) -> "contactcenter@operacionesdelnorte.com"
+                finalBrand.contains("dreidel", ignoreCase = true) -> "helpdesk@dreidel.mx"
+                finalBrand.contains("ainsworth", ignoreCase = true) -> "CallCenterMX@agtslots.com"
+                finalBrand.contains("egt", ignoreCase = true) -> "support-mexico@egt.com"
+                finalBrand.contains("cadillac", ignoreCase = true) || finalBrand.contains("ags", ignoreCase = true) -> "soporteags@playags.com"
+                else -> "atorres@winpot.com.mx"
             }
-            val finalCc = matchedProvider?.ccEmails ?: ""
+            val finalCc = when {
+                matchedProvider != null && matchedProvider.ccEmails.isNotBlank() -> matchedProvider.ccEmails
+                finalPropietario == "PROPIA" -> "aparra@winpot.com.mx, mrivera@winpot.com.mx, fcruz@winpot.com.mx"
+                else -> ""
+            }
 
             // 4. Extract issue description cleanly
             val cleanedIssue = cleanIssueDescription(promptText, numberMatch, matchedProvider?.providerName)
 
-            val finalBrand = when {
-                foundMachine != null && foundMachine.brand.isNotBlank() -> foundMachine.brand
-                matchedProvider != null -> matchedProvider.providerName
-                else -> "Zitro"
-            }
             val finalModel = foundMachine?.model ?: "Estándar"
             val finalSerial = foundMachine?.serialNumber ?: "SN-$numberMatch"
             val finalAsset = foundMachine?.assetNumber ?: numberMatch
             val finalSala = foundMachine?.sala?.ifBlank { null } ?: venueName.value.ifBlank { "Sala Principal" }
             val finalArea = foundMachine?.area ?: "Sala Principal"
-            val rawProp = foundMachine?.propietario?.trim()?.uppercase() ?: "PROPIA"
-            val finalPropietario = if (rawProp == "PROPIA" || rawProp == "WINPOT") "PROPIA" else "PROVEEDOR"
             val projectedConsecutive = calculateProjectedConsecutive()
             val ticketId = com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial, projectedConsecutive)
             val greeting = getTimeOfDayGreeting()
@@ -1297,16 +1300,17 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val finalRecipient = when {
                 customRecipient.isNotBlank() -> customRecipient.trim()
                 matchedEmails.isNotEmpty() -> matchedEmails.distinct().joinToString(", ")
-                finalPropietario.trim().equals("ZITRO", ignoreCase = true) || finalBrand.trim().equals("ZITRO", ignoreCase = true) -> "contactcenter@operacionesdelnorte.com"
-                finalPropietario.trim().equals("WINPOT", ignoreCase = true) -> "atorres@winpot.com.mx"
-                finalPropietario.trim().contains("CADILLAC", ignoreCase = true) || finalBrand.trim().contains("CADILLAC", ignoreCase = true) -> "soporteags@playags.com"
-                else -> ""
+                finalPropietario == "PROPIA" -> "atorres@winpot.com.mx"
+                finalBrand.contains("zitro", ignoreCase = true) -> "contactcenter@operacionesdelnorte.com"
+                finalBrand.contains("dreidel", ignoreCase = true) -> "helpdesk@dreidel.mx"
+                finalBrand.contains("ainsworth", ignoreCase = true) -> "CallCenterMX@agtslots.com"
+                finalBrand.contains("egt", ignoreCase = true) -> "support-mexico@egt.com"
+                finalBrand.contains("cadillac", ignoreCase = true) || finalBrand.contains("ags", ignoreCase = true) -> "soporteags@playags.com"
+                else -> "atorres@winpot.com.mx"
             }
             val finalCc = when {
                 matchedCcEmails.isNotEmpty() -> matchedCcEmails.distinct().joinToString(", ")
-                finalPropietario.trim().equals("ZITRO", ignoreCase = true) || finalBrand.trim().equals("ZITRO", ignoreCase = true) -> "guillermol@operacionesdelnorte.com, atorres@winpot.com.mx, aparra@winpot.com.mx, mrivera@winpot.com.mx, fcruz@winpot.com.mx"
-                finalPropietario.trim().equals("WINPOT", ignoreCase = true) -> "aparra@winpot.com.mx, mrivera@winpot.com.mx, fcruz@winpot.com.mx"
-                finalPropietario.trim().contains("CADILLAC", ignoreCase = true) || finalBrand.trim().contains("CADILLAC", ignoreCase = true) -> "atorres@winpot.com.mx, aparra@winpot.com.mx, mrivera@winpot.com.mx, fcruz@winpot.com.mx"
+                finalPropietario == "PROPIA" -> "aparra@winpot.com.mx, mrivera@winpot.com.mx, fcruz@winpot.com.mx"
                 else -> ""
             }
 
