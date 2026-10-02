@@ -1201,7 +1201,7 @@ fun IncidenciaDetailDialog(
                         DetailRowItem(label = "Modelo", value = currentTicket.modelo)
                         DetailRowItem(label = "Número de Serie", value = currentTicket.serie)
                         DetailRowItem(label = "Asset Number", value = currentTicket.asset)
-                        DetailRowItem(label = "Propietario", value = currentTicket.propietario.ifBlank { "WINPOT" })
+                        DetailRowItem(label = "Propietario", value = currentTicket.propietario.ifBlank { "PROPIA" })
                     }
 
                     // Sección 2: Datos del Registro

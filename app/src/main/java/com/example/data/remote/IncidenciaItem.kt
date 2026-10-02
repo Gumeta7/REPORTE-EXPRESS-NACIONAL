@@ -8,7 +8,7 @@ data class IncidenciaItem(
     val serie: String,
     val asset: String,
     val area: String,
-    val propietario: String,
+    val propietario: String = "PROPIA",
     val operativa: String = "NO",
     val estadoTicket: String = "ABIERTO",
     val fechaOrigen: String = "",

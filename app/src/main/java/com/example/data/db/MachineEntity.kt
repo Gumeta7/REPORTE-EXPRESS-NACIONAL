@@ -27,5 +27,5 @@ data class MachineEntity(
     val island: String = "",   // e.g. "Isla 01"
     val sala: String = "",     // e.g. "Winpot Metrocentro", "Winpot Puerta de hierro"
     val qrId: String = "",     // e.g. "QR-0001"
-    val propietario: String = "" // e.g. "WINPOT"
+    val propietario: String = "PROPIA" // "PROPIA" o "PROVEEDOR"
 )

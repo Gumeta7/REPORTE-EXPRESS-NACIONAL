@@ -45,7 +45,7 @@ data class EmailDraftState(
     val assetNumber: String = "",
     val sala: String = "",
     val area: String = "",
-    val propietario: String = "",
+    val propietario: String = "PROPIA",
     val ticketId: String? = null,
     val operativa: String = "NO",
     val prioridad: String = "MEDIA"
@@ -652,7 +652,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                         serie = obj.optString("serie", ""),
                         asset = obj.optString("asset", ""),
                         area = obj.optString("area", ""),
-                        propietario = obj.optString("propietario", "WINPOT"),
+                        propietario = obj.optString("propietario", "PROPIA"),
                         operativa = obj.optString("operativa", "NO"),
                         estadoTicket = obj.optString("estadoTicket", "ABIERTO"),
                         fechaOrigen = obj.optString("fechaOrigen", ""),
@@ -1162,7 +1162,8 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val finalAsset = foundMachine?.assetNumber ?: numberMatch
             val finalSala = foundMachine?.sala?.ifBlank { null } ?: venueName.value.ifBlank { "Sala Principal" }
             val finalArea = foundMachine?.area ?: "Sala Principal"
-            val finalPropietario = foundMachine?.propietario?.ifBlank { "WINPOT" } ?: "WINPOT"
+            val rawProp = foundMachine?.propietario?.trim()?.uppercase() ?: "PROPIA"
+            val finalPropietario = if (rawProp == "PROPIA" || rawProp == "WINPOT") "PROPIA" else "PROVEEDOR"
             val projectedConsecutive = calculateProjectedConsecutive()
             val ticketId = com.example.util.TicketIdGenerator.generateTicketId(finalSala, finalSerial, projectedConsecutive)
             val greeting = getTimeOfDayGreeting()
@@ -1274,7 +1275,8 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val finalArea = if (uniqueAreas.isNotEmpty()) uniqueAreas.joinToString(", ") else "General"
 
             // 7. Unify Propietario
-            val finalPropietario = machines.map { it.propietario.trim() }.firstOrNull { it.isNotBlank() } ?: "WINPOT"
+            val rawProp = machines.map { it.propietario.trim().uppercase() }.firstOrNull { it.isNotBlank() } ?: "PROPIA"
+            val finalPropietario = if (rawProp == "PROPIA" || rawProp == "WINPOT") "PROPIA" else "PROVEEDOR"
 
             // 8. Resolve Recipient Emails (Priority 1: Propietario, Priority 2: Brand)
             val matchedEmails = mutableListOf<String>()
