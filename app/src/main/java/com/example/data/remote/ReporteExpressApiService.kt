@@ -24,7 +24,7 @@ object ReporteExpressApiService {
     private const val TAG = "ReporteExpressApi"
 
     // URL por defecto para la red local (Wi-Fi de la PC donde corre el servidor)
-    const val DEFAULT_LOCAL_BASE_URL = "http://192.168.0.123:4000"
+    const val DEFAULT_LOCAL_BASE_URL = "http://192.168.0.122:4000"
     const val DEFAULT_EMULATOR_BASE_URL = "http://10.0.2.2:4000"
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
