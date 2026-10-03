@@ -570,25 +570,26 @@ object FileParserUtil {
     private fun findHeaderIndices(rowCells: List<String>): Map<String, Int> {
         val map = mutableMapOf<String, Int>()
 
-        // 1. Highest Priority for 'modelo': Explicit 'MODELO REPORTE', 'MODELO_REPORTE', 'MODELO DE REPORTE', 'PP/PV'
+        // 1. Detección de Modelo Reporte
         rowCells.forEachIndexed { idx, cellStr ->
             val col = sanitizeHeader(cellStr)
             if (col.contains("MODELO REPORTE") || col.contains("MODELO_REPORTE") || col.contains("MODELO DE REPORTE") || col.contains("PP/PV") || col.contains("PP / PV") || col.contains("TIPO DE MAQUINA")) {
+                map["modelo_reporte"] = idx
+            }
+        }
+
+        // 2. Detección de Modelo estándar
+        rowCells.forEachIndexed { idx, cellStr ->
+            val col = sanitizeHeader(cellStr)
+            if ((col == "MODELO" || col == "MODEL" || (col.contains("MODELO") && !col.contains("REPORTE")))) {
                 map["modelo"] = idx
             }
         }
-
-        // 2. Second pass: Fallback for 'modelo' if MODELO REPORTE was not found
-        if (!map.containsKey("modelo")) {
-            rowCells.forEachIndexed { idx, cellStr ->
-                val col = sanitizeHeader(cellStr)
-                if (col == "MODELO" || col == "MODEL" || col == "TIPO") {
-                    map["modelo"] = idx
-                }
-            }
+        if (!map.containsKey("modelo") && map.containsKey("modelo_reporte")) {
+            map["modelo"] = map["modelo_reporte"]!!
         }
 
-        // 3. Third pass for specific headers (Sala, QR, Propietario, etc.)
+        // 3. Demás encabezados
         rowCells.forEachIndexed { idx, cellStr ->
             val col = sanitizeHeader(cellStr)
             when {
@@ -601,7 +602,7 @@ object FileParserUtil {
                 col.contains("TITULO") || col.contains("JUEGO") || col.contains("GAME") -> map.putIfAbsent("juego", idx)
                 col.contains("AREA") || col.contains("SECTOR") || col.contains("FUMADORES") || col.contains("ZONE") -> map.putIfAbsent("area", idx)
                 col.contains("ISLA") || col.contains("ISLAND") || col.contains("BLOQUE") || col.contains("LINEA") -> map.putIfAbsent("isla", idx)
-                (col.contains("MAQUINA") || col.contains("TERMINAL") || col.contains("EQUIPO") || col.contains("ID") || col.contains("NO MAQUINA") || col.contains("N MAQUINA")) && !col.contains("SERIE") && !col.contains("TIPO") && !col.contains("QR") -> map.putIfAbsent("maquina", idx)
+                (col.contains("POSICION") || col.contains("POSICIÓN") || col.contains("NO MAQUINA") || col.contains("N MAQUINA")) && !col.contains("SERIE") && !col.contains("SERIAL") && !col.contains("TIPO") && !col.contains("QR") -> map.putIfAbsent("maquina", idx)
             }
         }
         return map

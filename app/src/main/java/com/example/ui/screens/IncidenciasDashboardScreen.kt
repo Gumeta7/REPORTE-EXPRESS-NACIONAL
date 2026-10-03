@@ -205,7 +205,7 @@ fun IncidenciasDashboardScreen(
                         modifier = Modifier.padding(start = 8.dp)
                     ) {
                         IconButton(
-                            onClick = { viewModel.syncFromDrive(showProgressMessage = true, forceSyncMachines = true) },
+                            onClick = { viewModel.syncFromApi(showProgressMessage = true) },
                             modifier = Modifier
                                 .size(40.dp)
                                 .testTag("refresh_dashboard_button")

@@ -141,7 +141,7 @@ fun ExtractFileScreen(
         ) {
             // Botón Sincronizar
             Button(
-                onClick = { viewModel.syncFromDrive(showProgressMessage = true, forceSyncMachines = true) },
+                onClick = { viewModel.syncFromApi(showProgressMessage = true) },
                 enabled = !isSyncing,
                 modifier = Modifier
                     .weight(1f)

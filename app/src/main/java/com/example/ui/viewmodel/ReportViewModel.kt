@@ -206,8 +206,8 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         )
         viewModelScope.launch {
             repository.checkAndInitializeDemoData()
-            // Automatic initial sync from Google Drive spreadsheet on startup
-            syncFromDrive(showProgressMessage = false)
+            // Automatic initial sync from Node.js / Neon Cloud PostgreSQL API on startup
+            syncFromApi(showProgressMessage = false)
         }
     }
 
@@ -978,7 +978,11 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch(Dispatchers.IO) {
             _isSyncingDrive.value = true
             try {
-                val userDefaultSala = _currentUser.value?.sala?.trim()?.ifBlank { venueName.value.trim() } ?: venueName.value.trim()
+                val userDefaultSala = _currentUser.value?.sala?.trim()
+                    ?.ifBlank { _adminSelectedSala.value.trim() }
+                    ?.ifBlank { venueName.value.trim() }
+                    ?.ifBlank { "Winpot Puerta de hierro" }
+                    ?: "Winpot Puerta de hierro"
                 val inputStream = getApplication<Application>().contentResolver.openInputStream(uri)
                 if (inputStream != null) {
                     val bytes = inputStream.readBytes()

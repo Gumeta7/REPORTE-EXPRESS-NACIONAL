@@ -274,9 +274,9 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Sync from Drive Button in Login Screen
+            // Sync from API Button in Login Screen
             OutlinedButton(
-                onClick = { viewModel.syncFromDrive(showProgressMessage = true) },
+                onClick = { viewModel.syncFromApi(showProgressMessage = true) },
                 enabled = !isSyncingDrive,
                 modifier = Modifier
                     .fillMaxWidth()
