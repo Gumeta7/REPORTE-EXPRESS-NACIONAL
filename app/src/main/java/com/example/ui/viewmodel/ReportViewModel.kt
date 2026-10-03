@@ -163,7 +163,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 if (!paramKey.isNullOrBlank()) {
                     // If no machines loaded yet, ensure initial sync is triggered
                     if (repository.getMachineCount() == 0) {
-                        syncFromDrive(showProgressMessage = false)
+                        syncFromApi(showProgressMessage = false)
                     }
 
                     val found = repository.findMachineBySerialOrAssetOrQr(paramKey)
@@ -268,7 +268,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 } else {
                     // Fallback a login local en Room
                     if (repository.getTechnicianCount() == 0) {
-                        syncFromDrive(showProgressMessage = false)
+                        syncFromApi(showProgressMessage = false)
                     }
                     repository.authenticateTechnician(cleanUser, cleanPass)
                 }
@@ -732,40 +732,9 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 onComplete(true, msg)
                 syncFromApi(showProgressMessage = false)
             } else {
-                // Fallback secundario a Google Sheets si la API no responde
-                val result = com.example.data.remote.GoogleSheetsUpdateService.updateIncidenciaStatus(
-                    idTicket = idTicket,
-                    nuevoEstado = nuevoEstado,
-                    operativa = operativa,
-                    resolucion = resolucion,
-                    fechaReparacion = fechaReparacion
-                )
-
-                result.fold(
-                    onSuccess = { msg ->
-                        val currentList = _rawIncidencias.value.toMutableList()
-                        val idx = currentList.indexOfFirst { it.idTicket.equals(idTicket.trim(), ignoreCase = true) }
-                        if (idx != -1) {
-                            val old = currentList[idx]
-                            currentList[idx] = old.copy(
-                                estadoTicket = nuevoEstado,
-                                operativa = operativa,
-                                resolucion = resolucion,
-                                fechaReparacion = if (nuevoEstado.contains("RESUELT", true)) fechaReparacion.ifBlank { old.fechaReparacion } else ""
-                            )
-                            _rawIncidencias.value = sortIncidenciasByMostRecent(currentList)
-                            saveCachedIncidencias(_rawIncidencias.value)
-                        }
-                        _statusMessage.value = msg
-                        onComplete(true, msg)
-                        syncFromDrive(showProgressMessage = false)
-                    },
-                    onFailure = { err ->
-                        val errMsg = err.message ?: "Error desconocido al actualizar en Google Sheets"
-                        _statusMessage.value = errMsg
-                        onComplete(false, errMsg)
-                    }
-                )
+                val errMsg = apiRes.exceptionOrNull()?.message ?: "Error al actualizar estado en el servidor PostgreSQL"
+                _statusMessage.value = errMsg
+                onComplete(false, errMsg)
             }
         }
     }
@@ -883,11 +852,13 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 _lastSyncTimestampFormatted.value = nowFormatted
 
                 if (showProgressMessage) {
-                    _statusMessage.value = "Datos sincronizados desde la nube exitosamente"
+                    _statusMessage.value = "Datos sincronizados desde la nube (Neon PostgreSQL) exitosamente"
                 }
             } catch (e: Exception) {
-                Log.e("ReportViewModel", "Error al sincronizar con API, recurriendo a Drive", e)
-                syncFromDrive(showProgressMessage = showProgressMessage)
+                Log.e("ReportViewModel", "Error al sincronizar con API de Neon PostgreSQL", e)
+                if (showProgressMessage) {
+                    _statusMessage.value = "Modo sin conexión: usando catálogo local guardado."
+                }
             } finally {
                 _isSyncingDrive.value = false
             }
@@ -1578,28 +1549,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 _statusMessage.value = "Incidencia registrada en la nube ($confirmedId)."
                 syncFromApi(showProgressMessage = false)
             } else {
-                // Fallback secundario a Google Sheets si la API no estuviera disponible
-                val configuredUrl = prefs.getString("incidencias_webhook_url", "")?.trim().orEmpty()
-                com.example.data.remote.DriveSyncService.customWebhookUrl = configuredUrl.ifBlank {
-                    com.example.data.remote.DriveSyncService.DEFAULT_INCIDENCIAS_WEBHOOK_URL
-                }
-                val result = com.example.data.remote.DriveSyncService.postIncidenciaToDriveSheet(payload)
-                if (result.success) {
-                    val confirmedId = result.idTicket ?: ticketId
-                    if (confirmedId != ticketId) {
-                        dispatchedTicketIds.add(confirmedId)
-                    }
-                    result.consecutive?.let { serverConsecutive ->
-                        val localConsecutive = prefs.getInt("last_generated_folio_consecutive", 0)
-                        if (serverConsecutive >= localConsecutive) {
-                            prefs.edit().putInt("last_generated_folio_consecutive", serverConsecutive).apply()
-                        }
-                    }
-                    _statusMessage.value = "Incidencia registrada en Google Sheets ($confirmedId)."
-                    syncFromDrive(showProgressMessage = false)
-                } else {
-                    _statusMessage.value = "Ticket $ticketId guardado localmente."
-                }
+                _statusMessage.value = "Ticket $ticketId guardado localmente (sin conexión al servidor)."
             }
         }
     }

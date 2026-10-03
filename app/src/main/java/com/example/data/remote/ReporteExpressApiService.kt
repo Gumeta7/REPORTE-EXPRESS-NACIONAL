@@ -23,15 +23,16 @@ data class LoginResult(
 object ReporteExpressApiService {
     private const val TAG = "ReporteExpressApi"
 
-    // URL por defecto para la red local (Wi-Fi de la PC donde corre el servidor)
+    // URL oficial de producción en la nube (Render 24/7 con Neon PostgreSQL)
+    const val DEFAULT_PRODUCTION_BASE_URL = "https://reportes-express-api.onrender.com"
     const val DEFAULT_LOCAL_BASE_URL = "http://192.168.0.122:4000"
     const val DEFAULT_EMULATOR_BASE_URL = "http://10.0.2.2:4000"
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(25, TimeUnit.SECONDS)
+        .connectTimeout(25, TimeUnit.SECONDS)
+        .readTimeout(35, TimeUnit.SECONDS)
         .followRedirects(true)
         .build()
 
@@ -43,7 +44,7 @@ object ReporteExpressApiService {
         return if (customUrl.isNotBlank()) {
             customUrl.removeSuffix("/")
         } else {
-            DEFAULT_LOCAL_BASE_URL
+            DEFAULT_PRODUCTION_BASE_URL
         }
     }
 
