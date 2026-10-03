@@ -1,9 +1,9 @@
 /**
  * ============================================================================
  * SISTEMA CENTRALIZADO DE GESTIÓN DE INCIDENCIAS Y CATÁLOGO NACIONAL (5,000+)
- * PROYECTO: REPORTE EXPRESS NACIONAL (WINPOT / CIRSA)
+ * PROYECTO: REPORTE EXPRESS NACIONAL (WINPOT)
  * ============================================================================
- * Este script actúa como el "cerebro" o API Webhook en Google Sheets:
+ * Este script actúa como el "cerebro":
  * 1. Recibe los reportes desde la app Android con control de concurrencia (LockService),
  *    evitando duplicados o pérdida de folios consecutivos.
  * 2. OPTIMIZACIÓN: Permite consultar el catálogo de máquinas filtrado por sala
@@ -35,7 +35,7 @@ function doPost(e) {
     // PASO 2: Leer los datos que mandó la aplicación en formato JSON
     var data = JSON.parse(e.postData.contents);
     
-    // Conectarse a este archivo de Google Sheets y buscar la pestaña "Incidencias"
+    // Conectarse  y buscar la pestaña "Incidencias"
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName("Incidencias") || ss.getSheetByName("incidencias");
     
