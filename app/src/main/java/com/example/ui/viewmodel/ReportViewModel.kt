@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -842,8 +843,13 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 val baseUrl = com.example.data.remote.ReporteExpressApiService.getEffectiveBaseUrl(getApplication())
                 val token = prefs.getString("auth_jwt_token", null)
 
+                // Descarga paralela concurrente para máxima velocidad de red
+                val machinesDeferred = async { com.example.data.remote.ReporteExpressApiService.getMaquinas(baseUrl) }
+                val provDeferred = async { com.example.data.remote.ReporteExpressApiService.getProveedores(baseUrl) }
+                val incDeferred = async { com.example.data.remote.ReporteExpressApiService.getIncidencias(baseUrl, token) }
+
                 // 1. Sincronizar catálogo de máquinas
-                val machinesRes = com.example.data.remote.ReporteExpressApiService.getMaquinas(baseUrl)
+                val machinesRes = machinesDeferred.await()
                 if (machinesRes.isSuccess) {
                     val machines = machinesRes.getOrThrow()
                     if (machines.isNotEmpty()) {
@@ -852,7 +858,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 }
 
                 // 2. Sincronizar proveedores y correos
-                val provRes = com.example.data.remote.ReporteExpressApiService.getProveedores(baseUrl)
+                val provRes = provDeferred.await()
                 if (provRes.isSuccess) {
                     val provs = provRes.getOrThrow()
                     if (provs.isNotEmpty()) {
@@ -861,7 +867,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 }
 
                 // 3. Sincronizar incidencias
-                val incRes = com.example.data.remote.ReporteExpressApiService.getIncidencias(baseUrl, token)
+                val incRes = incDeferred.await()
                 if (incRes.isSuccess) {
                     val incs = incRes.getOrThrow()
                     withContext(Dispatchers.Main) {
